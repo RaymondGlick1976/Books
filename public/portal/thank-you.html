@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thank You | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css?v=27">
+  <style>
+    .thank-you-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+    }
+    
+    .thank-you-card {
+      text-align: center;
+      max-width: 500px;
+      padding: var(--space-2xl);
+      margin: var(--space-lg);
+    }
+    
+    .thank-you-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--color-success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--space-xl);
+    }
+    
+    .thank-you-icon svg {
+      width: 40px;
+      height: 40px;
+      color: white;
+    }
+    
+    .thank-you-card h1 {
+      color: var(--color-primary);
+      margin-bottom: var(--space-md);
+    }
+    
+    .thank-you-card p {
+      color: var(--color-text-light);
+      font-size: 1.125rem;
+      line-height: 1.6;
+    }
+    
+    .payment-details {
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin: var(--space-xl) 0;
+      text-align: left;
+    }
+    
+    .payment-details h3 {
+      color: var(--color-text);
+      margin-bottom: var(--space-md);
+      font-size: 1rem;
+    }
+    
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+    
+    .payment-row:last-child {
+      border-bottom: none;
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+    
+    .payment-row span:first-child {
+      color: var(--color-text-muted);
+    }
+    
+    .thank-you-actions {
+      margin-top: var(--space-xl);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+    
+    .logo {
+      margin-bottom: var(--space-xl);
+    }
+    
+    .logo img {
+      max-width: 250px;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="thank-you-page">
+    <div class="thank-you-card">
+      <div class="logo">
+        <img src="/images/logo.gif" alt="Homestead Cabinet Design">
+      </div>
+      
+      <div class="thank-you-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      
+      <h1>Thank You!</h1>
+      <p>Your payment has been received successfully.</p>
+      
+      <div class="payment-details" id="payment-details">
+        <h3>Payment Summary</h3>
+        <div class="payment-row">
+          <span>Amount Paid</span>
+          <span id="amount-paid">--</span>
+        </div>
+        <div class="payment-row">
+          <span>Reference</span>
+          <span id="reference">--</span>
+        </div>
+        <div class="payment-row">
+          <span>Date</span>
+          <span id="payment-date">--</span>
+        </div>
+      </div>
+      
+      <p style="font-size: 0.9375rem;">
+        A confirmation email has been sent to your email address. 
+        If you have any questions, please don't hesitate to contact us.
+      </p>
+      
+      <div class="thank-you-actions">
+        <a href="/portal/dashboard.html" class="btn btn-primary btn-block">Go to Dashboard</a>
+        <a href="/" class="btn btn-secondary btn-block">Return to Home</a>
+      </div>
+      
+      <div style="margin-top: var(--space-2xl); color: var(--color-text-muted); font-size: 0.875rem;">
+        <p>Homestead Cabinet Design</p>
+        <p>Western MA & Northern CT</p>
+        <p><a href="mailto:raymond@homesteadcabinetdesign.com" style="color: var(--color-primary);">raymond@homesteadcabinetdesign.com</a></p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Get payment details from URL params
+    const params = new URLSearchParams(window.location.search);
+    const amount = params.get('amount');
+    const reference = params.get('reference') || params.get('session_id');
+    
+    if (amount) {
+      document.getElementById('amount-paid').textContent = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      }).format(amount / 100);
+    }
+    
+    if (reference) {
+      // Show shortened reference
+      const shortRef = reference.length > 20 ? reference.substring(0, 8) + '...' : reference;
+      document.getElementById('reference').textContent = shortRef;
+    }
+    
+    document.getElementById('payment-date').textContent = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  </script>
+</body>
+</html>

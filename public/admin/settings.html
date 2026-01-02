@@ -4,16 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Settings | Admin | Homestead Cabinet Design</title>
-  <link rel="stylesheet" href="/css/styles.css?v=25">
+  <link rel="stylesheet" href="/css/styles.css?v=27">
 </head>
 <body>
   <div class="app-layout">
     <aside class="app-sidebar">
       <div class="sidebar-logo">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
-          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
-        </svg>
-        Homestead
+        <img src="/images/logo.gif" alt="Homestead Cabinet Design" style="height: 40px; filter: brightness(0) invert(1);">
       </div>
       <nav>
         <ul class="sidebar-nav">
@@ -43,6 +40,65 @@
       </header>
       
       <div class="app-content">
+        <!-- Logo & Branding -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Logo & Branding</h3>
+          </div>
+          <div class="card-body">
+            <div class="grid grid-cols-2 gap-xl">
+              <div>
+                <div class="form-group">
+                  <label class="form-label">Company Logo</label>
+                  <div style="background: var(--color-bg-soft); border: 2px dashed var(--color-border); border-radius: var(--radius-lg); padding: var(--space-xl); text-align: center;">
+                    <img id="logo-preview" src="/images/logo.gif" alt="Logo" style="max-width: 200px; max-height: 80px; margin-bottom: var(--space-md);">
+                    <div>
+                      <input type="file" id="logo-upload" accept="image/*" style="display: none;">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('logo-upload').click()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Upload New Logo
+                      </button>
+                    </div>
+                    <p class="form-help" style="margin-top: var(--space-sm);">Recommended: PNG or GIF, max 500KB</p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="form-group">
+                  <label class="form-label">Tagline</label>
+                  <input type="text" id="company-tagline" class="form-input" value="Love your kitchen again">
+                  <div class="form-help">Shown in emails and portal header</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Primary Brand Color</label>
+                  <div style="display: flex; gap: var(--space-sm); align-items: center;">
+                    <input type="color" id="brand-color" value="#6366f1" style="width: 50px; height: 38px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer;">
+                    <input type="text" id="brand-color-hex" class="form-input" value="#6366f1" style="width: 100px;">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Customer Portal Link -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Customer Portal Access</h3>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-md);">Share this link with customers so they can access their quotes, invoices, and make payments:</p>
+            <div style="display: flex; gap: var(--space-sm); align-items: center;">
+              <input type="text" id="portal-link" class="form-input" readonly style="flex: 1; background: var(--color-bg-soft);">
+              <button type="button" class="btn btn-secondary" onclick="copyPortalLink()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy Link
+              </button>
+            </div>
+            <p class="form-help" style="margin-top: var(--space-sm);">Customers will enter their email to receive a secure login link.</p>
+          </div>
+        </div>
+        
         <!-- Company Information -->
         <div class="card mb-xl">
           <div class="card-header">
@@ -145,7 +201,7 @@
         </div>
         
         <!-- Notification Preferences -->
-        <div class="card">
+        <div class="card mb-xl">
           <div class="card-header">
             <h3 class="card-title">Notifications</h3>
           </div>
@@ -179,6 +235,68 @@
             </form>
           </div>
         </div>
+        
+        <!-- Email Templates -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Email Templates</h3>
+          </div>
+          <div class="card-body">
+            <div class="form-help" style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+              <strong>Available Variables:</strong><br>
+              <code>{{customer_name}}</code> - Customer's full name<br>
+              <code>{{customer_first_name}}</code> - Customer's first name<br>
+              <code>{{quote_number}}</code> / <code>{{invoice_number}}</code> - Document number<br>
+              <code>{{quote_title}}</code> / <code>{{invoice_title}}</code> - Document title<br>
+              <code>{{total}}</code> - Total amount<br>
+              <code>{{amount_due}}</code> - Balance due<br>
+              <code>{{due_date}}</code> - Due date<br>
+              <code>{{company_name}}</code> - Your company name
+            </div>
+            
+            <!-- Quote Email -->
+            <div class="form-group">
+              <label class="form-label">Quote Email Subject</label>
+              <input type="text" id="quote-email-subject" class="form-input" value="Quote #{{quote_number}}: {{quote_title}}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Quote Email Message</label>
+              <textarea id="quote-email-body" class="form-input" rows="4">Hi {{customer_first_name}},
+
+Thank you for your interest in our services! We've prepared a quote for your project.
+
+Click the button below to view the full details and accept your quote.</textarea>
+              <div class="form-help">The quote details and view button are added automatically after this message.</div>
+            </div>
+            
+            <!-- Invoice Email -->
+            <div class="form-group" style="margin-top: var(--space-xl);">
+              <label class="form-label">Invoice Email Subject</label>
+              <input type="text" id="invoice-email-subject" class="form-input" value="Invoice #{{invoice_number}}: {{invoice_title}}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Invoice Email Message</label>
+              <textarea id="invoice-email-body" class="form-input" rows="4">Hi {{customer_first_name}},
+
+Here is your invoice for recent services. The total amount due is {{amount_due}}.
+
+Click the button below to view the full invoice and make a payment.</textarea>
+            </div>
+            
+            <!-- Payment Thank You -->
+            <div class="form-group" style="margin-top: var(--space-xl);">
+              <label class="form-label">Payment Confirmation Message</label>
+              <textarea id="payment-thank-you" class="form-input" rows="4">Thank you for your payment! We truly appreciate your business.
+
+Your payment has been received and a confirmation has been sent to your email address.
+
+If you have any questions about your project, please don't hesitate to reach out.</textarea>
+              <div class="form-help">Shown on the thank you page after a customer makes a payment.</div>
+            </div>
+            
+            <button type="button" class="btn btn-primary" onclick="saveEmailTemplates()">Save Email Templates</button>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -187,6 +305,49 @@
   <script>
     
     let settings = {};
+    
+    // Set portal link
+    const siteUrl = window.location.origin;
+    document.getElementById('portal-link').value = siteUrl + '/portal/login.html';
+    
+    function copyPortalLink() {
+      const link = document.getElementById('portal-link');
+      link.select();
+      document.execCommand('copy');
+      showToast('Portal link copied to clipboard', 'success');
+    }
+    
+    // Logo upload handling
+    document.getElementById('logo-upload').addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      if (file.size > 500000) {
+        showToast('Logo file must be under 500KB', 'error');
+        return;
+      }
+      
+      // Preview
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('logo-preview').src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+      
+      // For now, show a message about manual upload
+      showToast('Logo preview updated. Full logo upload coming soon!', 'success');
+    });
+    
+    // Brand color sync
+    document.getElementById('brand-color').addEventListener('input', function(e) {
+      document.getElementById('brand-color-hex').value = e.target.value;
+    });
+    
+    document.getElementById('brand-color-hex').addEventListener('input', function(e) {
+      if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+        document.getElementById('brand-color').value = e.target.value;
+      }
+    });
     
     async function loadSettings() {
       try {
@@ -217,6 +378,13 @@
           $('#company-zip').value = company.zip || '';
         }
         
+        if (settings.branding) {
+          const branding = settings.branding;
+          $('#company-tagline').value = branding.tagline || 'Love your kitchen again';
+          $('#brand-color').value = branding.color || '#6366f1';
+          $('#brand-color-hex').value = branding.color || '#6366f1';
+        }
+        
         if (settings.quotes) {
           const quotes = settings.quotes;
           $('#default-valid-days').value = quotes.default_valid_days || 30;
@@ -236,6 +404,15 @@
           $('#notify-quote-accepted').checked = notifs.quote_accepted !== false;
           $('#notify-payment-received').checked = notifs.payment_received !== false;
           $('#notify-customer-upload').checked = notifs.customer_upload !== false;
+        }
+        
+        if (settings.email_templates) {
+          const templates = settings.email_templates;
+          if (templates.quote_subject) $('#quote-email-subject').value = templates.quote_subject;
+          if (templates.quote_body) $('#quote-email-body').value = templates.quote_body;
+          if (templates.invoice_subject) $('#invoice-email-subject').value = templates.invoice_subject;
+          if (templates.invoice_body) $('#invoice-email-body').value = templates.invoice_body;
+          if (templates.payment_thank_you) $('#payment-thank-you').value = templates.payment_thank_you;
         }
         
       } catch (err) {
@@ -260,6 +437,17 @@
       }
     }
     
+    async function saveEmailTemplates() {
+      const value = {
+        quote_subject: $('#quote-email-subject').value,
+        quote_body: $('#quote-email-body').value,
+        invoice_subject: $('#invoice-email-subject').value,
+        invoice_body: $('#invoice-email-body').value,
+        payment_thank_you: $('#payment-thank-you').value
+      };
+      await saveSetting('email_templates', value);
+    }
+    
     // Company form
     $('#company-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -274,6 +462,13 @@
         zip: $('#company-zip').value
       };
       await saveSetting('company', value);
+      
+      // Also save branding
+      const branding = {
+        tagline: $('#company-tagline').value,
+        color: $('#brand-color').value
+      };
+      await saveSetting('branding', branding);
     });
     
     // Quote settings form

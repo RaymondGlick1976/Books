@@ -129,7 +129,7 @@ exports.handler = async (event) => {
         },
       ],
       mode: 'payment',
-      success_url: `${siteUrl}/portal/quote.html?id=${quote_id}&payment=success`,
+      success_url: `${siteUrl}/portal/thank-you.html?amount=${Math.round(paymentAmount * 100)}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/portal/quote.html?id=${quote_id}&payment=cancelled`,
       metadata: {
         quote_id,

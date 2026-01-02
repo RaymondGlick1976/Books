@@ -121,7 +121,7 @@ exports.handler = async (event) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${siteUrl}/portal/quote.html?token=${token}&payment=success`,
+      success_url: `${siteUrl}/portal/thank-you.html?amount=${Math.round(paymentAmount * 100)}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/portal/quote.html?token=${token}&payment=cancelled`,
       customer_email: quote.customers?.email,
       metadata: {

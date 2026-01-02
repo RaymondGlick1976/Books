@@ -85,45 +85,47 @@ exports.handler = async (event) => {
     }
 
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #5B4C43; padding: 30px; text-align: center;">
-          <h1 style="color: #C9A66B; margin: 0;">Homestead Cabinet Design</h1>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #6366f1; padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-weight: 600;">Homestead Cabinet Design</h1>
+          <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0; font-size: 14px;">Love your kitchen again</p>
         </div>
         
-        <div style="padding: 30px; background: #f9f9f9;">
-          <h2 style="color: #333;">Hi ${customer.name.split(' ')[0]},</h2>
+        <div style="padding: 30px; background: #f8fafc;">
+          <h2 style="color: #1e293b;">Hi ${customer.name.split(' ')[0]},</h2>
           
-          <p style="color: #555; font-size: 16px; line-height: 1.6;">
+          <p style="color: #475569; font-size: 16px; line-height: 1.6;">
             Thank you for your interest in our services! We've prepared a quote for your project:
           </p>
           
-          <div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0;">
-            <h3 style="color: #5B4C43; margin-top: 0;">${quote.title}</h3>
-            <p style="color: #555; margin: 5px 0;"><strong>Quote #:</strong> ${quote.quote_number}</p>
-            <p style="color: #555; margin: 5px 0;"><strong>Total:</strong> <span style="color: #5B4C43; font-size: 18px; font-weight: bold;">${totalDisplay}</span></p>
-            ${quote.expires_at ? `<p style="color: #888; margin: 5px 0; font-size: 14px;">Valid until: ${new Date(quote.expires_at).toLocaleDateString()}</p>` : ''}
+          <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <h3 style="color: #6366f1; margin-top: 0;">${quote.title}</h3>
+            <p style="color: #475569; margin: 5px 0;"><strong>Quote #:</strong> ${quote.quote_number}</p>
+            <p style="color: #475569; margin: 5px 0;"><strong>Total:</strong> <span style="color: #6366f1; font-size: 18px; font-weight: bold;">${totalDisplay}</span></p>
+            ${quote.expires_at ? `<p style="color: #94a3b8; margin: 5px 0; font-size: 14px;">Valid until: ${new Date(quote.expires_at).toLocaleDateString()}</p>` : ''}
           </div>
           
-          <p style="color: #555; font-size: 16px; line-height: 1.6;">
+          <p style="color: #475569; font-size: 16px; line-height: 1.6;">
             Click the button below to view the full details and accept your quote:
           </p>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${directLink}" style="background: #C9A66B; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">View Quote</a>
+            <a href="${directLink}" style="background: #6366f1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">View Quote</a>
           </div>
           
-          <p style="color: #888; font-size: 14px;">
+          <p style="color: #94a3b8; font-size: 14px;">
             This link is unique to your quote and doesn't require a login.
           </p>
           
-          <p style="color: #888; font-size: 12px; word-break: break-all;">
+          <p style="color: #94a3b8; font-size: 12px; word-break: break-all;">
             If the button doesn't work, copy and paste this link:<br>
-            <a href="${directLink}" style="color: #5B4C43;">${directLink}</a>
+            <a href="${directLink}" style="color: #6366f1;">${directLink}</a>
           </p>
         </div>
         
-        <div style="padding: 20px; text-align: center; background: #333; color: #888; font-size: 12px;">
+        <div style="padding: 20px; text-align: center; background: #1e293b; color: #94a3b8; font-size: 12px;">
           <p style="margin: 0;">Homestead Cabinet Design</p>
+          <p style="margin: 5px 0;">Western MA & Northern CT</p>
           <p style="margin: 5px 0;">raymond@homesteadcabinetdesign.com</p>
         </div>
       </div>
