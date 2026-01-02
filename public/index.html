@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Homestead Cabinet Design</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #faf8f5 0%, #f0ebe3 100%);
+      color: #2d2d2d;
+    }
+    
+    .container {
+      text-align: center;
+      padding: 3rem 2rem;
+      max-width: 500px;
+    }
+    
+    .logo {
+      width: 80px;
+      height: 80px;
+      background: #1e3a5f;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+    }
+    
+    .logo svg {
+      width: 48px;
+      height: 48px;
+      fill: #c9a66b;
+    }
+    
+    h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 2rem;
+      font-weight: 600;
+      color: #1e3a5f;
+      margin-bottom: 0.5rem;
+    }
+    
+    .tagline {
+      color: #5a5a5a;
+      margin-bottom: 2.5rem;
+    }
+    
+    .buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .btn {
+      display: block;
+      padding: 1rem 2rem;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-primary {
+      background: #1e3a5f;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #2d4a6f;
+    }
+    
+    .btn-secondary {
+      background: white;
+      color: #1e3a5f;
+      border: 2px solid #e0dcd5;
+    }
+    
+    .btn-secondary:hover {
+      border-color: #1e3a5f;
+    }
+    
+    .footer {
+      margin-top: 3rem;
+      font-size: 0.875rem;
+      color: #8a8a8a;
+    }
+    
+    .footer a {
+      color: #1e3a5f;
+      text-decoration: none;
+    }
+    
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <svg viewBox="0 0 24 24">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
+      </svg>
+    </div>
+    
+    <h1>Homestead Cabinet Design</h1>
+    <p class="tagline">Quote & Invoice Portal</p>
+    
+    <div class="buttons">
+      <a href="/portal/login.html" class="btn btn-primary">Customer Portal</a>
+      <a href="/admin/index.html" class="btn btn-secondary">Admin Dashboard</a>
+    </div>
+    
+    <div class="footer">
+      <p>Western MA & Northern CT</p>
+      <p><a href="mailto:raymond@homesteadcabinetdesign.com">raymond@homesteadcabinetdesign.com</a></p>
+      <p><a href="https://homesteadcabinetdesign.com">homesteadcabinetdesign.com</a></p>
+    </div>
+  </div>
+</body>
+</html>

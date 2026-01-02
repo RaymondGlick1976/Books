@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--color-accent)">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
+        </svg>
+        Homestead
+      </div>
+      
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item">
+            <a href="/admin/index.html" class="sidebar-nav-link active">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              Dashboard
+            </a>
+          </li>
+          <li class="sidebar-nav-item">
+            <a href="/admin/customers.html" class="sidebar-nav-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                <path d="M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+              Customers
+            </a>
+          </li>
+          <li class="sidebar-nav-item">
+            <a href="/admin/quotes.html" class="sidebar-nav-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <path d="M14 2v6h6"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              Quotes
+            </a>
+          </li>
+          <li class="sidebar-nav-item">
+            <a href="/admin/invoices.html" class="sidebar-nav-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              Invoices
+            </a>
+          </li>
+        </ul>
+        
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Catalog</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item">
+              <a href="/admin/catalog.html" class="sidebar-nav-link">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+                  <line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+                Items Catalog
+              </a>
+            </li>
+          </ul>
+        </div>
+        
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Settings</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item">
+              <a href="/admin/settings.html" class="sidebar-nav-link">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+                </svg>
+                Settings
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="app-main">
+      <header class="app-header">
+        <h2>Dashboard</h2>
+        <div class="flex items-center gap-md">
+          <a href="/admin/quote-builder.html" class="btn btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New Quote
+          </a>
+        </div>
+      </header>
+      
+      <div class="app-content">
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-4 gap-lg mb-xl">
+          <div class="stat-card">
+            <div class="stat-card-label">Pending Quotes</div>
+            <div class="stat-card-value" id="stat-pending-quotes">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Outstanding Balance</div>
+            <div class="stat-card-value" id="stat-outstanding">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Payments (30 days)</div>
+            <div class="stat-card-value" id="stat-payments">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Active Customers</div>
+            <div class="stat-card-value" id="stat-customers">-</div>
+          </div>
+        </div>
+        
+        <!-- Recent Activity & Quick Actions -->
+        <div class="grid grid-cols-2 gap-lg">
+          <!-- Recent Activity -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Recent Activity</h3>
+            </div>
+            <div class="card-body" id="recent-activity">
+              <div class="skeleton" style="height: 200px;"></div>
+            </div>
+          </div>
+          
+          <!-- Action Items -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Action Items</h3>
+            </div>
+            <div class="card-body" id="action-items">
+              <div class="skeleton" style="height: 200px;"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Recent Quotes -->
+        <div class="card mt-xl">
+          <div class="card-header">
+            <h3 class="card-title">Recent Quotes</h3>
+            <a href="/admin/quotes.html" class="btn btn-ghost btn-sm">View All →</a>
+          </div>
+          <div class="table-container">
+            <table class="table" id="quotes-table">
+              <thead>
+                <tr>
+                  <th>Quote #</th>
+                  <th>Customer</th>
+                  <th>Title</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="quotes-tbody">
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner" style="margin: 0 auto;"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script>
+    
+    // For now, using Supabase directly with anon key
+    // In production, you'd want admin-specific auth
+    async function loadDashboard() {
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Load stats
+        await loadStats(supabase);
+        
+        // Load recent activity
+        await loadRecentActivity(supabase);
+        
+        // Load action items
+        await loadActionItems(supabase);
+        
+        // Load recent quotes
+        await loadRecentQuotes(supabase);
+        
+      } catch (err) {
+        console.error('Dashboard load error:', err);
+        showToast('Failed to load dashboard', 'error');
+      }
+    }
+    
+    async function loadStats(supabase) {
+      // Pending quotes count
+      const { count: pendingCount } = await supabase
+        .from('quotes')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['sent', 'viewed']);
+      
+      $('#stat-pending-quotes').textContent = pendingCount || 0;
+      
+      // Outstanding balance
+      const { data: invoices } = await supabase
+        .from('invoices')
+        .select('amount_due')
+        .in('status', ['sent', 'viewed', 'partial', 'overdue']);
+      
+      const outstanding = invoices?.reduce((sum, inv) => sum + parseFloat(inv.amount_due || 0), 0) || 0;
+      $('#stat-outstanding').textContent = formatCurrency(outstanding);
+      
+      // Payments in last 30 days
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('status', 'succeeded')
+        .gte('payment_date', thirtyDaysAgo);
+      
+      const paymentTotal = payments?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
+      $('#stat-payments').textContent = formatCurrency(paymentTotal);
+      
+      // Active customers (with quotes in last 90 days)
+      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      const { count: customerCount } = await supabase
+        .from('quotes')
+        .select('customer_id', { count: 'exact', head: true })
+        .gte('created_at', ninetyDaysAgo);
+      
+      $('#stat-customers').textContent = customerCount || 0;
+    }
+    
+    async function loadRecentActivity(supabase) {
+      const container = $('#recent-activity');
+      
+      // Get recent activity from activity_log
+      const { data: activities } = await supabase
+        .from('activity_log')
+        .select('*, customers(name)')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      clearElement(container);
+      
+      if (!activities || activities.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No recent activity</p>';
+        return;
+      }
+      
+      activities.forEach(activity => {
+        const item = createElement('div', {
+          className: 'flex items-center gap-md p-sm',
+          style: 'border-bottom: 1px solid var(--color-border-light);'
+        }, [
+          createElement('div', { className: 'flex-1' }, [
+            createElement('div', { textContent: activity.description || activity.activity_type }),
+            createElement('div', { 
+              className: 'text-sm text-muted',
+              textContent: activity.customers?.name || 'Unknown'
+            })
+          ]),
+          createElement('div', {
+            className: 'text-sm text-muted',
+            textContent: formatRelativeTime(activity.created_at)
+          })
+        ]);
+        container.appendChild(item);
+      });
+    }
+    
+    async function loadActionItems(supabase) {
+      const container = $('#action-items');
+      const items = [];
+      
+      // Check for overdue invoices
+      const { data: overdueInvoices } = await supabase
+        .from('invoices')
+        .select('*, customers(name)')
+        .eq('status', 'overdue')
+        .limit(5);
+      
+      overdueInvoices?.forEach(inv => {
+        items.push({
+          type: 'danger',
+          text: `Overdue invoice ${inv.invoice_number}`,
+          subtitle: `${inv.customers?.name} - ${formatCurrency(inv.amount_due)}`,
+          link: `/admin/invoice.html?id=${inv.id}`
+        });
+      });
+      
+      // Check for quotes expiring soon
+      const threeDaysFromNow = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: expiringQuotes } = await supabase
+        .from('quotes')
+        .select('*, customers(name)')
+        .in('status', ['sent', 'viewed'])
+        .lt('expires_at', threeDaysFromNow)
+        .limit(5);
+      
+      expiringQuotes?.forEach(q => {
+        items.push({
+          type: 'warning',
+          text: `Quote expiring: ${q.quote_number}`,
+          subtitle: `${q.customers?.name} - expires ${formatDate(q.expires_at)}`,
+          link: `/admin/quote.html?id=${q.id}`
+        });
+      });
+      
+      // Check for new customer uploads
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: recentUploads, count: uploadCount } = await supabase
+        .from('customer_uploads')
+        .select('*, customers(name)', { count: 'exact' })
+        .gte('uploaded_at', oneDayAgo)
+        .limit(3);
+      
+      if (uploadCount > 0) {
+        items.push({
+          type: 'info',
+          text: `${uploadCount} new customer upload${uploadCount > 1 ? 's' : ''}`,
+          subtitle: 'Review uploaded photos',
+          link: '/admin/uploads.html'
+        });
+      }
+      
+      clearElement(container);
+      
+      if (items.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center p-lg">✓ All caught up!</p>';
+        return;
+      }
+      
+      items.forEach(item => {
+        const colors = {
+          danger: 'var(--color-danger)',
+          warning: 'var(--color-warning)',
+          info: 'var(--color-primary)'
+        };
+        
+        const el = createElement('a', {
+          href: item.link,
+          className: 'flex items-center gap-md p-sm',
+          style: `border-left: 3px solid ${colors[item.type]}; margin-bottom: 8px; text-decoration: none; color: inherit;`
+        }, [
+          createElement('div', { className: 'flex-1' }, [
+            createElement('div', { className: 'font-bold', textContent: item.text }),
+            createElement('div', { className: 'text-sm text-muted', textContent: item.subtitle })
+          ]),
+          createElement('span', { textContent: '→', style: 'color: var(--color-text-muted);' })
+        ]);
+        container.appendChild(el);
+      });
+    }
+    
+    async function loadRecentQuotes(supabase) {
+      const tbody = $('#quotes-tbody');
+      
+      const { data: quotes } = await supabase
+        .from('quotes')
+        .select('*, customers(name)')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      clearElement(tbody);
+      
+      if (!quotes || quotes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No quotes yet</td></tr>';
+        return;
+      }
+      
+      quotes.forEach(quote => {
+        const row = createElement('tr');
+        row.innerHTML = `
+          <td><strong>${quote.quote_number}</strong></td>
+          <td>${quote.customers?.name || '—'}</td>
+          <td>${quote.title}</td>
+          <td>${formatCurrency(quote.total)}</td>
+          <td><span class="badge badge-${quote.status}">${quote.status}</span></td>
+          <td>${formatDate(quote.created_at)}</td>
+          <td class="table-actions">
+            <a href="/admin/quote.html?id=${quote.id}" class="btn btn-ghost btn-sm">View</a>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+    
+    // Initialize
+    loadDashboard();
+  </script>
+</body>
+</html>

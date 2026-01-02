@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quote Builder | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .builder-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: var(--space-xl);
+    }
+    
+    .line-items-list {
+      min-height: 200px;
+    }
+    
+    .line-item-row {
+      display: grid;
+      grid-template-columns: 60px 1fr 120px 120px 100px auto;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border-light);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-sm);
+      align-items: start;
+    }
+    
+    .line-item-row.optional {
+      background: rgba(201, 166, 107, 0.05);
+      border-color: var(--color-accent);
+    }
+    
+    .line-item-photo-upload {
+      width: 60px;
+      height: 60px;
+      background: var(--color-bg-alt);
+      border: 1px dashed var(--color-border);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    
+    .line-item-photo-upload img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .line-item-photo-upload:hover {
+      border-color: var(--color-accent);
+    }
+    
+    .catalog-modal-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-md);
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .catalog-item-card {
+      background: var(--color-bg-card);
+      border: 2px solid var(--color-border-light);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    
+    .catalog-item-card:hover {
+      border-color: var(--color-accent);
+    }
+    
+    .catalog-item-card.selected {
+      border-color: var(--color-primary);
+      background: rgba(30, 58, 95, 0.05);
+    }
+    
+    .summary-card {
+      position: sticky;
+      top: calc(var(--header-height) + var(--space-xl));
+    }
+    
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-sm) 0;
+    }
+    
+    .summary-row.total {
+      font-weight: 700;
+      font-size: 1.25rem;
+      border-top: 2px solid var(--color-border);
+      margin-top: var(--space-sm);
+      padding-top: var(--space-md);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar (same as dashboard) -->
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--color-accent)">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
+        </svg>
+        Homestead
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item">
+            <a href="/admin/index.html" class="sidebar-nav-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              Dashboard
+            </a>
+          </li>
+          <li class="sidebar-nav-item">
+            <a href="/admin/customers.html" class="sidebar-nav-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+              </svg>
+              Customers
+            </a>
+          </li>
+          <li class="sidebar-nav-item">
+            <a href="/admin/quotes.html" class="sidebar-nav-link active">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/>
+              </svg>
+              Quotes
+            </a>
+          </li>
+          <li class="sidebar-nav-item">
+            <a href="/admin/invoices.html" class="sidebar-nav-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+              </svg>
+              Invoices
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="app-main">
+      <header class="app-header">
+        <div class="flex items-center gap-md">
+          <a href="/admin/quotes.html" class="btn btn-ghost btn-sm">← Back</a>
+          <h2 id="page-title">New Quote</h2>
+        </div>
+        <div class="flex items-center gap-sm">
+          <button class="btn btn-secondary" id="save-draft-btn">Save Draft</button>
+          <button class="btn btn-primary" id="send-quote-btn">Send to Customer</button>
+        </div>
+      </header>
+      
+      <div class="app-content">
+        <div class="builder-layout">
+          <!-- Left Column - Quote Details -->
+          <div>
+            <!-- Customer & Basic Info -->
+            <div class="card mb-xl">
+              <div class="card-header">
+                <h3 class="card-title">Quote Details</h3>
+              </div>
+              <div class="card-body">
+                <div class="grid grid-cols-2 gap-lg">
+                  <div class="form-group">
+                    <label class="form-label">Customer *</label>
+                    <select id="customer-select" class="form-select" required>
+                      <option value="">Select customer...</option>
+                    </select>
+                    <div class="mt-sm">
+                      <button type="button" class="btn btn-link btn-sm" id="new-customer-btn">+ Add New Customer</button>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Quote Type</label>
+                    <select id="quote-type" class="form-select">
+                      <option value="final">Final Quote (Fixed Prices)</option>
+                      <option value="ballpark">Ballpark Estimate (Price Ranges)</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="form-group">
+                  <label class="form-label">Project Title *</label>
+                  <input type="text" id="quote-title" class="form-input" placeholder="e.g., Kitchen Cabinet Refacing" required>
+                </div>
+                
+                <div class="form-group">
+                  <label class="form-label">Description <span class="form-label-optional">(optional)</span></label>
+                  <textarea id="quote-description" class="form-textarea" rows="2" placeholder="Brief project description..."></textarea>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-lg">
+                  <div class="form-group">
+                    <label class="form-label">Valid For (Days)</label>
+                    <input type="number" id="valid-days" class="form-input" value="30" min="1">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Deposit Type</label>
+                    <select id="deposit-type" class="form-select">
+                      <option value="percentage">Percentage</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Deposit Amount</label>
+                    <div class="input-group">
+                      <input type="number" id="deposit-value" class="form-input" value="50" min="0">
+                      <span class="input-group-append" id="deposit-suffix">%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Line Items -->
+            <div class="card mb-xl">
+              <div class="card-header">
+                <h3 class="card-title">Line Items</h3>
+                <div class="btn-group">
+                  <button class="btn btn-secondary btn-sm" id="add-from-catalog-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+                    </svg>
+                    From Catalog
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="add-custom-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Custom Item
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="text-center text-muted p-xl" id="empty-items">
+                  No line items yet. Add items from the catalog or create custom items.
+                </div>
+                <div class="line-items-list" id="line-items-container">
+                </div>
+              </div>
+            </div>
+            
+            <!-- Video & Notes -->
+            <div class="card mb-xl">
+              <div class="card-header">
+                <h3 class="card-title">Additional Information</h3>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label class="form-label">Video URL <span class="form-label-optional">(YouTube)</span></label>
+                  <input type="url" id="video-url" class="form-input" placeholder="https://youtube.com/watch?v=...">
+                  <div class="form-help">Add a video explaining the project or process</div>
+                </div>
+                
+                <div class="form-group">
+                  <label class="form-label">Notes for Customer <span class="form-label-optional">(visible on quote)</span></label>
+                  <textarea id="customer-notes" class="form-textarea" rows="3" placeholder="Any notes or terms to include on the quote..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                  <label class="form-label">Internal Notes <span class="form-label-optional">(not visible to customer)</span></label>
+                  <textarea id="internal-notes" class="form-textarea" rows="2" placeholder="Notes for your reference only..."></textarea>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Attachments -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Attachments</h3>
+              </div>
+              <div class="card-body">
+                <div class="upload-zone" id="attachments-zone">
+                  <div class="upload-zone-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                  </div>
+                  <div class="upload-zone-text">Drag files here or click to browse</div>
+                  <div class="upload-zone-hint">PDF, images (max 10MB each)</div>
+                  <input type="file" id="attachments-input" multiple accept=".pdf,image/*" style="display: none;">
+                </div>
+                <div class="file-grid mt-lg" id="attachments-list"></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Right Column - Summary -->
+          <div>
+            <div class="card summary-card">
+              <div class="card-header">
+                <h3 class="card-title">Quote Summary</h3>
+              </div>
+              <div class="card-body">
+                <div id="summary-items">
+                  <p class="text-muted text-center">Add items to see summary</p>
+                </div>
+                
+                <div id="summary-totals" style="display: none;">
+                  <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span id="summary-subtotal">$0.00</span>
+                  </div>
+                  <div class="summary-row" id="summary-tax-row">
+                    <span>Tax (<span id="summary-tax-rate">6.25</span>%)</span>
+                    <span id="summary-tax">$0.00</span>
+                  </div>
+                  <div class="summary-row total">
+                    <span>Total</span>
+                    <span id="summary-total">$0.00</span>
+                  </div>
+                </div>
+                
+                <div class="mt-lg p-md" style="background: var(--color-bg-alt); border-radius: var(--radius-md);">
+                  <div class="flex justify-between text-sm mb-xs">
+                    <span>Deposit Required</span>
+                    <span id="summary-deposit">$0.00</span>
+                  </div>
+                  <div class="flex justify-between text-sm text-muted">
+                    <span>Balance After Deposit</span>
+                    <span id="summary-balance">$0.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script>
+    
+    let customers = [];
+    let catalogItems = [];
+    let lineItems = [];
+    let attachments = [];
+    let quoteId = null;
+    
+    const TAX_RATE = 0.0625;
+    
+    // Get quote ID from URL if editing
+    const params = new URLSearchParams(window.location.search);
+    quoteId = params.get('id');
+    
+    async function init() {
+      const supabase = await app.waitForSupabase();
+      
+      // Load customers
+      const { data: customerData } = await supabase
+        .from('customers')
+        .select('id, name, email')
+        .order('name');
+      customers = customerData || [];
+      
+      const customerSelect = $('#customer-select');
+      customers.forEach(c => {
+        const option = document.createElement('option');
+        option.value = c.id;
+        option.textContent = `${c.name} (${c.email})`;
+        customerSelect.appendChild(option);
+      });
+      
+      // Load catalog items
+      const { data: catalogData } = await supabase
+        .from('items_catalog')
+        .select('*')
+        .eq('is_active', true)
+        .order('category, name');
+      catalogItems = catalogData || [];
+      
+      // If editing, load quote
+      if (quoteId) {
+        await loadQuote(supabase);
+      }
+      
+      setupEventListeners();
+      updateSummary();
+    }
+    
+    async function loadQuote(supabase) {
+      const { data: quote } = await supabase
+        .from('quotes')
+        .select('*, quote_line_items(*), quote_attachments(*)')
+        .eq('id', quoteId)
+        .single();
+      
+      if (!quote) {
+        showToast('Quote not found', 'error');
+        return;
+      }
+      
+      $('#page-title').textContent = `Edit Quote: ${quote.quote_number}`;
+      $('#customer-select').value = quote.customer_id;
+      $('#quote-type').value = quote.quote_type;
+      $('#quote-title').value = quote.title;
+      $('#quote-description').value = quote.description || '';
+      $('#valid-days').value = quote.valid_days;
+      $('#deposit-type').value = quote.deposit_type;
+      $('#deposit-value').value = quote.deposit_value;
+      $('#video-url').value = quote.video_url || '';
+      $('#customer-notes').value = quote.notes || '';
+      $('#internal-notes').value = quote.internal_notes || '';
+      
+      lineItems = quote.quote_line_items.map(item => ({
+        id: item.id,
+        catalogItemId: item.catalog_item_id,
+        description: item.description,
+        details: item.details,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        priceRangeLow: item.price_range_low,
+        priceRangeHigh: item.price_range_high,
+        isRangePricing: item.is_range_pricing,
+        photoUrl: item.photo_url,
+        isOptional: item.is_optional,
+        isTaxable: item.is_taxable,
+        sortOrder: item.sort_order
+      }));
+      
+      attachments = quote.quote_attachments || [];
+      
+      renderLineItems();
+      renderAttachments();
+      updateSummary();
+    }
+    
+    function setupEventListeners() {
+      // Deposit type change
+      $('#deposit-type').addEventListener('change', (e) => {
+        $('#deposit-suffix').textContent = e.target.value === 'percentage' ? '%' : '$';
+        updateSummary();
+      });
+      
+      // Deposit value change
+      $('#deposit-value').addEventListener('input', updateSummary);
+      
+      // Add from catalog
+      $('#add-from-catalog-btn').addEventListener('click', showCatalogModal);
+      
+      // Add custom item
+      $('#add-custom-btn').addEventListener('click', () => addLineItem());
+      
+      // Attachments
+      const attachZone = $('#attachments-zone');
+      const attachInput = $('#attachments-input');
+      
+      attachZone.addEventListener('click', () => attachInput.click());
+      attachZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        attachZone.classList.add('dragover');
+      });
+      attachZone.addEventListener('dragleave', () => attachZone.classList.remove('dragover'));
+      attachZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        attachZone.classList.remove('dragover');
+        handleAttachmentFiles(e.dataTransfer.files);
+      });
+      attachInput.addEventListener('change', (e) => {
+        handleAttachmentFiles(e.target.files);
+        attachInput.value = '';
+      });
+      
+      // Save buttons
+      $('#save-draft-btn').addEventListener('click', () => saveQuote('draft'));
+      $('#send-quote-btn').addEventListener('click', () => saveQuote('sent'));
+      
+      // New customer button
+      $('#new-customer-btn').addEventListener('click', showNewCustomerModal);
+    }
+    
+    function showCatalogModal() {
+      const content = createElement('div');
+      
+      // Group by category
+      const byCategory = {};
+      catalogItems.forEach(item => {
+        const cat = item.category || 'Uncategorized';
+        if (!byCategory[cat]) byCategory[cat] = [];
+        byCategory[cat].push(item);
+      });
+      
+      Object.entries(byCategory).forEach(([category, items]) => {
+        content.appendChild(createElement('h4', { 
+          className: 'mb-md mt-lg',
+          textContent: category
+        }));
+        
+        const grid = createElement('div', { className: 'catalog-modal-grid' });
+        items.forEach(item => {
+          const card = createElement('div', {
+            className: 'catalog-item-card',
+            dataset: { id: item.id },
+            onClick: () => {
+              card.classList.toggle('selected');
+            }
+          });
+          
+          if (item.photo_url) {
+            card.appendChild(createElement('img', {
+              src: item.photo_url,
+              style: 'width: 100%; height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;'
+            }));
+          }
+          
+          card.appendChild(createElement('div', { className: 'font-bold', textContent: item.name }));
+          card.appendChild(createElement('div', { 
+            className: 'text-sm text-muted',
+            textContent: item.default_price ? formatCurrency(item.default_price) : 
+              `${formatCurrency(item.price_range_low)} - ${formatCurrency(item.price_range_high)}`
+          }));
+          
+          grid.appendChild(card);
+        });
+        content.appendChild(grid);
+      });
+      
+      const footer = createElement('div', { className: 'btn-group' }, [
+        createElement('button', {
+          className: 'btn btn-secondary',
+          textContent: 'Cancel',
+          onClick: () => closeModal(modal)
+        }),
+        createElement('button', {
+          className: 'btn btn-primary',
+          textContent: 'Add Selected',
+          onClick: () => {
+            const selected = $$('.catalog-item-card.selected', modal);
+            selected.forEach(card => {
+              const item = catalogItems.find(i => i.id === card.dataset.id);
+              if (item) addLineItem(item);
+            });
+            closeModal(modal);
+          }
+        })
+      ]);
+      
+      const modal = createModal({
+        title: 'Add from Catalog',
+        content,
+        footer,
+        size: 'xl'
+      });
+    }
+    
+    function addLineItem(catalogItem = null) {
+      const quoteType = $('#quote-type').value;
+      const isRangePricing = quoteType === 'ballpark' && catalogItem?.price_range_low;
+      
+      const item = {
+        id: 'new-' + Date.now(),
+        catalogItemId: catalogItem?.id || null,
+        description: catalogItem?.name || '',
+        details: catalogItem?.description || '',
+        quantity: 1,
+        unitPrice: catalogItem?.default_price || 0,
+        priceRangeLow: catalogItem?.price_range_low || 0,
+        priceRangeHigh: catalogItem?.price_range_high || 0,
+        isRangePricing,
+        photoUrl: catalogItem?.photo_url || null,
+        isOptional: false,
+        isTaxable: catalogItem?.is_taxable !== false,
+        sortOrder: lineItems.length
+      };
+      
+      lineItems.push(item);
+      renderLineItems();
+      updateSummary();
+    }
+    
+    function renderLineItems() {
+      const container = $('#line-items-container');
+      const emptyState = $('#empty-items');
+      
+      clearElement(container);
+      
+      if (lineItems.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+      
+      emptyState.style.display = 'none';
+      
+      lineItems.forEach((item, index) => {
+        const row = createElement('div', {
+          className: `line-item-row ${item.isOptional ? 'optional' : ''}`,
+          dataset: { index }
+        });
+        
+        // Photo
+        const photoCell = createElement('div', { className: 'line-item-photo-upload' });
+        if (item.photoUrl) {
+          photoCell.appendChild(createElement('img', { src: item.photoUrl }));
+        } else {
+          photoCell.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';
+        }
+        row.appendChild(photoCell);
+        
+        // Description
+        const descCell = createElement('div');
+        descCell.appendChild(createElement('input', {
+          type: 'text',
+          className: 'form-input mb-sm',
+          value: item.description,
+          placeholder: 'Item description',
+          onInput: (e) => {
+            lineItems[index].description = e.target.value;
+          }
+        }));
+        descCell.appendChild(createElement('input', {
+          type: 'text',
+          className: 'form-input',
+          value: item.details || '',
+          placeholder: 'Details (optional)',
+          style: 'font-size: 0.875rem;',
+          onInput: (e) => {
+            lineItems[index].details = e.target.value;
+          }
+        }));
+        row.appendChild(descCell);
+        
+        // Quantity
+        const qtyCell = createElement('div');
+        qtyCell.appendChild(createElement('label', { className: 'form-label', textContent: 'Qty' }));
+        qtyCell.appendChild(createElement('input', {
+          type: 'number',
+          className: 'form-input',
+          value: item.quantity,
+          min: 1,
+          onInput: (e) => {
+            lineItems[index].quantity = parseFloat(e.target.value) || 1;
+            updateSummary();
+          }
+        }));
+        row.appendChild(qtyCell);
+        
+        // Price
+        const priceCell = createElement('div');
+        priceCell.appendChild(createElement('label', { className: 'form-label', textContent: 'Price' }));
+        if (item.isRangePricing) {
+          const rangeDiv = createElement('div', { className: 'flex gap-xs' });
+          rangeDiv.appendChild(createElement('input', {
+            type: 'number',
+            className: 'form-input',
+            value: item.priceRangeLow,
+            placeholder: 'Low',
+            style: 'width: 50%;',
+            onInput: (e) => {
+              lineItems[index].priceRangeLow = parseFloat(e.target.value) || 0;
+              updateSummary();
+            }
+          }));
+          rangeDiv.appendChild(createElement('input', {
+            type: 'number',
+            className: 'form-input',
+            value: item.priceRangeHigh,
+            placeholder: 'High',
+            style: 'width: 50%;',
+            onInput: (e) => {
+              lineItems[index].priceRangeHigh = parseFloat(e.target.value) || 0;
+              updateSummary();
+            }
+          }));
+          priceCell.appendChild(rangeDiv);
+        } else {
+          priceCell.appendChild(createElement('input', {
+            type: 'number',
+            className: 'form-input',
+            value: item.unitPrice,
+            step: '0.01',
+            onInput: (e) => {
+              lineItems[index].unitPrice = parseFloat(e.target.value) || 0;
+              updateSummary();
+            }
+          }));
+        }
+        row.appendChild(priceCell);
+        
+        // Options
+        const optionsCell = createElement('div');
+        const optCheckbox = createElement('input', {
+          type: 'checkbox',
+          className: 'form-check-input',
+          checked: item.isOptional
+        });
+        const itemId = item.id; // Capture item id in closure
+        optCheckbox.addEventListener('change', (e) => {
+          const targetItem = lineItems.find(i => i.id === itemId);
+          if (targetItem) {
+            targetItem.isOptional = e.target.checked;
+            console.log('Set isOptional to', e.target.checked, 'for item', itemId);
+          }
+          row.classList.toggle('optional', e.target.checked);
+          updateSummary();
+        });
+        const optLabel = createElement('label', { className: 'form-check' });
+        optLabel.appendChild(optCheckbox);
+        optLabel.appendChild(createElement('span', { className: 'form-check-label text-sm', textContent: 'Optional' }));
+        optionsCell.appendChild(optLabel);
+        row.appendChild(optionsCell);
+        
+        // Delete
+        const deleteCell = createElement('div');
+        deleteCell.appendChild(createElement('button', {
+          className: 'btn btn-ghost btn-sm',
+          innerHTML: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
+          onClick: async () => {
+            if (await confirm('Remove this item?', { danger: true })) {
+              lineItems.splice(index, 1);
+              renderLineItems();
+              updateSummary();
+            }
+          }
+        }));
+        row.appendChild(deleteCell);
+        
+        container.appendChild(row);
+      });
+    }
+    
+    function updateSummary() {
+      const summaryItems = $('#summary-items');
+      const summaryTotals = $('#summary-totals');
+      
+      if (lineItems.length === 0) {
+        summaryItems.innerHTML = '<p class="text-muted text-center">Add items to see summary</p>';
+        summaryTotals.style.display = 'none';
+        return;
+      }
+      
+      // Calculate totals - separate taxable and non-taxable
+      let subtotal = 0;
+      let subtotalLow = 0;
+      let subtotalHigh = 0;
+      let taxableSubtotal = 0;
+      let taxableSubtotalLow = 0;
+      let taxableSubtotalHigh = 0;
+      
+      lineItems.forEach(item => {
+        if (!item.isOptional) {
+          const qty = item.quantity || 1;
+          if (item.isRangePricing) {
+            const lowTotal = (item.priceRangeLow || 0) * qty;
+            const highTotal = (item.priceRangeHigh || 0) * qty;
+            subtotalLow += lowTotal;
+            subtotalHigh += highTotal;
+            if (item.isTaxable) {
+              taxableSubtotalLow += lowTotal;
+              taxableSubtotalHigh += highTotal;
+            }
+          } else {
+            const lineTotal = (item.unitPrice || 0) * qty;
+            subtotal += lineTotal;
+            subtotalLow += lineTotal;
+            subtotalHigh += lineTotal;
+            if (item.isTaxable) {
+              taxableSubtotal += lineTotal;
+              taxableSubtotalLow += lineTotal;
+              taxableSubtotalHigh += lineTotal;
+            }
+          }
+        }
+      });
+      
+      // Only tax the taxable portion
+      const tax = taxableSubtotal * TAX_RATE;
+      const taxLow = taxableSubtotalLow * TAX_RATE;
+      const taxHigh = taxableSubtotalHigh * TAX_RATE;
+      
+      const total = subtotal + tax;
+      const totalLow = subtotalLow + taxLow;
+      const totalHigh = subtotalHigh + taxHigh;
+      
+      // Deposit
+      const depositType = $('#deposit-type').value;
+      const depositValue = parseFloat($('#deposit-value').value) || 0;
+      let deposit;
+      if (depositType === 'percentage') {
+        deposit = totalLow * (depositValue / 100);
+      } else {
+        deposit = depositValue;
+      }
+      
+      // Update display
+      const hasRange = lineItems.some(i => i.isRangePricing && !i.isOptional);
+      
+      if (hasRange) {
+        $('#summary-subtotal').textContent = `${formatCurrency(subtotalLow)} - ${formatCurrency(subtotalHigh)}`;
+        $('#summary-tax').textContent = `${formatCurrency(taxLow)} - ${formatCurrency(taxHigh)}`;
+        $('#summary-total').textContent = `${formatCurrency(totalLow)} - ${formatCurrency(totalHigh)}`;
+      } else {
+        $('#summary-subtotal').textContent = formatCurrency(subtotal);
+        $('#summary-tax').textContent = formatCurrency(tax);
+        $('#summary-total').textContent = formatCurrency(total);
+      }
+      
+      $('#summary-tax-rate').textContent = (TAX_RATE * 100).toFixed(2);
+      $('#summary-deposit').textContent = formatCurrency(deposit);
+      $('#summary-balance').textContent = formatCurrency((hasRange ? totalLow : total) - deposit);
+      
+      summaryItems.innerHTML = '';
+      summaryTotals.style.display = 'block';
+    }
+    
+    function handleAttachmentFiles(fileList) {
+      Array.from(fileList).forEach(file => {
+        if (file.size > 10 * 1024 * 1024) {
+          showToast(`${file.name} is too large (max 10MB)`, 'error');
+          return;
+        }
+        
+        // For now, just show locally - actual upload happens on save
+        const url = URL.createObjectURL(file);
+        attachments.push({
+          id: 'new-' + Date.now(),
+          file_name: file.name,
+          file_type: file.type,
+          file_url: url,
+          file: file
+        });
+      });
+      
+      renderAttachments();
+    }
+    
+    function renderAttachments() {
+      const container = $('#attachments-list');
+      clearElement(container);
+      
+      attachments.forEach((att, index) => {
+        const card = createElement('div', { className: 'file-card' });
+        
+        const preview = createElement('div', { className: 'file-card-preview' });
+        if (att.file_type?.includes('image')) {
+          preview.appendChild(createElement('img', { src: att.file_url }));
+        } else {
+          preview.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>';
+        }
+        card.appendChild(preview);
+        
+        const info = createElement('div', { className: 'file-card-info' });
+        info.appendChild(createElement('div', { className: 'file-card-name', textContent: att.file_name }));
+        info.appendChild(createElement('button', {
+          className: 'btn btn-ghost btn-sm',
+          textContent: 'Remove',
+          onClick: () => {
+            attachments.splice(index, 1);
+            renderAttachments();
+          }
+        }));
+        card.appendChild(info);
+        
+        container.appendChild(card);
+      });
+    }
+    
+    function showNewCustomerModal() {
+      const content = createElement('form', { id: 'new-customer-form' });
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Name *</label>
+          <input type="text" name="name" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" name="email" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="tel" name="phone" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          <textarea name="address" class="form-textarea" rows="2"></textarea>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', {
+        type: 'button',
+        className: 'btn btn-secondary',
+        textContent: 'Cancel'
+      });
+      const submitBtn = createElement('button', {
+        type: 'button',
+        className: 'btn btn-primary',
+        textContent: 'Add Customer'
+      });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(submitBtn);
+      
+      const modal = createModal({
+        title: 'Add New Customer',
+        content,
+        footer
+      });
+      
+      // Add event listeners AFTER modal is created
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      submitBtn.addEventListener('click', async () => {
+        if (!content.checkValidity()) {
+          content.reportValidity();
+          return;
+        }
+        const formData = new FormData(content);
+        
+        try {
+          const supabase = await app.waitForSupabase();
+          const { data: customer, error } = await supabase
+            .from('customers')
+            .insert({
+              name: formData.get('name'),
+              email: formData.get('email').toLowerCase(),
+              phone: formData.get('phone'),
+              address: formData.get('address')
+            })
+            .select()
+            .single();
+          
+          if (error) throw error;
+          
+          // Add to dropdown and select
+          customers.push(customer);
+          const option = document.createElement('option');
+          option.value = customer.id;
+          option.textContent = `${customer.name} (${customer.email})`;
+          $('#customer-select').appendChild(option);
+          $('#customer-select').value = customer.id;
+          
+          closeModal(modal);
+          showToast('Customer added', 'success');
+        } catch (err) {
+          showToast('Failed to add customer: ' + err.message, 'error');
+        }
+      });
+    }
+    
+    async function saveQuote(status) {
+      const customerId = $('#customer-select').value;
+      const title = $('#quote-title').value.trim();
+      
+      if (!customerId) {
+        showToast('Please select a customer', 'error');
+        return;
+      }
+      
+      if (!title) {
+        showToast('Please enter a project title', 'error');
+        return;
+      }
+      
+      if (lineItems.length === 0) {
+        showToast('Please add at least one line item', 'error');
+        return;
+      }
+      
+      const btn = status === 'draft' ? $('#save-draft-btn') : $('#send-quote-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Calculate totals - separate taxable and non-taxable
+        let subtotal = 0, subtotalLow = 0, subtotalHigh = 0;
+        let taxableSubtotal = 0, taxableSubtotalLow = 0, taxableSubtotalHigh = 0;
+        
+        lineItems.forEach(item => {
+          if (!item.isOptional) {
+            const qty = item.quantity || 1;
+            if (item.isRangePricing) {
+              const lowTotal = (item.priceRangeLow || 0) * qty;
+              const highTotal = (item.priceRangeHigh || 0) * qty;
+              subtotalLow += lowTotal;
+              subtotalHigh += highTotal;
+              if (item.isTaxable) {
+                taxableSubtotalLow += lowTotal;
+                taxableSubtotalHigh += highTotal;
+              }
+            } else {
+              const lineTotal = (item.unitPrice || 0) * qty;
+              subtotal += lineTotal;
+              subtotalLow += lineTotal;
+              subtotalHigh += lineTotal;
+              if (item.isTaxable) {
+                taxableSubtotal += lineTotal;
+                taxableSubtotalLow += lineTotal;
+                taxableSubtotalHigh += lineTotal;
+              }
+            }
+          }
+        });
+        
+        // Only tax the taxable portion
+        const taxAmount = taxableSubtotal * TAX_RATE;
+        const taxAmountLow = taxableSubtotalLow * TAX_RATE;
+        const taxAmountHigh = taxableSubtotalHigh * TAX_RATE;
+        
+        const validDays = parseInt($('#valid-days').value) || 30;
+        const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000);
+        
+        const quoteData = {
+          customer_id: customerId,
+          title,
+          description: $('#quote-description').value.trim() || null,
+          quote_type: $('#quote-type').value,
+          status,
+          valid_days: validDays,
+          expires_at: expiresAt.toISOString(),
+          deposit_type: $('#deposit-type').value,
+          deposit_value: parseFloat($('#deposit-value').value) || 50,
+          video_url: $('#video-url').value.trim() || null,
+          notes: $('#customer-notes').value.trim() || null,
+          internal_notes: $('#internal-notes').value.trim() || null,
+          tax_rate: TAX_RATE,
+          subtotal,
+          subtotal_low: subtotalLow,
+          subtotal_high: subtotalHigh,
+          tax_amount: taxAmount,
+          total: subtotal + taxAmount,
+          total_low: subtotalLow + taxAmountLow,
+          total_high: subtotalHigh + taxAmountHigh
+        };
+        
+        if (status === 'sent') {
+          quoteData.sent_at = new Date().toISOString();
+        }
+        
+        let savedQuote;
+        if (quoteId) {
+          // Update existing
+          const { data, error } = await supabase
+            .from('quotes')
+            .update(quoteData)
+            .eq('id', quoteId)
+            .select()
+            .single();
+          if (error) throw error;
+          savedQuote = data;
+        } else {
+          // Generate quote number and insert
+          const { data: numData } = await supabase.rpc('generate_quote_number');
+          quoteData.quote_number = numData;
+          
+          const { data, error } = await supabase
+            .from('quotes')
+            .insert(quoteData)
+            .select()
+            .single();
+          if (error) throw error;
+          savedQuote = data;
+          quoteId = savedQuote.id;
+        }
+        
+        // Delete existing line items and re-insert
+        await supabase.from('quote_line_items').delete().eq('quote_id', quoteId);
+        
+        const lineItemsToInsert = lineItems.map((item, index) => {
+          console.log('Saving item:', item.description, 'isOptional:', item.isOptional);
+          return {
+            quote_id: quoteId,
+            catalog_item_id: item.catalogItemId,
+            description: item.description,
+            details: item.details,
+            quantity: item.quantity,
+            unit_price: item.isRangePricing ? null : item.unitPrice,
+            price_range_low: item.isRangePricing ? item.priceRangeLow : null,
+            price_range_high: item.isRangePricing ? item.priceRangeHigh : null,
+            is_range_pricing: item.isRangePricing,
+            line_total: item.isRangePricing ? null : (item.unitPrice * item.quantity),
+            line_total_low: item.isRangePricing ? (item.priceRangeLow * item.quantity) : (item.unitPrice * item.quantity),
+            line_total_high: item.isRangePricing ? (item.priceRangeHigh * item.quantity) : (item.unitPrice * item.quantity),
+            photo_url: item.photoUrl,
+            is_optional: item.isOptional,
+            is_taxable: item.isTaxable,
+            sort_order: index
+          };
+        });
+        
+        await supabase.from('quote_line_items').insert(lineItemsToInsert);
+        
+        // TODO: Handle attachment uploads to Supabase Storage
+        
+        // Send email if status is 'sent'
+        if (status === 'sent') {
+          try {
+            const emailResponse = await fetch('/.netlify/functions/send-quote-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ quoteId: savedQuote.id })
+            });
+            
+            if (!emailResponse.ok) {
+              const emailError = await emailResponse.json();
+              console.error('Email error:', emailError);
+              showToast('Quote saved but email failed to send', 'error');
+            } else {
+              showToast('Quote sent to customer!', 'success');
+            }
+          } catch (emailErr) {
+            console.error('Email error:', emailErr);
+            showToast('Quote saved but email failed to send', 'error');
+          }
+        } else {
+          showToast('Quote saved as draft', 'success');
+        }
+        
+        // Redirect to quote view
+        setTimeout(() => {
+          window.location.href = `/admin/quotes.html`;
+        }, 1000);
+        
+      } catch (err) {
+        console.error('Save error:', err);
+        showToast('Failed to save: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = status === 'draft' ? 'Save Draft' : 'Send to Customer';
+      }
+    }
+    
+    // Initialize
+    init();
+  </script>
+</body>
+</html>

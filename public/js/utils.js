@@ -1,0 +1,609 @@
+// =============================================
+// HOMESTEAD CABINET DESIGN - SHARED UTILITIES
+// =============================================
+
+// Configuration - These will be replaced by environment variables in production
+const CONFIG = {
+  SUPABASE_URL: 'https://byozvlgtbwiohyrfvxii.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5b3p2bGd0Yndpb2h5cmZ2eGlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3MDQ0MTYsImV4cCI6MjA4MjI4MDQxNn0.uFCgHLSCbIxRP5YBm7OrJT_jPdygOF8AVIWga8JmNkI',
+  STRIPE_PUBLISHABLE_KEY: 'pk_test_51SiPliCxhFCWvROVjZb23sYMMnwfpPJgIeZjfSKQ5NdD5RdW1AvHqQHJwQh4kdd9VY05PoQ3js257QGfn4saa43K00Jr6rsem7',
+  SITE_URL: 'https://hcdbooks.netlify.app'
+};
+
+// =============================================
+// SUPABASE CLIENT
+// =============================================
+
+// Load Supabase from CDN
+const supabaseScript = document.createElement('script');
+supabaseScript.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+document.head.appendChild(supabaseScript);
+
+let _supabaseClient = null;
+
+function initSupabase() {
+  if (!_supabaseClient && window.supabase) {
+    _supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  }
+  return _supabaseClient;
+}
+
+// Wait for Supabase to load
+function waitForSupabase() {
+  return new Promise((resolve) => {
+    if (window.supabase) {
+      resolve(initSupabase());
+    } else {
+      supabaseScript.onload = () => resolve(initSupabase());
+    }
+  });
+}
+
+// =============================================
+// API HELPERS
+// =============================================
+
+async function apiCall(endpoint, options = {}) {
+  const url = `/api/${endpoint}`;
+  const defaultOptions = {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  };
+  
+  const response = await fetch(url, { ...defaultOptions, ...options });
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.error || 'An error occurred');
+  }
+  
+  return data;
+}
+
+// =============================================
+// FORMAT HELPERS
+// =============================================
+
+function formatCurrency(amount, options = {}) {
+  const { showCents = true, currency = 'USD' } = options;
+  
+  if (amount === null || amount === undefined) return '—';
+  
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: showCents ? 2 : 0,
+    maximumFractionDigits: showCents ? 2 : 0,
+  });
+  
+  return formatter.format(amount);
+}
+
+function formatCurrencyRange(low, high, options = {}) {
+  if (low === high || !high) {
+    return formatCurrency(low, options);
+  }
+  return `${formatCurrency(low, options)} – ${formatCurrency(high, options)}`;
+}
+
+function formatDate(dateString, options = {}) {
+  if (!dateString) return '—';
+  
+  const date = new Date(dateString);
+  const defaultOptions = {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  };
+  
+  return date.toLocaleDateString('en-US', { ...defaultOptions, ...options });
+}
+
+function formatDateTime(dateString) {
+  if (!dateString) return '—';
+  
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function formatRelativeTime(dateString) {
+  if (!dateString) return '—';
+  
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return formatDate(dateString);
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  while (bytes >= 1024 && i < units.length - 1) {
+    bytes /= 1024;
+    i++;
+  }
+  return `${bytes.toFixed(1)} ${units[i]}`;
+}
+
+function formatPhone(phone) {
+  if (!phone) return '';
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  }
+  return phone;
+}
+
+// =============================================
+// DOM HELPERS
+// =============================================
+
+function $(selector, parent = document) {
+  return parent.querySelector(selector);
+}
+
+function $$(selector, parent = document) {
+  return Array.from(parent.querySelectorAll(selector));
+}
+
+function createElement(tag, attributes = {}, children = []) {
+  const element = document.createElement(tag);
+  
+  // Boolean attributes that should be set as properties, not attributes
+  const booleanAttrs = ['checked', 'disabled', 'selected', 'readonly', 'required', 'hidden'];
+  
+  Object.entries(attributes).forEach(([key, value]) => {
+    if (key === 'className') {
+      element.className = value;
+    } else if (key === 'innerHTML') {
+      element.innerHTML = value;
+    } else if (key === 'textContent') {
+      element.textContent = value;
+    } else if (key.startsWith('on')) {
+      element.addEventListener(key.slice(2).toLowerCase(), value);
+    } else if (key === 'dataset') {
+      Object.entries(value).forEach(([dataKey, dataValue]) => {
+        element.dataset[dataKey] = dataValue;
+      });
+    } else if (booleanAttrs.includes(key)) {
+      // Handle boolean attributes - set property directly
+      element[key] = !!value;
+    } else {
+      element.setAttribute(key, value);
+    }
+  });
+  
+  children.forEach(child => {
+    if (typeof child === 'string') {
+      element.appendChild(document.createTextNode(child));
+    } else if (child) {
+      element.appendChild(child);
+    }
+  });
+  
+  return element;
+}
+
+function clearElement(element) {
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
+
+// =============================================
+// TOAST NOTIFICATIONS
+// =============================================
+
+const toastContainer = createElement('div', { className: 'toast-container' });
+document.body.appendChild(toastContainer);
+
+function showToast(message, type = 'info', duration = 4000) {
+  const icons = {
+    success: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>',
+    error: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>',
+    warning: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
+    info: '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>'
+  };
+  
+  const colors = {
+    success: 'var(--color-success)',
+    error: 'var(--color-danger)',
+    warning: 'var(--color-warning)',
+    info: 'var(--color-primary)'
+  };
+  
+  const toast = createElement('div', { className: 'toast' }, [
+    createElement('span', { 
+      innerHTML: icons[type],
+      style: `color: ${colors[type]}; width: 20px; height: 20px;`
+    }),
+    createElement('span', { textContent: message, className: 'flex-1' })
+  ]);
+  
+  toastContainer.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'slideIn 0.3s ease reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+// =============================================
+// MODAL HELPERS
+// =============================================
+
+function createModal(options = {}) {
+  const { title, content, footer, size = 'md', onClose } = options;
+  
+  const overlay = createElement('div', { className: 'modal-overlay' });
+  const modal = createElement('div', { 
+    className: 'modal',
+    style: size === 'lg' ? 'max-width: 700px;' : size === 'xl' ? 'max-width: 900px;' : ''
+  });
+  
+  const header = createElement('div', { className: 'modal-header' }, [
+    createElement('h3', { className: 'modal-title', textContent: title }),
+    createElement('button', { 
+      className: 'modal-close',
+      innerHTML: '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>',
+      onClick: () => closeModal(overlay)
+    })
+  ]);
+  
+  const body = createElement('div', { className: 'modal-body' });
+  if (typeof content === 'string') {
+    body.innerHTML = content;
+  } else if (content) {
+    body.appendChild(content);
+  }
+  
+  modal.appendChild(header);
+  modal.appendChild(body);
+  
+  if (footer) {
+    const footerEl = createElement('div', { className: 'modal-footer' });
+    if (typeof footer === 'string') {
+      footerEl.innerHTML = footer;
+    } else {
+      footerEl.appendChild(footer);
+    }
+    modal.appendChild(footerEl);
+  }
+  
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal(overlay);
+  });
+  
+  document.body.appendChild(overlay);
+  
+  // Trigger animation
+  requestAnimationFrame(() => overlay.classList.add('active'));
+  
+  overlay._onClose = onClose;
+  
+  return overlay;
+}
+
+function closeModal(overlay) {
+  overlay.classList.remove('active');
+  setTimeout(() => {
+    if (overlay._onClose) overlay._onClose();
+    overlay.remove();
+  }, 250);
+}
+
+// Confirm dialog
+function confirm(message, options = {}) {
+  return new Promise((resolve) => {
+    const { title = 'Confirm', confirmText = 'Confirm', cancelText = 'Cancel', danger = false } = options;
+    
+    const cancelBtn = createElement('button', { 
+      className: 'btn btn-secondary',
+      textContent: cancelText
+    });
+    const confirmBtn = createElement('button', { 
+      className: `btn ${danger ? 'btn-danger' : 'btn-primary'}`,
+      textContent: confirmText
+    });
+    
+    const footer = createElement('div', { className: 'btn-group' }, [cancelBtn, confirmBtn]);
+    
+    const modal = createModal({
+      title,
+      content: createElement('p', { textContent: message }),
+      footer
+    });
+    
+    cancelBtn.addEventListener('click', () => { closeModal(modal); resolve(false); });
+    confirmBtn.addEventListener('click', () => { closeModal(modal); resolve(true); });
+  });
+}
+
+// =============================================
+// FORM HELPERS
+// =============================================
+
+function getFormData(form) {
+  const formData = new FormData(form);
+  const data = {};
+  
+  formData.forEach((value, key) => {
+    // Handle multiple values (checkboxes with same name)
+    if (data.hasOwnProperty(key)) {
+      if (!Array.isArray(data[key])) {
+        data[key] = [data[key]];
+      }
+      data[key].push(value);
+    } else {
+      data[key] = value;
+    }
+  });
+  
+  return data;
+}
+
+function setFormData(form, data) {
+  Object.entries(data).forEach(([key, value]) => {
+    const field = form.elements[key];
+    if (!field) return;
+    
+    if (field.type === 'checkbox') {
+      field.checked = Boolean(value);
+    } else if (field.type === 'radio') {
+      const radio = form.querySelector(`[name="${key}"][value="${value}"]`);
+      if (radio) radio.checked = true;
+    } else {
+      field.value = value ?? '';
+    }
+  });
+}
+
+function validateForm(form, rules) {
+  const errors = {};
+  const data = getFormData(form);
+  
+  Object.entries(rules).forEach(([field, fieldRules]) => {
+    const value = data[field];
+    
+    fieldRules.forEach(rule => {
+      if (errors[field]) return; // Skip if already has error
+      
+      if (rule.required && !value) {
+        errors[field] = rule.message || 'This field is required';
+      } else if (rule.email && value && !isValidEmail(value)) {
+        errors[field] = rule.message || 'Please enter a valid email';
+      } else if (rule.minLength && value && value.length < rule.minLength) {
+        errors[field] = rule.message || `Must be at least ${rule.minLength} characters`;
+      } else if (rule.pattern && value && !rule.pattern.test(value)) {
+        errors[field] = rule.message || 'Invalid format';
+      } else if (rule.custom && !rule.custom(value, data)) {
+        errors[field] = rule.message || 'Invalid value';
+      }
+    });
+  });
+  
+  // Display errors
+  $$('.form-error', form).forEach(el => el.remove());
+  $$('.form-input.error', form).forEach(el => el.classList.remove('error'));
+  
+  Object.entries(errors).forEach(([field, message]) => {
+    const input = form.elements[field];
+    if (input) {
+      input.classList.add('error');
+      const errorEl = createElement('div', { className: 'form-error', textContent: message });
+      input.parentNode.appendChild(errorEl);
+    }
+  });
+  
+  return Object.keys(errors).length === 0;
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// =============================================
+// FILE UPLOAD HELPERS
+// =============================================
+
+function createUploadZone(options = {}) {
+  const { 
+    accept = 'image/*,.pdf',
+    multiple = true,
+    maxSize = 10 * 1024 * 1024, // 10MB
+    onUpload
+  } = options;
+  
+  const input = createElement('input', {
+    type: 'file',
+    accept,
+    multiple,
+    style: 'display: none;'
+  });
+  
+  const zone = createElement('div', { className: 'upload-zone' }, [
+    createElement('div', { 
+      className: 'upload-zone-icon',
+      innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>'
+    }),
+    createElement('div', { className: 'upload-zone-text', textContent: 'Drag photos here or click to browse' }),
+    createElement('div', { className: 'upload-zone-hint', textContent: `Accepted: ${accept} (max ${formatFileSize(maxSize)})` }),
+    input
+  ]);
+  
+  zone.addEventListener('click', () => input.click());
+  
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    zone.classList.add('dragover');
+  });
+  
+  zone.addEventListener('dragleave', () => {
+    zone.classList.remove('dragover');
+  });
+  
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  });
+  
+  input.addEventListener('change', (e) => {
+    handleFiles(e.target.files);
+    input.value = '';
+  });
+  
+  function handleFiles(files) {
+    const validFiles = Array.from(files).filter(file => {
+      if (file.size > maxSize) {
+        showToast(`${file.name} is too large (max ${formatFileSize(maxSize)})`, 'error');
+        return false;
+      }
+      return true;
+    });
+    
+    if (validFiles.length && onUpload) {
+      onUpload(validFiles);
+    }
+  }
+  
+  return zone;
+}
+
+// =============================================
+// URL & ROUTING HELPERS
+// =============================================
+
+function getUrlParams() {
+  return Object.fromEntries(new URLSearchParams(window.location.search));
+}
+
+function setUrlParams(params) {
+  const url = new URL(window.location);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === null || value === undefined) {
+      url.searchParams.delete(key);
+    } else {
+      url.searchParams.set(key, value);
+    }
+  });
+  window.history.replaceState({}, '', url);
+}
+
+function navigate(path) {
+  window.location.href = path;
+}
+
+// =============================================
+// LOCAL STORAGE HELPERS
+// =============================================
+
+function storage(key, value) {
+  if (value === undefined) {
+    // Get
+    const item = localStorage.getItem(key);
+    try {
+      return JSON.parse(item);
+    } catch {
+      return item;
+    }
+  } else if (value === null) {
+    // Remove
+    localStorage.removeItem(key);
+  } else {
+    // Set
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+}
+
+// =============================================
+// DEBOUNCE & THROTTLE
+// =============================================
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+function throttle(func, limit) {
+  let inThrottle;
+  return function executedFunction(...args) {
+    if (!inThrottle) {
+      func(...args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+}
+
+// =============================================
+// EXPORT FOR USE
+// =============================================
+
+window.app = {
+  CONFIG,
+  waitForSupabase,
+  apiCall,
+  formatCurrency,
+  formatCurrencyRange,
+  formatDate,
+  formatDateTime,
+  formatRelativeTime,
+  formatFileSize,
+  formatPhone,
+  $,
+  $$,
+  createElement,
+  clearElement,
+  showToast,
+  createModal,
+  closeModal,
+  confirm,
+  getFormData,
+  setFormData,
+  validateForm,
+  isValidEmail,
+  createUploadZone,
+  getUrlParams,
+  setUrlParams,
+  navigate,
+  storage,
+  debounce,
+  throttle
+};
+
+// Also expose as globals for convenience
+window.$ = $;
+window.$$ = $$;
+window.createElement = createElement;
+window.clearElement = clearElement;
+window.showToast = showToast;
+window.createModal = createModal;
+window.closeModal = closeModal;
+window.confirm = confirm;
+window.formatCurrency = formatCurrency;
+window.formatDate = formatDate;
+window.formatPhone = formatPhone;
+window.debounce = debounce;

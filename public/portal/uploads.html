@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Photos | Customer Portal | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="portal-header">
+    <a href="/portal/dashboard.html" class="portal-logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--color-accent)">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
+      </svg>
+      Homestead Cabinet Design
+    </a>
+    <nav class="portal-nav">
+      <a href="/portal/dashboard.html" class="portal-nav-link">Dashboard</a>
+      <a href="/portal/quotes.html" class="portal-nav-link">Quotes</a>
+      <a href="/portal/invoices.html" class="portal-nav-link">Invoices</a>
+      <a href="/portal/files.html" class="portal-nav-link">Files</a>
+      <a href="/portal/uploads.html" class="portal-nav-link active">Uploads</a>
+    </nav>
+  </header>
+  
+  <main class="portal-container">
+    <div class="mb-xl">
+      <h1>Upload Photos</h1>
+      <p class="text-muted">Share inspiration photos, current kitchen images, or any reference materials for your project.</p>
+    </div>
+    
+    <!-- Upload Zone -->
+    <div class="card mb-xl">
+      <div class="card-body">
+        <div class="upload-zone" id="upload-zone">
+          <div class="upload-zone-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <div class="upload-zone-text">
+            <strong>Drag photos here</strong> or click to browse
+          </div>
+          <div class="upload-zone-hint">
+            Accepted: JPG, PNG, PDF (max 10MB each)
+          </div>
+          <input type="file" id="file-input" multiple accept="image/*,.pdf" style="display: none;">
+        </div>
+        
+        <!-- Upload Progress -->
+        <div id="upload-progress" style="display: none; margin-top: var(--space-lg);">
+          <div class="flex items-center gap-md">
+            <div class="loading-spinner"></div>
+            <span id="upload-status">Uploading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Your Uploads -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Your Uploaded Photos</h3>
+        <span class="text-muted text-sm" id="upload-count">0 files</span>
+      </div>
+      <div class="card-body">
+        <div id="uploads-loading">
+          <div class="skeleton" style="height: 150px;"></div>
+        </div>
+        
+        <div id="uploads-empty" style="display: none; text-align: center; padding: var(--space-2xl);">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1" style="margin: 0 auto var(--space-md);">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <p class="text-muted">No photos uploaded yet</p>
+          <p class="text-sm text-muted">Upload inspiration photos or images of your current space</p>
+        </div>
+        
+        <div id="uploads-grid" class="file-grid" style="display: none;"></div>
+      </div>
+    </div>
+  </main>
+  
+  <!-- Image Preview Modal -->
+  <div id="image-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 900px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Image</h3>
+        <button class="modal-close" id="modal-close">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <img id="modal-image" src="" style="max-width: 100%; max-height: 60vh; object-fit: contain;">
+        <div class="form-group mt-lg">
+          <label class="form-label">Caption</label>
+          <input type="text" id="modal-caption" class="form-input" placeholder="Add a description (optional)">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="modal-delete">Delete</button>
+        <button class="btn btn-primary" id="modal-save">Save Caption</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script src="/js/portal-auth.js"></script>
+  <script>
+    
+    let uploads = [];
+    let currentUpload = null;
+    
+    const uploadZone = $('#upload-zone');
+    const fileInput = $('#file-input');
+    const uploadProgress = $('#upload-progress');
+    const uploadStatus = $('#upload-status');
+    const uploadsLoading = $('#uploads-loading');
+    const uploadsEmpty = $('#uploads-empty');
+    const uploadsGrid = $('#uploads-grid');
+    const uploadCount = $('#upload-count');
+    const imageModal = $('#image-modal');
+    
+    // Load uploads
+    async function loadUploads() {
+      try {
+        const response = await apiCall('portal-uploads');
+        uploads = response.uploads || [];
+        renderUploads();
+      } catch (err) {
+        console.error('Failed to load uploads:', err);
+        showToast('Failed to load uploads', 'error');
+      }
+    }
+    
+    function renderUploads() {
+      uploadsLoading.style.display = 'none';
+      
+      if (uploads.length === 0) {
+        uploadsEmpty.style.display = 'block';
+        uploadsGrid.style.display = 'none';
+        uploadCount.textContent = '0 files';
+        return;
+      }
+      
+      uploadsEmpty.style.display = 'none';
+      uploadsGrid.style.display = 'grid';
+      uploadCount.textContent = `${uploads.length} file${uploads.length !== 1 ? 's' : ''}`;
+      
+      clearElement(uploadsGrid);
+      
+      uploads.forEach(upload => {
+        const card = createElement('div', { className: 'file-card' });
+        
+        // Preview
+        const preview = createElement('div', { className: 'file-card-preview' });
+        if (upload.file_type?.includes('image')) {
+          const img = createElement('img', {
+            src: upload.file_url,
+            alt: upload.file_name,
+            loading: 'lazy'
+          });
+          preview.appendChild(img);
+        } else {
+          preview.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
+        }
+        preview.addEventListener('click', () => openImageModal(upload));
+        card.appendChild(preview);
+        
+        // Info
+        const info = createElement('div', { className: 'file-card-info' });
+        info.appendChild(createElement('div', { 
+          className: 'file-card-name',
+          textContent: upload.caption || upload.file_name,
+          title: upload.file_name
+        }));
+        info.appendChild(createElement('div', {
+          className: 'text-sm text-muted',
+          textContent: formatDate(upload.uploaded_at)
+        }));
+        card.appendChild(info);
+        
+        uploadsGrid.appendChild(card);
+      });
+    }
+    
+    // Upload zone events
+    uploadZone.addEventListener('click', () => fileInput.click());
+    
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+    
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+    
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      handleFiles(e.dataTransfer.files);
+    });
+    
+    fileInput.addEventListener('change', (e) => {
+      handleFiles(e.target.files);
+      fileInput.value = '';
+    });
+    
+    async function handleFiles(fileList) {
+      const files = Array.from(fileList);
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      
+      // Validate files
+      const validFiles = files.filter(file => {
+        if (file.size > maxSize) {
+          showToast(`${file.name} is too large (max 10MB)`, 'error');
+          return false;
+        }
+        if (!file.type.match(/^image\/|application\/pdf$/)) {
+          showToast(`${file.name} is not a supported file type`, 'error');
+          return false;
+        }
+        return true;
+      });
+      
+      if (validFiles.length === 0) return;
+      
+      // Show progress
+      uploadProgress.style.display = 'block';
+      uploadStatus.textContent = `Uploading ${validFiles.length} file${validFiles.length > 1 ? 's' : ''}...`;
+      
+      try {
+        for (let i = 0; i < validFiles.length; i++) {
+          const file = validFiles[i];
+          uploadStatus.textContent = `Uploading ${i + 1} of ${validFiles.length}: ${file.name}`;
+          
+          // Convert to base64
+          const base64 = await fileToBase64(file);
+          
+          // Upload
+          const response = await apiCall('portal-upload', {
+            method: 'POST',
+            body: JSON.stringify({
+              file_name: file.name,
+              file_type: file.type,
+              file_data: base64
+            })
+          });
+          
+          if (response.upload) {
+            uploads.unshift(response.upload);
+          }
+        }
+        
+        showToast(`${validFiles.length} file${validFiles.length > 1 ? 's' : ''} uploaded successfully`, 'success');
+        renderUploads();
+        
+      } catch (err) {
+        console.error('Upload failed:', err);
+        showToast('Upload failed. Please try again.', 'error');
+      } finally {
+        uploadProgress.style.display = 'none';
+      }
+    }
+    
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    // Image modal
+    function openImageModal(upload) {
+      currentUpload = upload;
+      $('#modal-title').textContent = upload.file_name;
+      $('#modal-image').src = upload.file_url;
+      $('#modal-caption').value = upload.caption || '';
+      imageModal.classList.add('active');
+    }
+    
+    function closeImageModal() {
+      imageModal.classList.remove('active');
+      currentUpload = null;
+    }
+    
+    $('#modal-close').addEventListener('click', closeImageModal);
+    imageModal.addEventListener('click', (e) => {
+      if (e.target === imageModal) closeImageModal();
+    });
+    
+    $('#modal-save').addEventListener('click', async () => {
+      if (!currentUpload) return;
+      
+      const caption = $('#modal-caption').value.trim();
+      
+      try {
+        await apiCall('portal-upload-update', {
+          method: 'POST',
+          body: JSON.stringify({
+            upload_id: currentUpload.id,
+            caption
+          })
+        });
+        
+        currentUpload.caption = caption;
+        renderUploads();
+        closeImageModal();
+        showToast('Caption saved', 'success');
+      } catch (err) {
+        showToast('Failed to save caption', 'error');
+      }
+    });
+    
+    $('#modal-delete').addEventListener('click', async () => {
+      if (!currentUpload) return;
+      
+      const confirmed = await confirm('Are you sure you want to delete this photo?', {
+        title: 'Delete Photo',
+        confirmText: 'Delete',
+        danger: true
+      });
+      
+      if (!confirmed) return;
+      
+      try {
+        await apiCall('portal-upload-delete', {
+          method: 'POST',
+          body: JSON.stringify({ upload_id: currentUpload.id })
+        });
+        
+        uploads = uploads.filter(u => u.id !== currentUpload.id);
+        renderUploads();
+        closeImageModal();
+        showToast('Photo deleted', 'success');
+      } catch (err) {
+        showToast('Failed to delete photo', 'error');
+      }
+    });
+    
+    // Initialize
+    loadUploads();
+  </script>
+</body>
+</html>

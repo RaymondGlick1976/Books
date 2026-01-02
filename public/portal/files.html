@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Files | Customer Portal | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="portal-header">
+    <a href="/portal/dashboard.html" class="portal-logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--color-accent)">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
+      </svg>
+      Homestead Cabinet Design
+    </a>
+    <nav class="portal-nav">
+      <a href="/portal/dashboard.html" class="portal-nav-link">Dashboard</a>
+      <a href="/portal/quotes.html" class="portal-nav-link">Quotes</a>
+      <a href="/portal/invoices.html" class="portal-nav-link">Invoices</a>
+      <a href="/portal/files.html" class="portal-nav-link active">Files</a>
+      <a href="/portal/uploads.html" class="portal-nav-link">Uploads</a>
+    </nav>
+  </header>
+  
+  <main class="portal-container">
+    <div class="mb-xl">
+      <h1>Project Files</h1>
+      <p class="text-muted">Documents and attachments from your projects.</p>
+    </div>
+    
+    <!-- Loading State -->
+    <div id="loading-state">
+      <div class="skeleton" style="height: 200px;"></div>
+    </div>
+    
+    <!-- Empty State -->
+    <div id="empty-state" class="card" style="display: none;">
+      <div class="card-body text-center" style="padding: var(--space-3xl);">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1" style="margin: 0 auto var(--space-lg);">
+          <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+        </svg>
+        <h3>No Files Yet</h3>
+        <p class="text-muted">Project documents and attachments will appear here.</p>
+      </div>
+    </div>
+    
+    <!-- Files by Quote -->
+    <div id="files-container"></div>
+  </main>
+  
+  <!-- Image Modal -->
+  <div id="image-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 1000; cursor: pointer; display: none; align-items: center; justify-content: center;">
+    <img id="modal-image" src="" style="max-width: 90%; max-height: 90%; object-fit: contain;">
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script src="/js/portal-auth.js"></script>
+  <script>
+    
+    async function loadFiles() {
+      try {
+        const response = await apiCall('portal-files');
+        const attachments = response.attachments || [];
+        
+        $('#loading-state').style.display = 'none';
+        
+        if (attachments.length === 0) {
+          $('#empty-state').style.display = 'block';
+          return;
+        }
+        
+        // Group by quote
+        const grouped = {};
+        attachments.forEach(att => {
+          const key = att.quote_id || 'general';
+          if (!grouped[key]) {
+            grouped[key] = {
+              quote_title: att.quote_title || 'General Files',
+              quote_number: att.quote_number || '',
+              files: []
+            };
+          }
+          grouped[key].files.push(att);
+        });
+        
+        renderFiles(grouped);
+      } catch (err) {
+        console.error('Failed to load files:', err);
+        showToast('Failed to load files', 'error');
+      }
+    }
+    
+    function renderFiles(grouped) {
+      const container = $('#files-container');
+      clearElement(container);
+      
+      Object.entries(grouped).forEach(([key, group]) => {
+        const card = createElement('div', { className: 'card mb-lg' });
+        
+        // Header
+        const header = createElement('div', { className: 'card-header' });
+        header.appendChild(createElement('h3', { 
+          className: 'card-title',
+          textContent: group.quote_title
+        }));
+        if (group.quote_number) {
+          header.appendChild(createElement('span', {
+            className: 'text-muted text-sm',
+            textContent: group.quote_number
+          }));
+        }
+        card.appendChild(header);
+        
+        // Files grid
+        const body = createElement('div', { className: 'card-body' });
+        const grid = createElement('div', { className: 'file-grid' });
+        
+        group.files.forEach(file => {
+          const fileCard = createElement('div', { className: 'file-card' });
+          
+          // Preview
+          const preview = createElement('div', { 
+            className: 'file-card-preview',
+            style: 'cursor: pointer;'
+          });
+          
+          if (file.file_type?.includes('image')) {
+            const img = createElement('img', {
+              src: file.file_url,
+              alt: file.file_name,
+              loading: 'lazy'
+            });
+            preview.appendChild(img);
+            preview.addEventListener('click', () => showImageModal(file.file_url));
+          } else if (file.file_type?.includes('pdf')) {
+            preview.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M10 9H8v6h2v-2h1a2 2 0 000-4h-1z"/></svg>';
+            preview.addEventListener('click', () => window.open(file.file_url, '_blank'));
+          } else {
+            preview.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M13 2v7h7"/></svg>';
+            preview.addEventListener('click', () => window.open(file.file_url, '_blank'));
+          }
+          
+          fileCard.appendChild(preview);
+          
+          // Info
+          const info = createElement('div', { className: 'file-card-info' });
+          info.appendChild(createElement('div', { 
+            className: 'file-card-name',
+            textContent: file.file_name,
+            title: file.file_name
+          }));
+          
+          const actions = createElement('div', { className: 'file-card-actions' });
+          actions.appendChild(createElement('a', {
+            className: 'btn btn-sm btn-ghost',
+            href: file.file_url,
+            target: '_blank',
+            download: file.file_name,
+            innerHTML: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
+          }));
+          info.appendChild(actions);
+          
+          fileCard.appendChild(info);
+          grid.appendChild(fileCard);
+        });
+        
+        body.appendChild(grid);
+        card.appendChild(body);
+        container.appendChild(card);
+      });
+    }
+    
+    // Image modal
+    const imageModal = $('#image-modal');
+    const modalImage = $('#modal-image');
+    
+    function showImageModal(url) {
+      modalImage.src = url;
+      imageModal.style.display = 'flex';
+    }
+    
+    imageModal.addEventListener('click', () => {
+      imageModal.style.display = 'none';
+    });
+    
+    // Initialize
+    loadFiles();
+  </script>
+</body>
+</html>

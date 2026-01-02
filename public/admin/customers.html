@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customers | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--color-accent)">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
+        </svg>
+        Homestead
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+        </ul>
+      </nav>
+    </aside>
+    
+    <main class="app-main">
+      <header class="app-header">
+        <h2>Customers</h2>
+        <button class="btn btn-primary" id="add-customer-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Customer
+        </button>
+      </header>
+      
+      <div class="app-content">
+        <!-- Search -->
+        <div class="card mb-xl">
+          <div class="card-body">
+            <div class="flex gap-md">
+              <input type="text" id="search-input" class="form-input" placeholder="Search customers..." style="max-width: 400px;">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Customers Table -->
+        <div class="card">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Location</th>
+                  <th>Quotes</th>
+                  <th>Balance</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="customers-tbody">
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner" style="margin: 0 auto;"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script>
+    let customers = [];
+    
+    async function loadCustomers() {
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        const { data, error } = await supabase
+          .from('customers')
+          .select(`
+            *,
+            quotes:quotes(count),
+            invoices:invoices(amount_due)
+          `)
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        customers = data || [];
+        renderCustomers(customers);
+      } catch (err) {
+        console.error('Load error:', err);
+        showToast('Failed to load customers', 'error');
+      }
+    }
+    
+    function renderCustomers(data) {
+      const tbody = $('#customers-tbody');
+      clearElement(tbody);
+      
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-xl">No customers found</td></tr>';
+        return;
+      }
+      
+      data.forEach(customer => {
+        const quoteCount = customer.quotes?.[0]?.count || 0;
+        const balance = customer.invoices?.reduce((sum, inv) => sum + parseFloat(inv.amount_due || 0), 0) || 0;
+        
+        const row = createElement('tr');
+        row.innerHTML = `
+          <td><strong>${customer.name}</strong></td>
+          <td><a href="mailto:${customer.email}">${customer.email}</a></td>
+          <td>${formatPhone(customer.phone) || '—'}</td>
+          <td>${customer.city ? `${customer.city}, ${customer.state}` : '—'}</td>
+          <td>${quoteCount}</td>
+          <td>${balance > 0 ? `<span class="text-danger">${formatCurrency(balance)}</span>` : '—'}</td>
+          <td class="table-actions">
+            <button class="btn btn-ghost btn-sm" onclick="editCustomer('${customer.id}')">Edit</button>
+            <a href="/admin/quote-builder.html?customer=${customer.id}" class="btn btn-ghost btn-sm">New Quote</a>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+    
+    // Search
+    const searchInput = $('#search-input');
+    searchInput.addEventListener('input', debounce((e) => {
+      const query = e.target.value.toLowerCase();
+      if (!query) {
+        renderCustomers(customers);
+        return;
+      }
+      
+      const filtered = customers.filter(c => 
+        c.name.toLowerCase().includes(query) ||
+        c.email.toLowerCase().includes(query) ||
+        (c.phone && c.phone.includes(query)) ||
+        (c.city && c.city.toLowerCase().includes(query))
+      );
+      renderCustomers(filtered);
+    }, 300));
+    
+    // Add customer
+    $('#add-customer-btn').addEventListener('click', () => showCustomerModal());
+    
+    function showCustomerModal(customer = null) {
+      const isEdit = !!customer;
+      
+      const content = createElement('form', { id: 'customer-form' });
+      content.innerHTML = `
+        <div class="grid grid-cols-2 gap-lg">
+          <div class="form-group">
+            <label class="form-label">Name *</label>
+            <input type="text" name="name" class="form-input" value="${customer?.name || ''}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email *</label>
+            <input type="email" name="email" class="form-input" value="${customer?.email || ''}" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="tel" name="phone" class="form-input" value="${customer?.phone || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          <input type="text" name="address" class="form-input" value="${customer?.address || ''}">
+        </div>
+        <div class="grid grid-cols-3 gap-lg">
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" name="city" class="form-input" value="${customer?.city || ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">State</label>
+            <input type="text" name="state" class="form-input" value="${customer?.state || 'MA'}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ZIP</label>
+            <input type="text" name="zip" class="form-input" value="${customer?.zip || ''}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea name="notes" class="form-textarea" rows="2">${customer?.notes || ''}</textarea>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'flex justify-between' });
+      
+      const leftBtns = createElement('div');
+      let deleteBtn = null;
+      if (isEdit) {
+        deleteBtn = createElement('button', {
+          type: 'button',
+          className: 'btn btn-danger',
+          textContent: 'Delete'
+        });
+        leftBtns.appendChild(deleteBtn);
+      }
+      footer.appendChild(leftBtns);
+      
+      const rightBtns = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', {
+        type: 'button',
+        className: 'btn btn-secondary',
+        textContent: 'Cancel'
+      });
+      const submitBtn = createElement('button', {
+        type: 'button',
+        className: 'btn btn-primary',
+        textContent: isEdit ? 'Save Changes' : 'Add Customer'
+      });
+      rightBtns.appendChild(cancelBtn);
+      rightBtns.appendChild(submitBtn);
+      footer.appendChild(rightBtns);
+      
+      const modal = createModal({
+        title: isEdit ? 'Edit Customer' : 'Add Customer',
+        content,
+        footer,
+        size: 'lg'
+      });
+      
+      // Add event listeners AFTER modal is created
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      submitBtn.addEventListener('click', async () => {
+        if (content.checkValidity()) {
+          await saveCustomer(new FormData(content), customer?.id);
+          closeModal(modal);
+        } else {
+          content.reportValidity();
+        }
+      });
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', async () => {
+          if (await confirm('Delete this customer? This cannot be undone.', { danger: true })) {
+            await deleteCustomer(customer.id);
+            closeModal(modal);
+          }
+        });
+      }
+    }
+    
+    async function saveCustomer(formData, id = null) {
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        const data = {
+          name: formData.get('name'),
+          email: formData.get('email').toLowerCase(),
+          phone: formData.get('phone') || null,
+          address: formData.get('address') || null,
+          city: formData.get('city') || null,
+          state: formData.get('state') || null,
+          zip: formData.get('zip') || null,
+          notes: formData.get('notes') || null
+        };
+        
+        if (id) {
+          await supabase.from('customers').update(data).eq('id', id);
+          showToast('Customer updated', 'success');
+        } else {
+          await supabase.from('customers').insert(data);
+          showToast('Customer added', 'success');
+        }
+        
+        loadCustomers();
+      } catch (err) {
+        showToast('Failed to save: ' + err.message, 'error');
+      }
+    }
+    
+    async function deleteCustomer(id) {
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('customers').delete().eq('id', id);
+        showToast('Customer deleted', 'success');
+        loadCustomers();
+      } catch (err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+      }
+    }
+    
+    window.editCustomer = async (id) => {
+      const customer = customers.find(c => c.id === id);
+      if (customer) showCustomerModal(customer);
+    };
+    
+    // Initialize
+    loadCustomers();
+  </script>
+</body>
+</html>

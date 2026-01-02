@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoices | Customer Portal | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+  <header class="portal-header">
+    <a href="/portal/dashboard.html" class="portal-logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--color-accent)">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
+      </svg>
+      Homestead Cabinet Design
+    </a>
+    <nav class="portal-nav">
+      <a href="/portal/dashboard.html" class="portal-nav-link">Dashboard</a>
+      <a href="/portal/quotes.html" class="portal-nav-link">Quotes</a>
+      <a href="/portal/invoices.html" class="portal-nav-link active">Invoices</a>
+      <a href="/portal/files.html" class="portal-nav-link">Files</a>
+      <a href="/portal/uploads.html" class="portal-nav-link">Uploads</a>
+    </nav>
+  </header>
+  
+  <main class="portal-container">
+    <div class="mb-xl">
+      <h1>Invoices & Payments</h1>
+      <p class="text-muted">View your invoices and make payments.</p>
+    </div>
+    
+    <!-- Balance Summary -->
+    <div class="card mb-xl" id="balance-card">
+      <div class="card-body">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-muted text-sm">Total Balance Due</div>
+            <div class="text-2xl font-bold" id="total-balance" style="font-size: 2rem;">$0.00</div>
+          </div>
+          <button class="btn btn-accent btn-lg" id="pay-now-btn" style="display: none;">
+            Pay Now
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Loading State -->
+    <div id="loading-state">
+      <div class="card mb-md">
+        <div class="card-body">
+          <div class="skeleton" style="height: 100px;"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Empty State -->
+    <div id="empty-state" class="card" style="display: none;">
+      <div class="card-body text-center" style="padding: var(--space-3xl);">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1" style="margin: 0 auto var(--space-lg);">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <h3>No Invoices Yet</h3>
+        <p class="text-muted">Once your project begins, invoices will appear here.</p>
+      </div>
+    </div>
+    
+    <!-- Invoices List -->
+    <div id="invoices-list"></div>
+    
+    <!-- Payment History -->
+    <div id="payments-section" class="card mt-xl" style="display: none;">
+      <div class="card-header">
+        <h3 class="card-title">Payment History</h3>
+      </div>
+      <div class="card-body" id="payments-list"></div>
+    </div>
+  </main>
+  
+  <!-- Payment Modal -->
+  <div id="payment-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Make a Payment</h3>
+        <button class="modal-close" id="modal-close">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-lg">
+          <div class="text-muted text-sm">Balance Due</div>
+          <div class="text-xl font-bold" id="modal-balance">$0.00</div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Payment Amount</label>
+          <div class="input-group">
+            <span class="input-group-append" style="border-radius: var(--radius-md) 0 0 var(--radius-md); border-right: 0; border-left: 1px solid var(--color-border);">$</span>
+            <input type="number" id="payment-amount" class="form-input" step="0.01" min="1" style="border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+          </div>
+          <div class="flex gap-sm mt-sm">
+            <button class="btn btn-sm btn-secondary" id="pay-full">Pay Full Balance</button>
+            <button class="btn btn-sm btn-secondary" id="pay-half">Pay 50%</button>
+          </div>
+        </div>
+        
+        <div id="card-element" style="padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-top: var(--space-lg);"></div>
+        <div id="card-errors" class="form-error mt-sm"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="btn btn-accent" id="modal-pay">
+          <span id="pay-btn-text">Pay Now</span>
+          <span id="pay-btn-loading" style="display: none;">
+            <span class="loading-spinner"></span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script src="/js/portal-auth.js"></script>
+  <script>
+    
+    let invoices = [];
+    let payments = [];
+    let stripe = null;
+    let cardElement = null;
+    let currentInvoice = null;
+    
+    async function loadInvoices() {
+      try {
+        const response = await apiCall('portal-invoices');
+        invoices = response.invoices || [];
+        payments = response.payments || [];
+        
+        $('#loading-state').style.display = 'none';
+        
+        // Calculate total balance
+        const totalBalance = invoices
+          .filter(inv => inv.status !== 'paid' && inv.status !== 'cancelled')
+          .reduce((sum, inv) => sum + parseFloat(inv.amount_due || 0), 0);
+        
+        $('#total-balance').textContent = formatCurrency(totalBalance);
+        
+        if (totalBalance > 0) {
+          $('#pay-now-btn').style.display = 'block';
+        }
+        
+        if (invoices.length === 0) {
+          $('#empty-state').style.display = 'block';
+          $('#balance-card').style.display = 'none';
+          return;
+        }
+        
+        renderInvoices();
+        
+        if (payments.length > 0) {
+          renderPayments();
+        }
+        
+      } catch (err) {
+        console.error('Failed to load invoices:', err);
+        showToast('Failed to load invoices', 'error');
+      }
+    }
+    
+    function renderInvoices() {
+      const container = $('#invoices-list');
+      clearElement(container);
+      
+      invoices.forEach(invoice => {
+        const card = createElement('div', { className: 'card mb-md' });
+        const body = createElement('div', { className: 'card-body' });
+        
+        // Header row
+        const headerRow = createElement('div', { className: 'flex items-center justify-between mb-md' });
+        
+        headerRow.appendChild(createElement('div', { className: 'flex items-center gap-md' }, [
+          createElement('h3', { 
+            textContent: invoice.invoice_number,
+            style: 'margin: 0;'
+          }),
+          createElement('span', {
+            className: `badge badge-${invoice.status}`,
+            textContent: formatInvoiceStatus(invoice.status)
+          })
+        ]));
+        
+        if (invoice.due_date) {
+          const isOverdue = new Date(invoice.due_date) < new Date() && invoice.status !== 'paid';
+          headerRow.appendChild(createElement('div', {
+            className: `text-sm ${isOverdue ? 'text-danger' : 'text-muted'}`,
+            textContent: isOverdue ? `Overdue since ${formatDate(invoice.due_date)}` : `Due ${formatDate(invoice.due_date)}`
+          }));
+        }
+        
+        body.appendChild(headerRow);
+        
+        // Details
+        body.appendChild(createElement('div', { 
+          className: 'text-muted mb-md',
+          textContent: invoice.title
+        }));
+        
+        // Amounts row
+        const amountsRow = createElement('div', { 
+          className: 'flex items-center justify-between',
+          style: 'padding-top: var(--space-md); border-top: 1px solid var(--color-border-light);'
+        });
+        
+        const amounts = createElement('div', { className: 'flex gap-xl' });
+        amounts.appendChild(createElement('div', {}, [
+          createElement('div', { className: 'text-sm text-muted', textContent: 'Total' }),
+          createElement('div', { className: 'font-bold', textContent: formatCurrency(invoice.total) })
+        ]));
+        amounts.appendChild(createElement('div', {}, [
+          createElement('div', { className: 'text-sm text-muted', textContent: 'Paid' }),
+          createElement('div', { className: 'font-bold text-success', textContent: formatCurrency(invoice.amount_paid) })
+        ]));
+        amounts.appendChild(createElement('div', {}, [
+          createElement('div', { className: 'text-sm text-muted', textContent: 'Balance Due' }),
+          createElement('div', { 
+            className: 'font-bold',
+            style: parseFloat(invoice.amount_due) > 0 ? 'color: var(--color-warning);' : '',
+            textContent: formatCurrency(invoice.amount_due)
+          })
+        ]));
+        amountsRow.appendChild(amounts);
+        
+        // Pay button
+        if (parseFloat(invoice.amount_due) > 0 && invoice.status !== 'cancelled') {
+          const payBtn = createElement('button', {
+            className: 'btn btn-accent',
+            textContent: 'Pay Now',
+            onClick: () => openPaymentModal(invoice)
+          });
+          amountsRow.appendChild(payBtn);
+        }
+        
+        body.appendChild(amountsRow);
+        card.appendChild(body);
+        container.appendChild(card);
+      });
+    }
+    
+    function renderPayments() {
+      $('#payments-section').style.display = 'block';
+      const container = $('#payments-list');
+      clearElement(container);
+      
+      if (payments.length === 0) {
+        container.appendChild(createElement('p', { 
+          className: 'text-muted text-center p-lg',
+          textContent: 'No payments recorded yet.'
+        }));
+        return;
+      }
+      
+      payments.forEach(payment => {
+        const row = createElement('div', {
+          className: 'flex items-center justify-between p-md',
+          style: 'border-bottom: 1px solid var(--color-border-light);'
+        });
+        
+        // Left side - payment details
+        const leftSide = createElement('div');
+        leftSide.appendChild(createElement('div', { 
+          className: 'font-bold', 
+          textContent: formatCurrency(payment.amount) 
+        }));
+        leftSide.appendChild(createElement('div', { 
+          className: 'text-sm text-muted', 
+          textContent: formatDate(payment.payment_date) 
+        }));
+        
+        // Payment method info
+        const methodText = formatPaymentMethod(payment.payment_method || payment.payment_type);
+        const methodDiv = createElement('div', { className: 'text-sm text-muted' });
+        methodDiv.textContent = methodText;
+        if (payment.reference_number) {
+          methodDiv.textContent += ` • Ref: ${payment.reference_number}`;
+        }
+        leftSide.appendChild(methodDiv);
+        
+        // Invoice link if available
+        if (payment.invoices) {
+          leftSide.appendChild(createElement('div', {
+            className: 'text-sm text-muted',
+            textContent: `Invoice: ${payment.invoices.invoice_number}`
+          }));
+        }
+        
+        row.appendChild(leftSide);
+        
+        // Right side - status badge
+        row.appendChild(createElement('span', {
+          className: `badge badge-${payment.status === 'succeeded' ? 'paid' : payment.status}`,
+          textContent: payment.status === 'succeeded' ? 'Completed' : payment.status
+        }));
+        
+        container.appendChild(row);
+      });
+    }
+    
+    function formatPaymentMethod(method) {
+      const methods = {
+        card: 'Credit/Debit Card',
+        cash: 'Cash',
+        check: 'Check',
+        bank_transfer: 'Bank Transfer',
+        other: 'Other',
+        deposit: 'Deposit',
+        progress: 'Progress Payment',
+        final: 'Final Payment'
+      };
+      return methods[method] || method || 'Card';
+    }
+    
+    function formatInvoiceStatus(status) {
+      const labels = {
+        draft: 'Draft',
+        sent: 'Pending',
+        viewed: 'Viewed',
+        partial: 'Partial Payment',
+        paid: 'Paid',
+        overdue: 'Overdue',
+        cancelled: 'Cancelled'
+      };
+      return labels[status] || status;
+    }
+    
+    // Payment Modal
+    const paymentModal = $('#payment-modal');
+    
+    async function initStripe() {
+      if (stripe) return;
+      
+      try {
+        const config = await apiCall('stripe-config');
+        stripe = Stripe(config.publishableKey);
+        
+        const elements = stripe.elements();
+        cardElement = elements.create('card', {
+          style: {
+            base: {
+              fontSize: '16px',
+              color: '#2d2d2d',
+              '::placeholder': { color: '#8a8a8a' }
+            }
+          }
+        });
+        cardElement.mount('#card-element');
+        
+        cardElement.on('change', (event) => {
+          const errors = $('#card-errors');
+          errors.textContent = event.error ? event.error.message : '';
+        });
+      } catch (err) {
+        console.error('Failed to init Stripe:', err);
+      }
+    }
+    
+    function openPaymentModal(invoice) {
+      currentInvoice = invoice;
+      const balance = parseFloat(invoice.amount_due);
+      
+      $('#modal-balance').textContent = formatCurrency(balance);
+      $('#payment-amount').value = balance.toFixed(2);
+      $('#payment-amount').max = balance;
+      
+      paymentModal.classList.add('active');
+      initStripe();
+    }
+    
+    function closePaymentModal() {
+      paymentModal.classList.remove('active');
+      currentInvoice = null;
+      $('#card-errors').textContent = '';
+    }
+    
+    $('#modal-close').addEventListener('click', closePaymentModal);
+    $('#modal-cancel').addEventListener('click', closePaymentModal);
+    paymentModal.addEventListener('click', (e) => {
+      if (e.target === paymentModal) closePaymentModal();
+    });
+    
+    $('#pay-full').addEventListener('click', () => {
+      $('#payment-amount').value = parseFloat(currentInvoice.amount_due).toFixed(2);
+    });
+    
+    $('#pay-half').addEventListener('click', () => {
+      $('#payment-amount').value = (parseFloat(currentInvoice.amount_due) / 2).toFixed(2);
+    });
+    
+    $('#pay-now-btn').addEventListener('click', () => {
+      // Find first unpaid invoice
+      const unpaid = invoices.find(inv => parseFloat(inv.amount_due) > 0 && inv.status !== 'cancelled');
+      if (unpaid) {
+        openPaymentModal(unpaid);
+      }
+    });
+    
+    $('#modal-pay').addEventListener('click', async () => {
+      const amount = parseFloat($('#payment-amount').value);
+      
+      if (!amount || amount <= 0) {
+        showToast('Please enter a valid amount', 'error');
+        return;
+      }
+      
+      if (amount > parseFloat(currentInvoice.amount_due)) {
+        showToast('Amount cannot exceed balance due', 'error');
+        return;
+      }
+      
+      const payBtn = $('#modal-pay');
+      const btnText = $('#pay-btn-text');
+      const btnLoading = $('#pay-btn-loading');
+      
+      payBtn.disabled = true;
+      btnText.style.display = 'none';
+      btnLoading.style.display = 'inline-flex';
+      
+      try {
+        // Create payment intent
+        const { clientSecret } = await apiCall('create-payment-intent', {
+          method: 'POST',
+          body: JSON.stringify({
+            invoice_id: currentInvoice.id,
+            amount: Math.round(amount * 100) // Convert to cents
+          })
+        });
+        
+        // Confirm payment
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: { card: cardElement }
+        });
+        
+        if (error) {
+          throw new Error(error.message);
+        }
+        
+        if (paymentIntent.status === 'succeeded') {
+          showToast('Payment successful!', 'success');
+          closePaymentModal();
+          loadInvoices(); // Refresh
+        }
+        
+      } catch (err) {
+        console.error('Payment failed:', err);
+        $('#card-errors').textContent = err.message;
+      } finally {
+        payBtn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoading.style.display = 'none';
+      }
+    });
+    
+    // Initialize
+    loadInvoices();
+  </script>
+</body>
+</html>

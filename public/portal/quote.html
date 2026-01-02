@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quote | Customer Portal | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    .quote-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .quote-section {
+      background: var(--color-bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      margin-bottom: var(--space-xl);
+      overflow: hidden;
+    }
+    
+    .quote-section-header {
+      background: var(--color-bg-alt);
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: 1px solid var(--color-border-light);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    
+    .quote-section-body {
+      padding: var(--space-lg);
+    }
+    
+    .line-item {
+      display: grid;
+      grid-template-columns: auto 60px 1fr auto;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      transition: background var(--transition-fast);
+      align-items: start;
+    }
+    
+    .line-item:hover {
+      background: var(--color-bg-alt);
+    }
+    
+    .line-item.optional {
+      background: rgba(201, 166, 107, 0.05);
+      border: 1px dashed var(--color-accent);
+    }
+    
+    .line-item.optional.selected {
+      background: rgba(201, 166, 107, 0.1);
+      border-style: solid;
+    }
+    
+    .line-item-action {
+      min-width: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .line-item-action .btn {
+      white-space: nowrap;
+    }
+    
+    .line-item-photo {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: transform var(--transition-fast);
+    }
+    
+    .line-item-photo:hover {
+      transform: scale(1.05);
+    }
+    
+    .line-item-photo-placeholder {
+      width: 60px;
+      height: 60px;
+      background: var(--color-bg-alt);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-muted);
+    }
+    
+    .line-item-content h4 {
+      margin: 0 0 var(--space-xs);
+      font-size: 1rem;
+    }
+    
+    .line-item-details {
+      font-size: 0.875rem;
+      color: var(--color-text-light);
+    }
+    
+    .line-item-price {
+      text-align: right;
+      white-space: nowrap;
+    }
+    
+    .line-item-price-value {
+      font-weight: 700;
+      font-size: 1.125rem;
+      color: var(--color-primary);
+    }
+    
+    .line-item-price-range {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+    }
+    
+    .optional-badge {
+      display: inline-block;
+      background: var(--color-accent);
+      color: var(--color-primary-dark);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      margin-left: var(--space-sm);
+    }
+    
+    .totals-section {
+      background: var(--color-primary);
+      color: var(--color-text-inverse);
+      padding: var(--space-xl);
+      border-radius: var(--radius-lg);
+    }
+    
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-sm) 0;
+    }
+    
+    .totals-row.grand-total {
+      font-size: 1.5rem;
+      font-weight: 700;
+      padding-top: var(--space-md);
+      margin-top: var(--space-md);
+      border-top: 2px solid rgba(255,255,255,0.2);
+    }
+    
+    .deposit-info {
+      background: rgba(255,255,255,0.1);
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      margin-top: var(--space-lg);
+      text-align: center;
+    }
+    
+    .deposit-amount {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    
+    .accept-section {
+      text-align: center;
+      padding: var(--space-xl);
+    }
+    
+    .accept-btn {
+      font-size: 1.125rem;
+      padding: var(--space-md) var(--space-2xl);
+    }
+    
+    .video-container {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      overflow: hidden;
+      border-radius: var(--radius-md);
+    }
+    
+    .video-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    
+    .attachment-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+    
+    .attachment-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: var(--color-bg-alt);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      text-decoration: none;
+      color: var(--color-text);
+      transition: background var(--transition-fast);
+    }
+    
+    .attachment-item:hover {
+      background: var(--color-border);
+    }
+    
+    .attachment-item svg {
+      width: 16px;
+      height: 16px;
+      color: var(--color-text-muted);
+    }
+    
+    .image-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      cursor: pointer;
+    }
+    
+    .image-modal img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+    }
+    
+    .quote-expired {
+      background: var(--color-warning);
+      color: white;
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      text-align: center;
+      margin-bottom: var(--space-xl);
+    }
+    
+    .quote-accepted {
+      background: var(--color-success);
+      color: white;
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      text-align: center;
+      margin-bottom: var(--space-xl);
+    }
+    
+    .quote-actions {
+      display: flex;
+      gap: var(--space-md);
+      justify-content: flex-end;
+      margin-bottom: var(--space-lg);
+    }
+    
+    .print-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    
+    /* Print Styles */
+    @media print {
+      body {
+        background: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      
+      .portal-header,
+      .portal-nav,
+      .quote-actions,
+      .accept-section,
+      #accept-btn,
+      .line-item-action {
+        display: none !important;
+      }
+      
+      .portal-container {
+        padding: 0 !important;
+        max-width: none !important;
+      }
+      
+      .quote-container {
+        max-width: none !important;
+      }
+      
+      .quote-section {
+        break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #ddd;
+      }
+      
+      .line-item {
+        grid-template-columns: 60px 1fr auto !important;
+      }
+      
+      .totals-section {
+        background: #5B4C43 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      
+      .quote-header {
+        background: #5B4C43 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      
+      /* Add company header for print */
+      .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: var(--space-xl);
+        padding-bottom: var(--space-lg);
+        border-bottom: 2px solid #5B4C43;
+      }
+      
+      .print-header h1 {
+        color: #5B4C43;
+        margin: 0;
+      }
+      
+      .print-header p {
+        color: #666;
+        margin: var(--space-sm) 0 0;
+      }
+    }
+    
+    @media screen {
+      .print-header {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="portal-header" id="portal-header">
+    <a href="/portal/dashboard.html" class="portal-logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--color-accent)">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
+      </svg>
+      Homestead Cabinet Design
+    </a>
+    <nav class="portal-nav" id="portal-nav">
+      <a href="/portal/dashboard.html" class="portal-nav-link">Dashboard</a>
+      <a href="/portal/quotes.html" class="portal-nav-link active">Quotes</a>
+      <a href="/portal/invoices.html" class="portal-nav-link">Invoices</a>
+      <a href="/portal/files.html" class="portal-nav-link">Files</a>
+      <a href="/portal/uploads.html" class="portal-nav-link">Uploads</a>
+    </nav>
+  </header>
+  
+  <main class="portal-container">
+    <div class="quote-container">
+      <!-- Loading State -->
+      <div id="loading-state">
+        <div class="skeleton" style="height: 200px; margin-bottom: 20px;"></div>
+        <div class="skeleton" style="height: 300px; margin-bottom: 20px;"></div>
+        <div class="skeleton" style="height: 150px;"></div>
+      </div>
+      
+      <!-- Quote Content -->
+      <div id="quote-content" style="display: none;">
+        <!-- Print Header (only shows when printing) -->
+        <div class="print-header">
+          <h1>Homestead Cabinet Design</h1>
+          <p>raymond@homesteadcabinetdesign.com</p>
+        </div>
+        
+        <!-- Actions Bar -->
+        <div class="quote-actions no-print">
+          <button class="btn btn-secondary print-btn" onclick="window.print()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"/>
+              <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+              <rect x="6" y="14" width="12" height="8"/>
+            </svg>
+            Print / Save PDF
+          </button>
+        </div>
+        
+        <!-- Status Banner -->
+        <div id="status-banner"></div>
+        
+        <!-- Quote Header -->
+        <div class="quote-header" style="border-radius: var(--radius-lg); margin-bottom: var(--space-xl);">
+          <div class="quote-number" id="quote-number"></div>
+          <h1 class="quote-title" id="quote-title"></h1>
+          <div id="quote-date"></div>
+        </div>
+        
+        <!-- Line Items Section -->
+        <div class="quote-section">
+          <div class="quote-section-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"/>
+              <line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            Quote Details
+          </div>
+          <div class="quote-section-body" id="line-items-container">
+            <!-- Line items will be rendered here -->
+          </div>
+        </div>
+        
+        <!-- Attachments Section -->
+        <div id="attachments-section" class="quote-section" style="display: none;">
+          <div class="quote-section-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+            </svg>
+            Attachments
+          </div>
+          <div class="quote-section-body">
+            <div class="attachment-list" id="attachment-list"></div>
+          </div>
+        </div>
+        
+        <!-- Totals Section -->
+        <div class="totals-section" id="totals-section">
+          <div class="totals-row">
+            <span>Subtotal</span>
+            <span id="subtotal">$0.00</span>
+          </div>
+          <div class="totals-row" id="tax-row" style="display: none;">
+            <span>Tax (<span id="tax-rate">0</span>%)</span>
+            <span id="tax-amount">$0.00</span>
+          </div>
+          <div class="totals-row grand-total">
+            <span>Total</span>
+            <span id="grand-total">$0.00</span>
+          </div>
+          <div class="deposit-info" id="deposit-info">
+            <div>Deposit required to begin:</div>
+            <div class="deposit-amount" id="deposit-amount">$0.00</div>
+          </div>
+        </div>
+        
+        <!-- Accept Section -->
+        <div class="accept-section" id="accept-section">
+          <p class="text-muted mb-lg">
+            By accepting this quote, you agree to the terms and authorize the payment.
+          </p>
+          
+          <div style="max-width: 300px; margin: 0 auto var(--space-lg);">
+            <label class="form-label text-center" style="color: var(--color-text-light);">Payment Amount</label>
+            <div style="display: flex; align-items: center; gap: var(--space-sm);">
+              <span style="font-size: 1.25rem;">$</span>
+              <input type="number" id="payment-amount" class="form-input" style="font-size: 1.25rem; text-align: center;" step="0.01" min="1">
+            </div>
+            <div class="text-sm text-muted mt-sm text-center">
+              Minimum deposit: <span id="min-deposit">$0.00</span>
+            </div>
+          </div>
+          
+          <button class="btn btn-accent accept-btn" id="accept-btn">
+            Accept Quote & Pay
+          </button>
+        </div>
+        
+        <!-- Notes Section -->
+        <div id="notes-section" class="quote-section" style="display: none;">
+          <div class="quote-section-header">Notes</div>
+          <div class="quote-section-body" id="notes-content"></div>
+        </div>
+        
+        <!-- Video Section (About Your Project) -->
+        <div id="video-section" class="quote-section" style="display: none;">
+          <div class="quote-section-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+            About Your Project
+          </div>
+          <div class="quote-section-body">
+            <div class="video-container" id="video-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <script src="/js/utils.js"></script>
+  <script src="/js/portal-auth.js"></script>
+  <script>
+    
+    let quote = null;
+    let lineItems = [];
+    let attachments = [];
+    let stripe = null;
+    let accessToken = null;
+    let isPublicAccess = false;
+    
+    // Get quote ID or token from URL
+    const params = new URLSearchParams(window.location.search);
+    const quoteId = params.get('id');
+    accessToken = params.get('token');
+    
+    // Check for payment status
+    const paymentStatus = params.get('payment');
+    if (paymentStatus === 'success') {
+      setTimeout(() => {
+        showToast('Payment successful! Thank you.', 'success');
+      }, 500);
+    } else if (paymentStatus === 'cancelled') {
+      setTimeout(() => {
+        showToast('Payment was cancelled.', 'info');
+      }, 500);
+    }
+    
+    // Determine access mode
+    if (accessToken) {
+      isPublicAccess = true;
+      // Skip auth check for public access
+      window.skipAuthCheck = true;
+    } else if (!quoteId) {
+      window.location.href = '/portal/quotes.html';
+    }
+    
+    async function loadQuote() {
+      try {
+        let response;
+        
+        if (isPublicAccess) {
+          // Use public API with token
+          response = await fetch(`/.netlify/functions/public-quote?token=${accessToken}`);
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to load quote');
+          }
+          response = await response.json();
+        } else {
+          // Use authenticated API
+          response = await apiCall(`portal-quote?id=${quoteId}`);
+        }
+        
+        quote = response.quote;
+        lineItems = response.line_items;
+        attachments = response.attachments;
+        
+        renderQuote();
+        
+      } catch (err) {
+        console.error('Failed to load quote:', err);
+        showToast(err.message || 'Failed to load quote', 'error');
+        
+        // Show error state
+        $('#loading-state').innerHTML = `
+          <div class="card">
+            <div class="card-body text-center" style="padding: var(--space-3xl);">
+              <h3 style="color: var(--color-danger);">Unable to Load Quote</h3>
+              <p class="text-muted">${err.message || 'The quote link may be invalid or expired.'}</p>
+              <a href="/portal/login.html" class="btn btn-primary mt-lg">Go to Portal</a>
+            </div>
+          </div>
+        `;
+      }
+    }
+    
+    function renderQuote() {
+      $('#loading-state').style.display = 'none';
+      $('#quote-content').style.display = 'block';
+      
+      // Hide navigation for public access
+      if (isPublicAccess) {
+        const nav = $('#portal-nav');
+        if (nav) nav.style.display = 'none';
+      }
+      
+      // Status banner
+      const statusBanner = $('#status-banner');
+      if (quote.status === 'expired') {
+        statusBanner.innerHTML = '<div class="quote-expired">This quote has expired. Please contact us for a new quote.</div>';
+        $('#accept-section').style.display = 'none';
+      } else if (quote.status === 'accepted' || quote.status === 'converted') {
+        statusBanner.innerHTML = '<div class="quote-accepted">✓ Quote accepted on ' + formatDate(quote.accepted_at) + '</div>';
+        $('#accept-section').style.display = 'none';
+      } else if (quote.status === 'declined') {
+        statusBanner.innerHTML = '<div class="quote-expired">This quote was declined.</div>';
+        $('#accept-section').style.display = 'none';
+      }
+      
+      // Header
+      $('#quote-number').textContent = quote.quote_number;
+      $('#quote-title').textContent = quote.title;
+      $('#quote-date').textContent = `Valid until ${formatDate(quote.expires_at)}`;
+      
+      // Video
+      if (quote.video_url) {
+        $('#video-section').style.display = 'block';
+        const videoId = extractVideoId(quote.video_url);
+        if (videoId) {
+          $('#video-container').innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe>`;
+        }
+      }
+      
+      // Line items
+      renderLineItems();
+      
+      // Attachments
+      if (attachments.length > 0) {
+        $('#attachments-section').style.display = 'block';
+        const attachmentList = $('#attachment-list');
+        attachments.forEach(att => {
+          const icon = getFileIcon(att.file_type);
+          const item = createElement('a', {
+            className: 'attachment-item',
+            href: att.file_url,
+            target: '_blank',
+            innerHTML: `${icon} ${att.file_name}`
+          });
+          attachmentList.appendChild(item);
+        });
+      }
+      
+      // Notes
+      if (quote.notes) {
+        $('#notes-section').style.display = 'block';
+        $('#notes-content').textContent = quote.notes;
+      }
+      
+      // Calculate totals
+      updateTotals();
+    }
+    
+    function renderLineItems() {
+      const container = $('#line-items-container');
+      clearElement(container);
+      
+      // Sort: required items first, then optional
+      const sortedItems = [...lineItems].sort((a, b) => {
+        const aOpt = a.is_optional === true;
+        const bOpt = b.is_optional === true;
+        if (aOpt === bOpt) return (a.sort_order || 0) - (b.sort_order || 0);
+        return aOpt ? 1 : -1;
+      });
+      
+      sortedItems.forEach(item => {
+        const isOptional = item.is_optional === true;
+        const isSelected = item.is_selected === true;
+        const isSelectable = isOptional && ['sent', 'viewed'].includes(quote.status);
+        
+        const itemEl = createElement('div', {
+          className: `line-item ${isOptional ? 'optional' : ''} ${isSelected ? 'selected' : ''}`,
+          dataset: { id: item.id }
+        });
+        
+        // Action button cell (for optional items)
+        const actionCell = createElement('div', { className: 'line-item-action' });
+        if (isOptional) {
+          const btn = createElement('button', {
+            className: `btn btn-sm ${isSelected ? 'btn-danger' : 'btn-primary'}`,
+            textContent: isSelected ? 'Remove' : 'Add',
+            disabled: !isSelectable
+          });
+          btn.addEventListener('click', () => {
+            const newSelected = !isSelected;
+            toggleOption(item.id, newSelected);
+            // Update button
+            btn.textContent = newSelected ? 'Remove' : 'Add';
+            btn.className = `btn btn-sm ${newSelected ? 'btn-danger' : 'btn-primary'}`;
+          });
+          actionCell.appendChild(btn);
+        }
+        itemEl.appendChild(actionCell);
+        
+        // Photo
+        if (item.photo_url) {
+          const photo = createElement('img', {
+            className: 'line-item-photo',
+            src: item.photo_url,
+            alt: item.description,
+            onClick: () => showImageModal(item.photo_url)
+          });
+          itemEl.appendChild(photo);
+        } else {
+          const placeholder = createElement('div', {
+            className: 'line-item-photo-placeholder',
+            innerHTML: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'
+          });
+          itemEl.appendChild(placeholder);
+        }
+        
+        // Content
+        const content = createElement('div', { className: 'line-item-content' });
+        const title = createElement('h4', { textContent: item.description });
+        if (isOptional) {
+          title.innerHTML += '<span class="optional-badge">Optional</span>';
+        }
+        content.appendChild(title);
+        
+        if (item.details) {
+          content.appendChild(createElement('div', { className: 'line-item-details', textContent: item.details }));
+        }
+        if (item.quantity > 1) {
+          content.appendChild(createElement('div', { className: 'line-item-details', textContent: `Qty: ${item.quantity}` }));
+        }
+        itemEl.appendChild(content);
+        
+        // Price
+        const priceCell = createElement('div', { className: 'line-item-price' });
+        if (item.is_range_pricing) {
+          priceCell.appendChild(createElement('div', { 
+            className: 'line-item-price-value',
+            textContent: formatCurrencyRange(item.line_total_low, item.line_total_high)
+          }));
+          priceCell.appendChild(createElement('div', {
+            className: 'line-item-price-range',
+            textContent: 'Range estimate'
+          }));
+        } else {
+          priceCell.appendChild(createElement('div', {
+            className: 'line-item-price-value',
+            textContent: formatCurrency(item.line_total)
+          }));
+        }
+        itemEl.appendChild(priceCell);
+        
+        container.appendChild(itemEl);
+      });
+    }
+    
+    function toggleOption(itemId, selected) {
+      const item = lineItems.find(i => i.id === itemId);
+      if (item) {
+        item.is_selected = selected;
+        
+        // Update UI
+        const itemEl = $(`.line-item[data-id="${itemId}"]`);
+        if (itemEl) {
+          itemEl.classList.toggle('selected', selected);
+        }
+        
+        updateTotals();
+        
+        // Save selection to server
+        if (isPublicAccess) {
+          fetch('/.netlify/functions/public-quote-selection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: accessToken, item_id: itemId, is_selected: selected })
+          }).catch(() => {});
+        } else {
+          apiCall('portal-quote-selection', {
+            method: 'POST',
+            body: JSON.stringify({ quote_id: quote.id, item_id: itemId, selected })
+          }).catch(() => {});
+        }
+      }
+    }
+    
+    function updateTotals() {
+      let subtotal = 0;
+      let subtotalLow = 0;
+      let subtotalHigh = 0;
+      let taxableSubtotal = 0;
+      let taxableSubtotalLow = 0;
+      let taxableSubtotalHigh = 0;
+      let hasRange = false;
+      
+      lineItems.forEach(item => {
+        const isOptional = item.is_optional === true;
+        const isSelected = item.is_selected === true;
+        const isTaxable = item.is_taxable === true;
+        
+        if (!isOptional || isSelected) {
+          if (item.is_range_pricing) {
+            hasRange = true;
+            const lowTotal = parseFloat(item.line_total_low || 0);
+            const highTotal = parseFloat(item.line_total_high || 0);
+            subtotalLow += lowTotal;
+            subtotalHigh += highTotal;
+            if (isTaxable) {
+              taxableSubtotalLow += lowTotal;
+              taxableSubtotalHigh += highTotal;
+            }
+          } else {
+            const total = parseFloat(item.line_total || 0);
+            subtotal += total;
+            subtotalLow += total;
+            subtotalHigh += total;
+            if (isTaxable) {
+              taxableSubtotal += total;
+              taxableSubtotalLow += total;
+              taxableSubtotalHigh += total;
+            }
+          }
+        }
+      });
+      
+      const taxRate = parseFloat(quote.tax_rate || 0);
+      const taxAmount = taxableSubtotal * taxRate;
+      const taxAmountLow = taxableSubtotalLow * taxRate;
+      const taxAmountHigh = taxableSubtotalHigh * taxRate;
+      
+      const grandTotal = subtotal + taxAmount;
+      const grandTotalLow = subtotalLow + taxAmountLow;
+      const grandTotalHigh = subtotalHigh + taxAmountHigh;
+      
+      // Update display
+      if (hasRange) {
+        $('#subtotal').textContent = formatCurrencyRange(subtotalLow, subtotalHigh);
+        $('#grand-total').textContent = formatCurrencyRange(grandTotalLow, grandTotalHigh);
+      } else {
+        $('#subtotal').textContent = formatCurrency(subtotal);
+        $('#grand-total').textContent = formatCurrency(grandTotal);
+      }
+      
+      if (taxRate > 0) {
+        $('#tax-row').style.display = 'flex';
+        $('#tax-rate').textContent = (taxRate * 100).toFixed(2);
+        $('#tax-amount').textContent = hasRange ? formatCurrencyRange(taxAmountLow, taxAmountHigh) : formatCurrency(taxAmount);
+      }
+      
+      // Deposit calculation (based on lower estimate for ranges)
+      let depositAmount;
+      if (quote.deposit_type === 'percentage') {
+        depositAmount = (hasRange ? grandTotalLow : grandTotal) * (parseFloat(quote.deposit_value) / 100);
+      } else {
+        depositAmount = parseFloat(quote.deposit_value || 0);
+      }
+      
+      // Store minimum deposit for validation
+      window.minDepositAmount = depositAmount;
+      
+      $('#deposit-amount').textContent = formatCurrency(depositAmount);
+      $('#min-deposit').textContent = formatCurrency(depositAmount);
+      
+      // Set payment amount input to deposit amount (default)
+      const paymentInput = $('#payment-amount');
+      if (paymentInput) {
+        paymentInput.min = depositAmount.toFixed(2);
+        if (!paymentInput.dataset.userModified) {
+          paymentInput.value = depositAmount.toFixed(2);
+        }
+      }
+    }
+    
+    function showImageModal(imageUrl) {
+      const modal = createElement('div', {
+        className: 'image-modal',
+        onClick: (e) => { if (e.target === modal) modal.remove(); }
+      }, [
+        createElement('img', { src: imageUrl })
+      ]);
+      document.body.appendChild(modal);
+    }
+    
+    function extractVideoId(url) {
+      const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      return match ? match[1] : null;
+    }
+    
+    function getFileIcon(fileType) {
+      if (fileType?.includes('pdf')) {
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
+      }
+      if (fileType?.includes('image')) {
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+      }
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M13 2v7h7"/></svg>';
+    }
+    
+    // Track when user modifies payment amount
+    $('#payment-amount').addEventListener('input', function() {
+      this.dataset.userModified = 'true';
+    });
+    
+    // Accept quote button
+    $('#accept-btn').addEventListener('click', async () => {
+      const btn = $('#accept-btn');
+      const paymentAmount = Math.round(parseFloat($('#payment-amount').value) * 100) / 100;
+      const minDeposit = Math.round((window.minDepositAmount || 0) * 100) / 100;
+      
+      // Validate payment amount (use small epsilon for floating point comparison)
+      if (!paymentAmount || paymentAmount < minDeposit - 0.01) {
+        showToast(`Minimum payment is ${formatCurrency(minDeposit)}`, 'error');
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+      
+      try {
+        // Get selected options
+        const selectedOptions = lineItems
+          .filter(i => i.is_optional === true && i.is_selected === true)
+          .map(i => i.id);
+        
+        let response;
+        
+        if (isPublicAccess) {
+          // Use public checkout API
+          const res = await fetch('/.netlify/functions/public-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token: accessToken,
+              selected_options: selectedOptions,
+              payment_amount: paymentAmount
+            })
+          });
+          
+          if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || 'Failed to create checkout');
+          }
+          response = await res.json();
+        } else {
+          // Use authenticated API
+          response = await apiCall('create-checkout', {
+            method: 'POST',
+            body: JSON.stringify({
+              quote_id: quote.id,
+              selected_options: selectedOptions,
+              payment_amount: paymentAmount
+            })
+          });
+        }
+        
+        // Redirect to Stripe
+        if (response.url) {
+          window.location.href = response.url;
+        } else {
+          throw new Error('Failed to create checkout session');
+        }
+        
+      } catch (err) {
+        console.error('Checkout error:', err);
+        showToast(err.message || 'Failed to process. Please try again.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Accept Quote & Pay';
+      }
+    });
+    
+    // Initialize
+    loadQuote();
+  </script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Portal Login | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #faf8f5 0%, #f0ebe3 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .login-page::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -30%;
+      width: 80%;
+      height: 150%;
+      background: radial-gradient(ellipse, rgba(201, 166, 107, 0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      margin: var(--space-lg);
+      position: relative;
+      z-index: 1;
+    }
+    
+    .login-logo {
+      text-align: center;
+      margin-bottom: var(--space-2xl);
+    }
+    
+    .login-logo-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--color-primary);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--space-md);
+    }
+    
+    .login-logo-icon svg {
+      width: 36px;
+      height: 36px;
+      fill: var(--color-accent);
+    }
+    
+    .login-logo h1 {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      color: var(--color-primary);
+      margin-bottom: var(--space-xs);
+    }
+    
+    .login-logo p {
+      color: var(--color-text-muted);
+      margin: 0;
+    }
+    
+    .login-form-card {
+      background: var(--color-bg-card);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      padding: var(--space-2xl);
+    }
+    
+    .login-title {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      text-align: center;
+      margin-bottom: var(--space-lg);
+    }
+    
+    .login-description {
+      text-align: center;
+      color: var(--color-text-light);
+      margin-bottom: var(--space-xl);
+    }
+    
+    .login-success {
+      text-align: center;
+      padding: var(--space-xl) 0;
+    }
+    
+    .login-success-icon {
+      width: 64px;
+      height: 64px;
+      background: #d1fae5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--space-lg);
+    }
+    
+    .login-success-icon svg {
+      width: 32px;
+      height: 32px;
+      color: var(--color-success);
+    }
+    
+    .login-success h3 {
+      color: var(--color-success);
+      margin-bottom: var(--space-sm);
+    }
+    
+    .login-error {
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: #b91c1c;
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-lg);
+      text-align: center;
+    }
+    
+    .login-footer {
+      text-align: center;
+      margin-top: var(--space-xl);
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
+    }
+    
+    .login-footer a {
+      color: var(--color-primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/></svg>
+        </div>
+        <h1>Homestead Cabinet Design</h1>
+        <p>Customer Portal</p>
+      </div>
+      
+      <div class="login-form-card">
+        <div id="login-form-container">
+          <h2 class="login-title">Welcome Back</h2>
+          <p class="login-description">
+            Enter your email to receive a secure login link.
+            No password required.
+          </p>
+          
+          <div id="login-error" class="login-error" style="display: none;"></div>
+          
+          <form id="login-form">
+            <div class="form-group">
+              <label class="form-label" for="email">Email Address</label>
+              <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                class="form-input" 
+                placeholder="you@example.com"
+                required
+                autocomplete="email"
+              >
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="submit-btn">
+              <span id="btn-text">Send Login Link</span>
+              <span id="btn-loading" style="display: none;">
+                <span class="loading-spinner"></span>
+              </span>
+            </button>
+          </form>
+        </div>
+        
+        <div id="login-success-container" class="login-success" style="display: none;">
+          <div class="login-success-icon">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </div>
+          <h3>Check Your Email</h3>
+          <p>
+            We've sent a login link to<br>
+            <strong id="sent-email"></strong>
+          </p>
+          <p class="text-muted mt-lg">
+            The link will expire in 1 hour.<br>
+            <a href="#" id="try-again">Try a different email</a>
+          </p>
+        </div>
+      </div>
+      
+      <div class="login-footer">
+        <p>
+          Need help? <a href="mailto:raymond@homesteadcabinetdesign.com">Contact us</a>
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script>
+    
+    const form = $('#login-form');
+    const formContainer = $('#login-form-container');
+    const successContainer = $('#login-success-container');
+    const errorContainer = $('#login-error');
+    const submitBtn = $('#submit-btn');
+    const btnText = $('#btn-text');
+    const btnLoading = $('#btn-loading');
+    const sentEmail = $('#sent-email');
+    const tryAgain = $('#try-again');
+    
+    // Check for error in URL
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (error) {
+      const errorMessages = {
+        'missing_token': 'Login link is missing or invalid.',
+        'invalid_token': 'This login link has expired or already been used. Please request a new one.',
+        'expired_token': 'This login link has expired. Please request a new one.'
+      };
+      errorContainer.textContent = errorMessages[error] || 'An error occurred. Please try again.';
+      errorContainer.style.display = 'block';
+    }
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = form.email.value.trim();
+      if (!email) return;
+      
+      // Show loading state
+      submitBtn.disabled = true;
+      btnText.style.display = 'none';
+      btnLoading.style.display = 'inline-flex';
+      errorContainer.style.display = 'none';
+      
+      try {
+        const response = await fetch('/api/portal-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          // Show success state
+          sentEmail.textContent = email;
+          formContainer.style.display = 'none';
+          successContainer.style.display = 'block';
+        } else {
+          throw new Error(data.error || 'Failed to send login link');
+        }
+      } catch (err) {
+        errorContainer.textContent = err.message;
+        errorContainer.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoading.style.display = 'none';
+      }
+    });
+    
+    tryAgain.addEventListener('click', (e) => {
+      e.preventDefault();
+      formContainer.style.display = 'block';
+      successContainer.style.display = 'none';
+      form.email.value = '';
+      form.email.focus();
+    });
+  </script>
+</body>
+</html>

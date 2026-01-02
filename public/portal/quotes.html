@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quotes | Customer Portal | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="portal-header">
+    <a href="/portal/dashboard.html" class="portal-logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--color-accent)">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
+      </svg>
+      Homestead Cabinet Design
+    </a>
+    <nav class="portal-nav">
+      <a href="/portal/dashboard.html" class="portal-nav-link">Dashboard</a>
+      <a href="/portal/quotes.html" class="portal-nav-link active">Quotes</a>
+      <a href="/portal/invoices.html" class="portal-nav-link">Invoices</a>
+      <a href="/portal/files.html" class="portal-nav-link">Files</a>
+      <a href="/portal/uploads.html" class="portal-nav-link">Uploads</a>
+    </nav>
+  </header>
+  
+  <main class="portal-container">
+    <div class="mb-xl">
+      <h1>Your Quotes</h1>
+      <p class="text-muted">View and manage your project estimates.</p>
+    </div>
+    
+    <!-- Loading State -->
+    <div id="loading-state">
+      <div class="card mb-md">
+        <div class="card-body">
+          <div class="skeleton" style="height: 80px;"></div>
+        </div>
+      </div>
+      <div class="card mb-md">
+        <div class="card-body">
+          <div class="skeleton" style="height: 80px;"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Empty State -->
+    <div id="empty-state" class="card" style="display: none;">
+      <div class="card-body text-center" style="padding: var(--space-3xl);">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1" style="margin: 0 auto var(--space-lg);">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <path d="M14 2v6h6"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <line x1="10" y1="9" x2="8" y2="9"/>
+        </svg>
+        <h3>No Quotes Yet</h3>
+        <p class="text-muted">When we prepare a quote for your project, it will appear here.</p>
+      </div>
+    </div>
+    
+    <!-- Quotes List -->
+    <div id="quotes-list"></div>
+  </main>
+  
+  <script src="/js/utils.js"></script>
+  <script src="/js/portal-auth.js"></script>
+  <script>
+    
+    async function loadQuotes() {
+      try {
+        const response = await apiCall('portal-quotes');
+        const quotes = response.quotes || [];
+        
+        $('#loading-state').style.display = 'none';
+        
+        if (quotes.length === 0) {
+          $('#empty-state').style.display = 'block';
+          return;
+        }
+        
+        renderQuotes(quotes);
+      } catch (err) {
+        console.error('Failed to load quotes:', err);
+        showToast('Failed to load quotes', 'error');
+      }
+    }
+    
+    function renderQuotes(quotes) {
+      const container = $('#quotes-list');
+      clearElement(container);
+      
+      quotes.forEach(quote => {
+        const card = createElement('div', { className: 'card mb-md' });
+        
+        const body = createElement('div', { 
+          className: 'card-body',
+          style: 'cursor: pointer;',
+          onClick: () => window.location.href = `/portal/quote.html?id=${quote.id}`
+        });
+        
+        const row = createElement('div', { className: 'flex items-center justify-between gap-lg' });
+        
+        // Left side
+        const leftSide = createElement('div', { className: 'flex-1' });
+        leftSide.appendChild(createElement('div', { 
+          className: 'flex items-center gap-md mb-sm'
+        }, [
+          createElement('h3', { 
+            textContent: quote.title,
+            style: 'margin: 0;'
+          }),
+          createElement('span', {
+            className: `badge badge-${quote.status}`,
+            textContent: formatStatus(quote.status)
+          })
+        ]));
+        
+        leftSide.appendChild(createElement('div', { className: 'text-sm text-muted' }, [
+          document.createTextNode(`${quote.quote_number} • Created ${formatDate(quote.created_at)}`),
+        ]));
+        
+        if (quote.expires_at && ['sent', 'viewed'].includes(quote.status)) {
+          const expiresIn = getDaysUntil(quote.expires_at);
+          if (expiresIn <= 7) {
+            leftSide.appendChild(createElement('div', { 
+              className: 'text-sm',
+              style: 'color: var(--color-warning); margin-top: var(--space-xs);',
+              textContent: expiresIn <= 0 ? 'Expired' : `Expires in ${expiresIn} day${expiresIn !== 1 ? 's' : ''}`
+            }));
+          }
+        }
+        
+        row.appendChild(leftSide);
+        
+        // Right side - price
+        const rightSide = createElement('div', { className: 'text-right' });
+        
+        if (quote.total_low && quote.total_high && quote.total_low !== quote.total_high) {
+          rightSide.appendChild(createElement('div', { 
+            className: 'font-bold text-lg',
+            textContent: formatCurrencyRange(quote.total_low, quote.total_high)
+          }));
+          rightSide.appendChild(createElement('div', { 
+            className: 'text-sm text-muted',
+            textContent: 'Estimated range'
+          }));
+        } else {
+          rightSide.appendChild(createElement('div', { 
+            className: 'font-bold text-lg',
+            textContent: formatCurrency(quote.total)
+          }));
+        }
+        
+        row.appendChild(rightSide);
+        
+        // Arrow
+        row.appendChild(createElement('div', {
+          innerHTML: '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="color: var(--color-text-muted);"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>'
+        }));
+        
+        body.appendChild(row);
+        card.appendChild(body);
+        container.appendChild(card);
+      });
+    }
+    
+    function formatStatus(status) {
+      const labels = {
+        draft: 'Draft',
+        sent: 'Pending Review',
+        viewed: 'Viewed',
+        accepted: 'Accepted',
+        declined: 'Declined',
+        expired: 'Expired',
+        converted: 'Converted'
+      };
+      return labels[status] || status;
+    }
+    
+    function getDaysUntil(dateString) {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = date - now;
+      return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    }
+    
+    // Initialize
+    loadQuotes();
+  </script>
+</body>
+</html>

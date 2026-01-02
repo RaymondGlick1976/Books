@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--color-accent)">
+          <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z"/>
+        </svg>
+        Homestead
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+        </ul>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Catalog</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/catalog.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Items Catalog</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Settings</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/settings.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+    
+    <main class="app-main">
+      <header class="app-header">
+        <h2>Settings</h2>
+      </header>
+      
+      <div class="app-content">
+        <!-- Company Information -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Company Information</h3>
+          </div>
+          <div class="card-body">
+            <form id="company-form">
+              <div class="grid grid-cols-2 gap-lg">
+                <div class="form-group">
+                  <label class="form-label">Company Name</label>
+                  <input type="text" name="name" id="company-name" class="form-input" value="Homestead Cabinet Design">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Email</label>
+                  <input type="email" name="email" id="company-email" class="form-input">
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-lg">
+                <div class="form-group">
+                  <label class="form-label">Phone</label>
+                  <input type="tel" name="phone" id="company-phone" class="form-input">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Website</label>
+                  <input type="url" name="website" id="company-website" class="form-input" value="https://homesteadcabinetdesign.com">
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Address</label>
+                <input type="text" name="address" id="company-address" class="form-input">
+              </div>
+              <div class="grid grid-cols-3 gap-lg">
+                <div class="form-group">
+                  <label class="form-label">City</label>
+                  <input type="text" name="city" id="company-city" class="form-input">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">State</label>
+                  <input type="text" name="state" id="company-state" class="form-input" value="MA">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">ZIP</label>
+                  <input type="text" name="zip" id="company-zip" class="form-input">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary">Save Company Info</button>
+            </form>
+          </div>
+        </div>
+        
+        <!-- Quote Settings -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Quote Settings</h3>
+          </div>
+          <div class="card-body">
+            <form id="quote-settings-form">
+              <div class="grid grid-cols-3 gap-lg">
+                <div class="form-group">
+                  <label class="form-label">Default Valid Days</label>
+                  <input type="number" name="default_valid_days" id="default-valid-days" class="form-input" value="30" min="1">
+                  <div class="form-help">How many days quotes are valid by default</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Default Tax Rate (%)</label>
+                  <input type="number" name="default_tax_rate" id="default-tax-rate" class="form-input" value="6.25" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Default Deposit (%)</label>
+                  <input type="number" name="default_deposit" id="default-deposit" class="form-input" value="50" min="0" max="100">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary">Save Quote Settings</button>
+            </form>
+          </div>
+        </div>
+        
+        <!-- Invoice Settings -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Invoice Settings</h3>
+          </div>
+          <div class="card-body">
+            <form id="invoice-settings-form">
+              <div class="grid grid-cols-2 gap-lg">
+                <div class="form-group">
+                  <label class="form-label">Default Payment Terms (Days)</label>
+                  <input type="number" name="default_payment_terms" id="default-payment-terms" class="form-input" value="30" min="0">
+                  <div class="form-help">Days until invoice is due (0 = due on receipt)</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Late Fee (%)</label>
+                  <input type="number" name="late_fee_percent" id="late-fee-percent" class="form-input" value="0" step="0.1" min="0">
+                  <div class="form-help">Optional late fee percentage for overdue invoices</div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary">Save Invoice Settings</button>
+            </form>
+          </div>
+        </div>
+        
+        <!-- Notification Preferences -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Notifications</h3>
+          </div>
+          <div class="card-body">
+            <form id="notification-form">
+              <div class="form-group">
+                <label class="form-check">
+                  <input type="checkbox" name="notify_quote_viewed" id="notify-quote-viewed" class="form-check-input" checked>
+                  <span class="form-check-label">Email me when a customer views a quote</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="form-check">
+                  <input type="checkbox" name="notify_quote_accepted" id="notify-quote-accepted" class="form-check-input" checked>
+                  <span class="form-check-label">Email me when a quote is accepted</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="form-check">
+                  <input type="checkbox" name="notify_payment_received" id="notify-payment-received" class="form-check-input" checked>
+                  <span class="form-check-label">Email me when a payment is received</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label class="form-check">
+                  <input type="checkbox" name="notify_customer_upload" id="notify-customer-upload" class="form-check-input" checked>
+                  <span class="form-check-label">Email me when a customer uploads photos</span>
+                </label>
+              </div>
+              <button type="submit" class="btn btn-primary">Save Notifications</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script>
+    
+    let settings = {};
+    
+    async function loadSettings() {
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        const { data, error } = await supabase
+          .from('settings')
+          .select('*');
+        
+        if (error) throw error;
+        
+        // Convert to key-value object
+        settings = {};
+        (data || []).forEach(row => {
+          settings[row.key] = row.value;
+        });
+        
+        // Populate forms
+        if (settings.company) {
+          const company = settings.company;
+          $('#company-name').value = company.name || '';
+          $('#company-email').value = company.email || '';
+          $('#company-phone').value = company.phone || '';
+          $('#company-website').value = company.website || '';
+          $('#company-address').value = company.address || '';
+          $('#company-city').value = company.city || '';
+          $('#company-state').value = company.state || 'MA';
+          $('#company-zip').value = company.zip || '';
+        }
+        
+        if (settings.quotes) {
+          const quotes = settings.quotes;
+          $('#default-valid-days').value = quotes.default_valid_days || 30;
+          $('#default-tax-rate').value = quotes.default_tax_rate || 6.25;
+          $('#default-deposit').value = quotes.default_deposit || 50;
+        }
+        
+        if (settings.invoices) {
+          const invoices = settings.invoices;
+          $('#default-payment-terms').value = invoices.default_payment_terms || 30;
+          $('#late-fee-percent').value = invoices.late_fee_percent || 0;
+        }
+        
+        if (settings.notifications) {
+          const notifs = settings.notifications;
+          $('#notify-quote-viewed').checked = notifs.quote_viewed !== false;
+          $('#notify-quote-accepted').checked = notifs.quote_accepted !== false;
+          $('#notify-payment-received').checked = notifs.payment_received !== false;
+          $('#notify-customer-upload').checked = notifs.customer_upload !== false;
+        }
+        
+      } catch (err) {
+        console.error('Load settings error:', err);
+        showToast('Failed to load settings', 'error');
+      }
+    }
+    
+    async function saveSetting(key, value) {
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        const { error } = await supabase
+          .from('settings')
+          .upsert({ key, value }, { onConflict: 'key' });
+        
+        if (error) throw error;
+        showToast('Settings saved', 'success');
+      } catch (err) {
+        console.error('Save error:', err);
+        showToast('Failed to save: ' + err.message, 'error');
+      }
+    }
+    
+    // Company form
+    $('#company-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const value = {
+        name: $('#company-name').value,
+        email: $('#company-email').value,
+        phone: $('#company-phone').value,
+        website: $('#company-website').value,
+        address: $('#company-address').value,
+        city: $('#company-city').value,
+        state: $('#company-state').value,
+        zip: $('#company-zip').value
+      };
+      await saveSetting('company', value);
+    });
+    
+    // Quote settings form
+    $('#quote-settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const value = {
+        default_valid_days: parseInt($('#default-valid-days').value) || 30,
+        default_tax_rate: parseFloat($('#default-tax-rate').value) || 6.25,
+        default_deposit: parseInt($('#default-deposit').value) || 50
+      };
+      await saveSetting('quotes', value);
+    });
+    
+    // Invoice settings form
+    $('#invoice-settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const value = {
+        default_payment_terms: parseInt($('#default-payment-terms').value) || 30,
+        late_fee_percent: parseFloat($('#late-fee-percent').value) || 0
+      };
+      await saveSetting('invoices', value);
+    });
+    
+    // Notification form
+    $('#notification-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const value = {
+        quote_viewed: $('#notify-quote-viewed').checked,
+        quote_accepted: $('#notify-quote-accepted').checked,
+        payment_received: $('#notify-payment-received').checked,
+        customer_upload: $('#notify-customer-upload').checked
+      };
+      await saveSetting('notifications', value);
+    });
+    
+    // Initialize
+    loadSettings();
+  </script>
+</body>
+</html>
