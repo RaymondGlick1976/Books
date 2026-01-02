@@ -658,7 +658,7 @@
         const isOptional = item.is_optional === true;
         const isSelected = item.is_selected === true;
         const isSelectable = isOptional && ['sent', 'viewed'].includes(quote.status);
-        const itemId = item.id; // Capture ID for closure
+        const itemId = item.id;
         
         const itemEl = createElement('div', {
           className: `line-item ${isOptional ? 'optional' : ''} ${isSelected ? 'selected' : ''}`,
@@ -668,61 +668,12 @@
         // Action button cell (for optional items)
         const actionCell = createElement('div', { className: 'line-item-action' });
         if (isOptional) {
-          const btn = createElement('button', {
-            className: `btn btn-sm ${isSelected ? 'btn-danger' : 'btn-primary'}`,
-            textContent: isSelected ? 'Remove' : 'Add',
-            disabled: !isSelectable
-          });
-          btn.addEventListener('click', () => {
-            // Always look up current state from the main lineItems array
-            const currentItem = lineItems.find(i => i.id === itemId);
-            console.log('Button clicked for item:', itemId);
-            console.log('Found item:', currentItem);
-            console.log('Current is_selected:', currentItem?.is_selected);
-            
-            if (!currentItem) {
-              console.error('Item not found in lineItems!');
-              return;
-            }
-            
-            const currentlySelected = currentItem.is_selected === true;
-            const newSelected = !currentlySelected;
-            
-            console.log('currentlySelected:', currentlySelected, '-> newSelected:', newSelected);
-            
-            // Update the item state
-            currentItem.is_selected = newSelected;
-            
-            console.log('After update, is_selected:', currentItem.is_selected);
-            
-            // Update button appearance
-            btn.textContent = newSelected ? 'Remove' : 'Add';
-            btn.className = `btn btn-sm ${newSelected ? 'btn-danger' : 'btn-primary'}`;
-            
-            // Update row appearance
-            const itemEl = $(`.line-item[data-id="${itemId}"]`);
-            if (itemEl) {
-              itemEl.classList.toggle('selected', newSelected);
-            }
-            
-            // Recalculate totals
-            console.log('Calling updateTotals...');
-            updateTotals();
-            
-            // Save to server
-            if (isPublicAccess) {
-              fetch('/.netlify/functions/public-quote-selection', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: accessToken, item_id: itemId, is_selected: newSelected })
-              }).catch(() => {});
-            } else {
-              apiCall('portal-quote-selection', {
-                method: 'POST',
-                body: JSON.stringify({ quote_id: quote.id, item_id: itemId, selected: newSelected })
-              }).catch(() => {});
-            }
-          });
+          const btn = document.createElement('button');
+          btn.className = `btn btn-sm ${isSelected ? 'btn-danger' : 'btn-primary'}`;
+          btn.textContent = isSelected ? 'Remove' : 'Add';
+          btn.disabled = !isSelectable;
+          btn.dataset.itemId = itemId;
+          btn.dataset.action = 'toggle-optional';
           actionCell.appendChild(btn);
         }
         itemEl.appendChild(actionCell);
@@ -813,9 +764,6 @@
     }
     
     function updateTotals() {
-      console.log('updateTotals called');
-      console.log('lineItems state:', lineItems.map(i => ({ id: i.id, desc: i.description, optional: i.is_optional, selected: i.is_selected, total: i.line_total })));
-      
       let subtotal = 0;
       let subtotalLow = 0;
       let subtotalHigh = 0;
@@ -828,8 +776,6 @@
         const isOptional = item.is_optional === true;
         const isSelected = item.is_selected === true;
         const isTaxable = item.is_taxable === true;
-        
-        console.log(`Item "${item.description}": optional=${isOptional}, selected=${isSelected}, included=${!isOptional || isSelected}`);
         
         if (!isOptional || isSelected) {
           if (item.is_range_pricing) {
@@ -864,8 +810,6 @@
       const grandTotal = subtotal + taxAmount;
       const grandTotalLow = subtotalLow + taxAmountLow;
       const grandTotalHigh = subtotalHigh + taxAmountHigh;
-      
-      console.log('Calculated totals:', { subtotal, grandTotal, taxAmount });
       
       // Update display
       if (hasRange) {
@@ -1000,6 +944,56 @@
         showToast(err.message || 'Failed to process. Please try again.', 'error');
         btn.disabled = false;
         btn.textContent = 'Accept Quote & Pay';
+      }
+    });
+    
+    // Event delegation for optional item buttons
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('[data-action="toggle-optional"]');
+      if (!btn) return;
+      
+      const itemId = btn.dataset.itemId;
+      console.log('Toggle button clicked for item:', itemId);
+      
+      // Find the item in lineItems
+      const item = lineItems.find(i => i.id === itemId);
+      if (!item) {
+        console.error('Item not found:', itemId);
+        return;
+      }
+      
+      // Toggle selection
+      const wasSelected = item.is_selected === true;
+      const nowSelected = !wasSelected;
+      item.is_selected = nowSelected;
+      
+      console.log('Toggled:', wasSelected, '->', nowSelected);
+      
+      // Update button
+      btn.textContent = nowSelected ? 'Remove' : 'Add';
+      btn.className = `btn btn-sm ${nowSelected ? 'btn-danger' : 'btn-primary'}`;
+      
+      // Update row styling
+      const row = document.querySelector(`.line-item[data-id="${itemId}"]`);
+      if (row) {
+        row.classList.toggle('selected', nowSelected);
+      }
+      
+      // Update totals
+      updateTotals();
+      
+      // Save to server
+      if (isPublicAccess) {
+        fetch('/.netlify/functions/public-quote-selection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: accessToken, item_id: itemId, is_selected: nowSelected })
+        }).catch(err => console.error('Save error:', err));
+      } else {
+        apiCall('portal-quote-selection', {
+          method: 'POST',
+          body: JSON.stringify({ quote_id: quote.id, item_id: itemId, selected: nowSelected })
+        }).catch(err => console.error('Save error:', err));
       }
     });
     
