@@ -115,6 +115,11 @@ exports.handler = async (event) => {
           <p style="color: #888; font-size: 14px;">
             This link is unique to your quote and doesn't require a login.
           </p>
+          
+          <p style="color: #888; font-size: 12px; word-break: break-all;">
+            If the button doesn't work, copy and paste this link:<br>
+            <a href="${directLink}" style="color: #5B4C43;">${directLink}</a>
+          </p>
         </div>
         
         <div style="padding: 20px; text-align: center; background: #333; color: #888; font-size: 12px;">
