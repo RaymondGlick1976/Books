@@ -75,6 +75,14 @@
       </div>
       <div class="card-body" id="payments-list"></div>
     </div>
+    
+    <!-- Terms and Conditions -->
+    <div id="terms-section" class="card mt-xl" style="display: none;">
+      <div class="card-header">
+        <h3 class="card-title">Terms & Conditions</h3>
+      </div>
+      <div class="card-body" id="terms-content" style="white-space: pre-line; color: var(--color-text-light); font-size: 0.875rem; line-height: 1.6;"></div>
+    </div>
   </main>
   
   <!-- Payment Modal -->
@@ -161,6 +169,9 @@
         if (payments.length > 0) {
           renderPayments();
         }
+        
+        // Load terms
+        loadTerms();
         
       } catch (err) {
         console.error('Failed to load invoices:', err);
@@ -459,6 +470,23 @@
         btnLoading.style.display = 'none';
       }
     });
+    
+    async function loadTerms() {
+      try {
+        const { data, error } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'terms_and_conditions')
+          .single();
+        
+        if (data && data.value && data.value.invoice) {
+          $('#terms-section').style.display = 'block';
+          $('#terms-content').textContent = data.value.invoice;
+        }
+      } catch (err) {
+        console.log('Terms not configured');
+      }
+    }
     
     // Initialize
     loadInvoices();

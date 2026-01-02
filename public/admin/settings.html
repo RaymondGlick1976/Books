@@ -236,6 +236,41 @@
           </div>
         </div>
         
+        <!-- Terms and Conditions -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Terms and Conditions</h3>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              These terms will appear at the bottom of your quotes and invoices. You can customize them for each document type.
+            </p>
+            
+            <div class="form-group">
+              <label class="form-label">Quote Terms & Conditions</label>
+              <textarea id="quote-terms" class="form-input" rows="6" placeholder="Enter your quote terms and conditions...">• This quote is valid for 30 days from the date issued.
+• A 50% deposit is required to schedule your project.
+• Final payment is due upon completion of work.
+• Any changes to the scope of work may result in additional charges.
+• Customer is responsible for clearing work areas before project start.
+• Homestead Cabinet Design is fully insured.</textarea>
+              <div class="form-help">Displayed on all quotes sent to customers.</div>
+            </div>
+            
+            <div class="form-group" style="margin-top: var(--space-xl);">
+              <label class="form-label">Invoice Terms & Conditions</label>
+              <textarea id="invoice-terms" class="form-input" rows="6" placeholder="Enter your invoice terms and conditions...">• Payment is due within 30 days of invoice date unless otherwise specified.
+• We accept check, credit card, and bank transfer.
+• A late fee of 1.5% per month may be applied to overdue balances.
+• Please reference invoice number with your payment.
+• Questions? Contact us at raymond@homesteadcabinetdesign.com</textarea>
+              <div class="form-help">Displayed on all invoices sent to customers.</div>
+            </div>
+            
+            <button type="button" class="btn btn-primary" onclick="saveTerms()">Save Terms & Conditions</button>
+          </div>
+        </div>
+        
         <!-- Email Templates -->
         <div class="card mb-xl">
           <div class="card-header">
@@ -415,6 +450,12 @@ If you have any questions about your project, please don't hesitate to reach out
           if (templates.payment_thank_you) $('#payment-thank-you').value = templates.payment_thank_you;
         }
         
+        if (settings.terms_and_conditions) {
+          const terms = settings.terms_and_conditions;
+          if (terms.quote) $('#quote-terms').value = terms.quote;
+          if (terms.invoice) $('#invoice-terms').value = terms.invoice;
+        }
+        
       } catch (err) {
         console.error('Load settings error:', err);
         showToast('Failed to load settings', 'error');
@@ -446,6 +487,14 @@ If you have any questions about your project, please don't hesitate to reach out
         payment_thank_you: $('#payment-thank-you').value
       };
       await saveSetting('email_templates', value);
+    }
+    
+    async function saveTerms() {
+      const value = {
+        quote: $('#quote-terms').value,
+        invoice: $('#invoice-terms').value
+      };
+      await saveSetting('terms_and_conditions', value);
     }
     
     // Company form
