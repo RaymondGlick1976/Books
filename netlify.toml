@@ -5,6 +5,17 @@
 [functions]
   node_bundler = "esbuild"
 
+# Headers for cache control
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
 # Redirects for SPA-like behavior within portal/admin sections
 [[redirects]]
   from = "/api/*"
