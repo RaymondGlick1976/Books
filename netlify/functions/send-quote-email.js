@@ -38,10 +38,28 @@ exports.handler = async (event) => {
     let accessToken = quote.access_token;
     if (!accessToken) {
       accessToken = crypto.randomBytes(32).toString('hex');
-      await supabase
+      console.log('Generated new access token for quote:', quoteId);
+      
+      const { error: updateError } = await supabase
         .from('quotes')
         .update({ access_token: accessToken })
         .eq('id', quoteId);
+      
+      if (updateError) {
+        console.error('Failed to save access token:', updateError);
+        // If column doesn't exist, the error message will tell us
+        return { 
+          statusCode: 500, 
+          body: JSON.stringify({ 
+            error: 'Failed to generate access token. Make sure the access_token column exists in the quotes table.',
+            details: updateError.message 
+          }) 
+        };
+      }
+      
+      console.log('Saved access token successfully');
+    } else {
+      console.log('Using existing access token for quote:', quoteId);
     }
 
     // Generate portal link with direct access token

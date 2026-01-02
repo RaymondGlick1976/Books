@@ -13,6 +13,8 @@ exports.handler = async (event) => {
     return error('Access token required', 400);
   }
   
+  console.log('Looking up quote with token:', token.substring(0, 8) + '...');
+  
   const supabase = getSupabase();
   
   try {
@@ -23,9 +25,17 @@ exports.handler = async (event) => {
       .eq('access_token', token)
       .single();
     
-    if (quoteError || !quote) {
+    if (quoteError) {
+      console.error('Quote lookup error:', quoteError);
       return error('Quote not found or link expired', 404);
     }
+    
+    if (!quote) {
+      console.error('No quote found for token');
+      return error('Quote not found or link expired', 404);
+    }
+    
+    console.log('Found quote:', quote.quote_number);
     
     // Check if quote is expired
     if (quote.expires_at && new Date(quote.expires_at) < new Date()) {
