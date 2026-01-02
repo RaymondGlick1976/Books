@@ -953,33 +953,17 @@
       if (!btn) return;
       
       const itemId = btn.dataset.itemId;
-      console.log('Toggle button clicked for item:', itemId);
       
       // Find the item in lineItems
       const item = lineItems.find(i => i.id === itemId);
-      if (!item) {
-        console.error('Item not found:', itemId);
-        return;
-      }
+      if (!item) return;
       
       // Toggle selection
-      const wasSelected = item.is_selected === true;
-      const nowSelected = !wasSelected;
+      const nowSelected = !(item.is_selected === true);
       item.is_selected = nowSelected;
       
-      console.log('Toggled:', wasSelected, '->', nowSelected);
-      
-      // Update button
-      btn.textContent = nowSelected ? 'Remove' : 'Add';
-      btn.className = `btn btn-sm ${nowSelected ? 'btn-danger' : 'btn-primary'}`;
-      
-      // Update row styling
-      const row = document.querySelector(`.line-item[data-id="${itemId}"]`);
-      if (row) {
-        row.classList.toggle('selected', nowSelected);
-      }
-      
-      // Update totals
+      // Re-render line items and update totals
+      renderLineItems();
       updateTotals();
       
       // Save to server
@@ -988,12 +972,12 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: accessToken, item_id: itemId, is_selected: nowSelected })
-        }).catch(err => console.error('Save error:', err));
+        }).catch(() => {});
       } else {
         apiCall('portal-quote-selection', {
           method: 'POST',
           body: JSON.stringify({ quote_id: quote.id, item_id: itemId, selected: nowSelected })
-        }).catch(err => console.error('Save error:', err));
+        }).catch(() => {});
       }
     });
     
