@@ -673,7 +673,9 @@
             disabled: !isSelectable
           });
           btn.addEventListener('click', () => {
-            const newSelected = !isSelected;
+            // Read current state from item object, not captured variable
+            const currentlySelected = item.is_selected === true;
+            const newSelected = !currentlySelected;
             toggleOption(item.id, newSelected);
             // Update button
             btn.textContent = newSelected ? 'Remove' : 'Add';
