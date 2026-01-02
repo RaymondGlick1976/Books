@@ -658,10 +658,11 @@
         const isOptional = item.is_optional === true;
         const isSelected = item.is_selected === true;
         const isSelectable = isOptional && ['sent', 'viewed'].includes(quote.status);
+        const itemId = item.id; // Capture ID for closure
         
         const itemEl = createElement('div', {
           className: `line-item ${isOptional ? 'optional' : ''} ${isSelected ? 'selected' : ''}`,
-          dataset: { id: item.id }
+          dataset: { id: itemId }
         });
         
         // Action button cell (for optional items)
@@ -673,13 +674,42 @@
             disabled: !isSelectable
           });
           btn.addEventListener('click', () => {
-            // Read current state from item object, not captured variable
-            const currentlySelected = item.is_selected === true;
+            // Always look up current state from the main lineItems array
+            const currentItem = lineItems.find(i => i.id === itemId);
+            if (!currentItem) return;
+            
+            const currentlySelected = currentItem.is_selected === true;
             const newSelected = !currentlySelected;
-            toggleOption(item.id, newSelected);
-            // Update button
+            
+            // Update the item state
+            currentItem.is_selected = newSelected;
+            
+            // Update button appearance
             btn.textContent = newSelected ? 'Remove' : 'Add';
             btn.className = `btn btn-sm ${newSelected ? 'btn-danger' : 'btn-primary'}`;
+            
+            // Update row appearance
+            const itemEl = $(`.line-item[data-id="${itemId}"]`);
+            if (itemEl) {
+              itemEl.classList.toggle('selected', newSelected);
+            }
+            
+            // Recalculate totals
+            updateTotals();
+            
+            // Save to server
+            if (isPublicAccess) {
+              fetch('/.netlify/functions/public-quote-selection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: accessToken, item_id: itemId, is_selected: newSelected })
+              }).catch(() => {});
+            } else {
+              apiCall('portal-quote-selection', {
+                method: 'POST',
+                body: JSON.stringify({ quote_id: quote.id, item_id: itemId, selected: newSelected })
+              }).catch(() => {});
+            }
           });
           actionCell.appendChild(btn);
         }
