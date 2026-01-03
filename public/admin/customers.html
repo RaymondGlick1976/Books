@@ -167,8 +167,8 @@
                   <th>Email</th>
                   <th>Phone</th>
                   <th>Location</th>
+                  <th>Lead Source</th>
                   <th>Quotes</th>
-                  <th>Balance</th>
                   <th></th>
                 </tr>
               </thead>
@@ -189,6 +189,22 @@
   <script src="/js/utils.js"></script>
   <script>
     let customers = [];
+    let leadSources = [];
+    
+    async function loadLeadSources() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data } = await supabase
+          .from('lead_sources')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order');
+        leadSources = data || [];
+      } catch (err) {
+        console.error('Failed to load lead sources:', err);
+        leadSources = [];
+      }
+    }
     
     async function loadCustomers() {
       try {
@@ -223,7 +239,6 @@
       
       data.forEach(customer => {
         const quoteCount = customer.quotes?.[0]?.count || 0;
-        const balance = customer.invoices?.reduce((sum, inv) => sum + parseFloat(inv.amount_due || 0), 0) || 0;
         
         const row = createElement('tr');
         row.innerHTML = `
@@ -231,8 +246,8 @@
           <td><a href="mailto:${customer.email}">${customer.email}</a></td>
           <td>${formatPhone(customer.phone) || '—'}</td>
           <td>${customer.city ? `${customer.city}, ${customer.state}` : '—'}</td>
+          <td>${customer.lead_source ? `<span class="badge badge-info">${customer.lead_source}</span>` : '—'}</td>
           <td>${quoteCount}</td>
-          <td>${balance > 0 ? `<span class="text-danger">${formatCurrency(balance)}</span>` : '—'}</td>
           <td class="table-actions">
             <button class="btn btn-ghost btn-sm" onclick="editCustomer('${customer.id}')">Edit</button>
             <a href="/admin/quote-builder.html?customer=${customer.id}" class="btn btn-ghost btn-sm">New Quote</a>
@@ -266,6 +281,10 @@
     function showCustomerModal(customer = null) {
       const isEdit = !!customer;
       
+      const leadSourceOptions = leadSources.map(ls => 
+        `<option value="${ls.name}" ${customer?.lead_source === ls.name ? 'selected' : ''}>${ls.name}</option>`
+      ).join('');
+      
       const content = createElement('form', { id: 'customer-form' });
       content.innerHTML = `
         <div class="grid grid-cols-2 gap-lg">
@@ -278,9 +297,22 @@
             <input type="email" name="email" class="form-input" value="${customer?.email || ''}" required>
           </div>
         </div>
+        <div class="grid grid-cols-2 gap-lg">
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="tel" name="phone" class="form-input" value="${customer?.phone || ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lead Source</label>
+            <select name="lead_source" class="form-select">
+              <option value="">-- Select --</option>
+              ${leadSourceOptions}
+            </select>
+          </div>
+        </div>
         <div class="form-group">
-          <label class="form-label">Phone</label>
-          <input type="tel" name="phone" class="form-input" value="${customer?.phone || ''}">
+          <label class="form-label">Company</label>
+          <input type="text" name="company" class="form-input" value="${customer?.company || ''}">
         </div>
         <div class="form-group">
           <label class="form-label">Address</label>
@@ -370,10 +402,12 @@
           name: formData.get('name'),
           email: formData.get('email').toLowerCase(),
           phone: formData.get('phone') || null,
+          company: formData.get('company') || null,
           address: formData.get('address') || null,
           city: formData.get('city') || null,
           state: formData.get('state') || null,
           zip: formData.get('zip') || null,
+          lead_source: formData.get('lead_source') || null,
           notes: formData.get('notes') || null
         };
         
@@ -414,15 +448,21 @@
     let csvData = [];
     let csvHeaders = [];
     let columnMapping = {};
+    let leadSources = [];
     
     const targetFields = [
-      { key: 'name', label: 'Name', required: true },
+      { key: 'first_name', label: 'First Name', required: false },
+      { key: 'last_name', label: 'Last Name', required: false },
+      { key: 'name', label: 'Full Name', required: false },
       { key: 'email', label: 'Email', required: true },
       { key: 'phone', label: 'Phone', required: false },
+      { key: 'company', label: 'Company', required: false },
       { key: 'address', label: 'Address', required: false },
+      { key: 'address2', label: 'Address 2', required: false },
       { key: 'city', label: 'City', required: false },
       { key: 'state', label: 'State', required: false },
       { key: 'zip', label: 'ZIP', required: false },
+      { key: 'lead_source', label: 'Lead Source', required: false },
       { key: 'notes', label: 'Notes', required: false }
     ];
     
@@ -574,13 +614,18 @@
       columnMapping = {};
       
       const mappings = {
+        'first_name': ['first name', 'firstname', 'first', 'fname'],
+        'last_name': ['last name', 'lastname', 'last', 'lname', 'surname'],
         'name': ['name', 'full name', 'fullname', 'customer name', 'customer', 'client'],
         'email': ['email', 'e-mail', 'email address', 'mail'],
         'phone': ['phone', 'telephone', 'tel', 'mobile', 'cell', 'phone number'],
+        'company': ['company', 'company name', 'business', 'organization'],
         'address': ['address', 'street', 'street address', 'address1', 'address 1'],
+        'address2': ['address2', 'address 2', 'apt', 'suite', 'unit'],
         'city': ['city', 'town'],
         'state': ['state', 'province', 'region', 'st'],
         'zip': ['zip', 'zipcode', 'zip code', 'postal', 'postal code', 'postcode'],
+        'lead_source': ['lead source', 'leadsource', 'source', 'how heard', 'referral source'],
         'notes': ['notes', 'note', 'comments', 'comment', 'description']
       };
       
@@ -677,10 +722,17 @@
     async function importCustomers() {
       // Validate required mappings
       const hasName = Object.values(columnMapping).includes('name');
+      const hasFirstName = Object.values(columnMapping).includes('first_name');
+      const hasLastName = Object.values(columnMapping).includes('last_name');
       const hasEmail = Object.values(columnMapping).includes('email');
       
-      if (!hasName || !hasEmail) {
-        showToast('Please map both Name and Email columns', 'error');
+      if (!hasEmail) {
+        showToast('Please map the Email column', 'error');
+        return;
+      }
+      
+      if (!hasName && !hasFirstName && !hasLastName) {
+        showToast('Please map Name or First Name/Last Name columns', 'error');
         return;
       }
       
@@ -690,6 +742,8 @@
         // Transform data
         const customersToImport = csvData.map(row => {
           const customer = {};
+          
+          // Get values from mapping
           Object.entries(columnMapping).forEach(([source, target]) => {
             let value = row[source]?.trim() || null;
             if (target === 'email' && value) {
@@ -697,6 +751,22 @@
             }
             customer[target] = value;
           });
+          
+          // Combine first_name + last_name into name if no full name
+          if (!customer.name && (customer.first_name || customer.last_name)) {
+            customer.name = [customer.first_name, customer.last_name].filter(Boolean).join(' ');
+          }
+          
+          // Combine address + address2
+          if (customer.address2 && customer.address) {
+            customer.address = customer.address + ', ' + customer.address2;
+          }
+          
+          // Clean up temporary fields
+          delete customer.first_name;
+          delete customer.last_name;
+          delete customer.address2;
+          
           return customer;
         }).filter(c => c.name && c.email);
         
@@ -715,7 +785,7 @@
           
           const { data, error } = await supabase
             .from('customers')
-            .upsert(batch, { onConflict: 'email', ignoreDuplicates: true })
+            .upsert(batch, { onConflict: 'email', ignoreDuplicates: false })
             .select();
           
           if (error) {
@@ -723,11 +793,10 @@
             skipped += batch.length;
           } else {
             imported += data?.length || 0;
-            skipped += batch.length - (data?.length || 0);
           }
         }
         
-        showToast(`Imported ${imported} customers${skipped > 0 ? `, ${skipped} skipped (duplicates)` : ''}`, 'success');
+        showToast(`Imported ${imported} customers${skipped > 0 ? `, ${skipped} failed` : ''}`, 'success');
         loadCustomers();
         
       } catch (err) {
@@ -737,7 +806,11 @@
     }
     
     // Initialize
-    loadCustomers();
+    async function init() {
+      await loadLeadSources();
+      await loadCustomers();
+    }
+    init();
   </script>
 </body>
 </html>

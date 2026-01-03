@@ -207,6 +207,27 @@
           </div>
         </div>
         
+        <!-- Lead Sources -->
+        <div class="card mb-xl">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 class="card-title">Lead Sources</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addLeadSource()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Source
+            </button>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              Manage the list of lead sources for tracking where customers come from.
+            </p>
+            <div id="lead-sources-list">
+              <div class="loading-spinner"></div>
+            </div>
+          </div>
+        </div>
+        
         <!-- Notification Settings -->
         <div class="card mb-xl">
           <div class="card-header">
@@ -688,8 +709,129 @@ If you have any questions about your project, please don't hesitate to reach out
       await saveSetting('notifications', value);
     });
     
+    // Lead Sources Management
+    let leadSources = [];
+    
+    async function loadLeadSources() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase
+          .from('lead_sources')
+          .select('*')
+          .order('sort_order');
+        
+        if (error) throw error;
+        leadSources = data || [];
+        renderLeadSources();
+      } catch (err) {
+        console.error('Failed to load lead sources:', err);
+        $('#lead-sources-list').innerHTML = '<p class="text-muted">Failed to load lead sources</p>';
+      }
+    }
+    
+    function renderLeadSources() {
+      const container = $('#lead-sources-list');
+      
+      if (leadSources.length === 0) {
+        container.innerHTML = '<p class="text-muted">No lead sources defined. Click "Add Source" to create one.</p>';
+        return;
+      }
+      
+      container.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+          ${leadSources.map(ls => `
+            <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+              <span style="flex: 1; font-weight: 500;">${ls.name}</span>
+              <label style="display: flex; align-items: center; gap: var(--space-xs); font-size: 0.75rem; color: var(--color-text-muted);">
+                <input type="checkbox" ${ls.is_active ? 'checked' : ''} onchange="toggleLeadSource('${ls.id}', this.checked)">
+                Active
+              </label>
+              <button class="btn btn-ghost btn-sm" onclick="editLeadSource('${ls.id}')">Edit</button>
+              <button class="btn btn-ghost btn-sm text-danger" onclick="deleteLeadSource('${ls.id}')">×</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
+    window.addLeadSource = async () => {
+      const name = prompt('Enter lead source name:');
+      if (!name?.trim()) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const maxOrder = Math.max(...leadSources.map(ls => ls.sort_order || 0), 0);
+        
+        const { error } = await supabase
+          .from('lead_sources')
+          .insert({ name: name.trim(), sort_order: maxOrder + 1 });
+        
+        if (error) throw error;
+        showToast('Lead source added', 'success');
+        loadLeadSources();
+      } catch (err) {
+        showToast('Failed to add: ' + err.message, 'error');
+      }
+    };
+    
+    window.editLeadSource = async (id) => {
+      const ls = leadSources.find(l => l.id === id);
+      if (!ls) return;
+      
+      const newName = prompt('Edit lead source name:', ls.name);
+      if (!newName?.trim() || newName === ls.name) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase
+          .from('lead_sources')
+          .update({ name: newName.trim() })
+          .eq('id', id);
+        
+        if (error) throw error;
+        showToast('Lead source updated', 'success');
+        loadLeadSources();
+      } catch (err) {
+        showToast('Failed to update: ' + err.message, 'error');
+      }
+    };
+    
+    window.toggleLeadSource = async (id, isActive) => {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase
+          .from('lead_sources')
+          .update({ is_active: isActive })
+          .eq('id', id);
+        
+        if (error) throw error;
+      } catch (err) {
+        showToast('Failed to update: ' + err.message, 'error');
+        loadLeadSources(); // Revert UI
+      }
+    };
+    
+    window.deleteLeadSource = async (id) => {
+      if (!confirm('Delete this lead source?')) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase
+          .from('lead_sources')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        showToast('Lead source deleted', 'success');
+        loadLeadSources();
+      } catch (err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+      }
+    };
+    
     // Initialize
     loadSettings();
+    loadLeadSources();
   </script>
 </body>
 </html>
