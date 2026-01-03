@@ -380,14 +380,16 @@
       
       // Render line items (non-optional only, or selected options)
       const acceptedItems = lineItems.filter(item => !item.is_optional || item.is_selected);
-      const declinedItems = lineItems.filter(item => item.is_optional && !item.is_selected);
       
       renderLineItems(acceptedItems, '#line-items-body', '#line-items-footer');
       
-      // Render declined options
-      if (declinedItems.length > 0) {
-        $('#declined-section').style.display = 'block';
-        renderDeclinedItems(declinedItems);
+      // Render declined options (only after quote is accepted)
+      if (['accepted', 'converted'].includes(quote.status)) {
+        const declinedItems = lineItems.filter(item => item.is_optional && !item.is_selected);
+        if (declinedItems.length > 0) {
+          $('#declined-section').style.display = 'block';
+          renderDeclinedItems(declinedItems);
+        }
       }
       
       // Render change orders

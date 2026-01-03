@@ -778,6 +778,12 @@
     }
     
     function renderDeclinedOptions() {
+      // Only show declined options after quote has been accepted
+      if (!['accepted', 'converted'].includes(quote.status)) {
+        $('#declined-options-section').style.display = 'none';
+        return;
+      }
+      
       const declinedItems = lineItems.filter(item => item.is_optional && !item.is_selected);
       
       if (declinedItems.length === 0) {
