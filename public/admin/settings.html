@@ -201,41 +201,161 @@
           </div>
         </div>
         
-        <!-- Notification Preferences -->
+        <!-- Notification Settings -->
         <div class="card mb-xl">
           <div class="card-header">
-            <h3 class="card-title">Notifications</h3>
+            <h3 class="card-title">Notification Settings</h3>
           </div>
           <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              Choose which notifications you'd like to receive via email.
+            </p>
             <form id="notification-form">
-              <div class="form-group">
-                <label class="form-check">
-                  <input type="checkbox" name="notify_quote_viewed" id="notify-quote-viewed" class="form-check-input" checked>
-                  <span class="form-check-label">Email me when a customer views a quote</span>
-                </label>
+              <div class="notification-grid">
+                <div class="notification-row">
+                  <span class="notification-label">New Appointment</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="notify_new_appointment" id="notify-new-appointment" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                
+                <div class="notification-row">
+                  <span class="notification-label">Quote Accepted</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="notify_quote_accepted" id="notify-quote-accepted" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                
+                <div class="notification-row">
+                  <span class="notification-label">Quote Declined</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="notify_quote_declined" id="notify-quote-declined" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                
+                <div class="notification-row">
+                  <span class="notification-label">Quote Viewed</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="notify_quote_viewed" id="notify-quote-viewed" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                
+                <div class="notification-row">
+                  <span class="notification-label">Invoice Viewed</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="notify_invoice_viewed" id="notify-invoice-viewed" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                
+                <div class="notification-row">
+                  <span class="notification-label">Payment Received</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="notify_payment_received" id="notify-payment-received" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                
+                <div class="notification-row">
+                  <span class="notification-label">Customer Photo Upload</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="notify_customer_upload" id="notify-customer-upload" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                
+                <div class="notification-row">
+                  <span class="notification-label">Job Stage Changed</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="notify_job_stage_changed" id="notify-job-stage-changed">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-check">
-                  <input type="checkbox" name="notify_quote_accepted" id="notify-quote-accepted" class="form-check-input" checked>
-                  <span class="form-check-label">Email me when a quote is accepted</span>
-                </label>
+              
+              <div style="margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--color-border);">
+                <button type="submit" class="btn btn-primary">Save Notification Settings</button>
               </div>
-              <div class="form-group">
-                <label class="form-check">
-                  <input type="checkbox" name="notify_payment_received" id="notify-payment-received" class="form-check-input" checked>
-                  <span class="form-check-label">Email me when a payment is received</span>
-                </label>
-              </div>
-              <div class="form-group">
-                <label class="form-check">
-                  <input type="checkbox" name="notify_customer_upload" id="notify-customer-upload" class="form-check-input" checked>
-                  <span class="form-check-label">Email me when a customer uploads photos</span>
-                </label>
-              </div>
-              <button type="submit" class="btn btn-primary">Save Notifications</button>
             </form>
           </div>
         </div>
+        
+        <style>
+          .notification-grid {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            max-width: 400px;
+          }
+          
+          .notification-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-sm) 0;
+          }
+          
+          .notification-label {
+            font-size: 0.9375rem;
+            color: var(--color-text);
+          }
+          
+          /* Toggle Switch */
+          .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+            flex-shrink: 0;
+          }
+          
+          .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+          }
+          
+          .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #e2e8f0;
+            transition: 0.3s;
+            border-radius: 26px;
+          }
+          
+          .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+          }
+          
+          .toggle-switch input:checked + .toggle-slider {
+            background-color: var(--color-primary);
+          }
+          
+          .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+          }
+          
+          .toggle-switch input:focus + .toggle-slider {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+          }
+        </style>
         
         <!-- Terms and Conditions -->
         <div class="card mb-xl">
@@ -436,10 +556,14 @@ If you have any questions about your project, please don't hesitate to reach out
         
         if (settings.notifications) {
           const notifs = settings.notifications;
-          $('#notify-quote-viewed').checked = notifs.quote_viewed !== false;
+          $('#notify-new-appointment').checked = notifs.new_appointment !== false;
           $('#notify-quote-accepted').checked = notifs.quote_accepted !== false;
+          $('#notify-quote-declined').checked = notifs.quote_declined !== false;
+          $('#notify-quote-viewed').checked = notifs.quote_viewed !== false;
+          $('#notify-invoice-viewed').checked = notifs.invoice_viewed !== false;
           $('#notify-payment-received').checked = notifs.payment_received !== false;
           $('#notify-customer-upload').checked = notifs.customer_upload !== false;
+          $('#notify-job-stage-changed').checked = notifs.job_stage_changed === true;
         }
         
         if (settings.email_templates) {
@@ -546,10 +670,14 @@ If you have any questions about your project, please don't hesitate to reach out
     $('#notification-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const value = {
-        quote_viewed: $('#notify-quote-viewed').checked,
+        new_appointment: $('#notify-new-appointment').checked,
         quote_accepted: $('#notify-quote-accepted').checked,
+        quote_declined: $('#notify-quote-declined').checked,
+        quote_viewed: $('#notify-quote-viewed').checked,
+        invoice_viewed: $('#notify-invoice-viewed').checked,
         payment_received: $('#notify-payment-received').checked,
-        customer_upload: $('#notify-customer-upload').checked
+        customer_upload: $('#notify-customer-upload').checked,
+        job_stage_changed: $('#notify-job-stage-changed').checked
       };
       await saveSetting('notifications', value);
     });
