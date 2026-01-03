@@ -228,6 +228,27 @@
           </div>
         </div>
         
+        <!-- Appointment Types -->
+        <div class="card mb-xl">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 class="card-title">Appointment Types</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addAppointmentType()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Type
+            </button>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              Customize appointment types shown in the "New Appointment" dropdown on the Deals Pipeline.
+            </p>
+            <div id="appointment-types-list">
+              <div class="loading-spinner"></div>
+            </div>
+          </div>
+        </div>
+        
         <!-- Notification Settings -->
         <div class="card mb-xl">
           <div class="card-header">
@@ -829,9 +850,168 @@ If you have any questions about your project, please don't hesitate to reach out
       }
     };
     
+    // ==========================================
+    // APPOINTMENT TYPES MANAGEMENT
+    // ==========================================
+    let appointmentTypes = [];
+    const defaultIcons = ['📅', '📏', '🏠', '👁️', '✅', '🔍', '💰', '🚚', '📞', '🔨', '⭐', '📋'];
+    const defaultColors = ['#6366f1', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#f97316', '#ec4899', '#64748b'];
+    
+    async function loadAppointmentTypes() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase
+          .from('appointment_types')
+          .select('*')
+          .order('sort_order');
+        
+        if (error) throw error;
+        appointmentTypes = data || [];
+        renderAppointmentTypes();
+      } catch (err) {
+        console.error('Failed to load appointment types:', err);
+        $('#appointment-types-list').innerHTML = '<p class="text-muted">Failed to load appointment types</p>';
+      }
+    }
+    
+    function renderAppointmentTypes() {
+      const container = $('#appointment-types-list');
+      
+      if (appointmentTypes.length === 0) {
+        container.innerHTML = '<p class="text-muted">No appointment types defined. Click "Add Type" to create one.</p>';
+        return;
+      }
+      
+      container.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+          ${appointmentTypes.map(at => `
+            <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+              <span style="font-size: 1.25rem;">${at.icon || '📅'}</span>
+              <span style="flex: 1; font-weight: 500;">${at.name}</span>
+              <span style="width: 20px; height: 20px; border-radius: 4px; background: ${at.color || '#6366f1'};"></span>
+              <label style="display: flex; align-items: center; gap: var(--space-xs); font-size: 0.75rem; color: var(--color-text-muted);">
+                <input type="checkbox" ${at.is_active ? 'checked' : ''} onchange="toggleAppointmentType('${at.id}', this.checked)">
+                Active
+              </label>
+              <button class="btn btn-ghost btn-sm" onclick="editAppointmentType('${at.id}')">Edit</button>
+              <button class="btn btn-ghost btn-sm text-danger" onclick="deleteAppointmentType('${at.id}')">×</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
+    window.addAppointmentType = () => showAppointmentTypeModal();
+    
+    window.editAppointmentType = (id) => {
+      const at = appointmentTypes.find(t => t.id === id);
+      if (at) showAppointmentTypeModal(at);
+    };
+    
+    function showAppointmentTypeModal(apptType = null) {
+      const isEdit = !!apptType;
+      
+      const content = createElement('div');
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Name *</label>
+          <input type="text" id="at-name" class="form-input" value="${apptType?.name || ''}" placeholder="e.g., Site Visit">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Icon</label>
+          <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-bottom: var(--space-sm);">
+            ${defaultIcons.map(icon => `
+              <button type="button" class="btn btn-ghost" style="font-size: 1.25rem; padding: 8px; ${apptType?.icon === icon ? 'outline: 2px solid var(--color-primary);' : ''}" 
+                onclick="$('#at-icon').value='${icon}'; this.parentElement.querySelectorAll('button').forEach(b => b.style.outline=''); this.style.outline='2px solid var(--color-primary)';">
+                ${icon}
+              </button>
+            `).join('')}
+          </div>
+          <input type="text" id="at-icon" class="form-input" value="${apptType?.icon || '📅'}" placeholder="Emoji icon" style="width: 80px;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-bottom: var(--space-sm);">
+            ${defaultColors.map(color => `
+              <button type="button" style="width: 32px; height: 32px; border-radius: 6px; background: ${color}; border: 2px solid ${apptType?.color === color ? 'var(--color-text)' : 'transparent'}; cursor: pointer;"
+                onclick="$('#at-color').value='${color}'; this.parentElement.querySelectorAll('button').forEach(b => b.style.borderColor='transparent'); this.style.borderColor='var(--color-text)';">
+              </button>
+            `).join('')}
+          </div>
+          <input type="color" id="at-color" value="${apptType?.color || '#6366f1'}" style="width: 60px; height: 38px;">
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'flex justify-end gap-md' });
+      const cancelBtn = createElement('button', { className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { className: 'btn btn-primary', textContent: isEdit ? 'Save Changes' : 'Add Type' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+      
+      const modal = createModal({
+        title: isEdit ? 'Edit Appointment Type' : 'Add Appointment Type',
+        content,
+        footer
+      });
+      
+      cancelBtn.onclick = () => closeModal(modal);
+      saveBtn.onclick = async () => {
+        const name = $('#at-name').value.trim();
+        const icon = $('#at-icon').value.trim() || '📅';
+        const color = $('#at-color').value;
+        
+        if (!name) {
+          showToast('Name is required', 'error');
+          return;
+        }
+        
+        try {
+          const supabase = await app.waitForSupabase();
+          
+          if (isEdit) {
+            await supabase.from('appointment_types').update({ name, icon, color }).eq('id', apptType.id);
+            showToast('Appointment type updated', 'success');
+          } else {
+            const maxOrder = Math.max(...appointmentTypes.map(t => t.sort_order || 0), 0);
+            await supabase.from('appointment_types').insert({ name, icon, color, sort_order: maxOrder + 1 });
+            showToast('Appointment type added', 'success');
+          }
+          
+          closeModal(modal);
+          loadAppointmentTypes();
+        } catch (err) {
+          showToast('Failed to save: ' + err.message, 'error');
+        }
+      };
+    }
+    
+    window.toggleAppointmentType = async (id, isActive) => {
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('appointment_types').update({ is_active: isActive }).eq('id', id);
+      } catch (err) {
+        showToast('Failed to update: ' + err.message, 'error');
+        loadAppointmentTypes();
+      }
+    };
+    
+    window.deleteAppointmentType = async (id) => {
+      if (!confirm('Delete this appointment type?')) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('appointment_types').delete().eq('id', id);
+        showToast('Appointment type deleted', 'success');
+        loadAppointmentTypes();
+      } catch (err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+      }
+    };
+    
     // Initialize
     loadSettings();
     loadLeadSources();
+    loadAppointmentTypes();
   </script>
 </body>
 </html>
