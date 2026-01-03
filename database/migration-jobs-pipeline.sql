@@ -185,8 +185,14 @@ ALTER TABLE job_stages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_photos ENABLE ROW LEVEL SECURITY;
 
--- Allow service role full access (handled by service key)
--- For anon/authenticated, add policies as needed
+-- Policies for job_stages (allow all operations for anon - admin app uses anon key)
+CREATE POLICY "Allow all access to job_stages" ON job_stages FOR ALL USING (true) WITH CHECK (true);
+
+-- Policies for jobs
+CREATE POLICY "Allow all access to jobs" ON jobs FOR ALL USING (true) WITH CHECK (true);
+
+-- Policies for job_photos
+CREATE POLICY "Allow all access to job_photos" ON job_photos FOR ALL USING (true) WITH CHECK (true);
 
 -- =============================================
 -- VIEWS FOR DASHBOARD
