@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quote Details | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css?v=35">
+  <style>
+    .quote-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-md); }
+    .quote-title { font-size: 1.5rem; font-weight: 600; }
+    .quote-meta { color: var(--color-text-muted); font-size: 0.875rem; margin-top: var(--space-xs); }
+    .quote-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+    
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .status-draft { background: #e5e7eb; color: #374151; }
+    .status-sent { background: #dbeafe; color: #1d4ed8; }
+    .status-viewed { background: #fef3c7; color: #d97706; }
+    .status-accepted { background: #d1fae5; color: #047857; }
+    .status-declined { background: #fee2e2; color: #dc2626; }
+    
+    .section-card { background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin-bottom: var(--space-lg); overflow: hidden; }
+    .section-header { padding: var(--space-md) var(--space-lg); background: var(--color-bg-soft); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
+    .section-title { font-weight: 600; font-size: 1rem; display: flex; align-items: center; gap: var(--space-sm); }
+    .section-body { padding: var(--space-lg); }
+    
+    .items-table { width: 100%; border-collapse: collapse; }
+    .items-table th { text-align: left; padding: var(--space-sm); font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; border-bottom: 1px solid var(--color-border); }
+    .items-table td { padding: var(--space-sm); border-bottom: 1px solid var(--color-border-light); vertical-align: top; }
+    .items-table tr:last-child td { border-bottom: none; }
+    .items-table .item-name { font-weight: 500; color: var(--color-primary); }
+    .items-table .item-name a { color: inherit; text-decoration: none; }
+    .items-table .text-right { text-align: right; }
+    
+    .total-row { background: var(--color-bg-soft); }
+    .total-row td { font-weight: 600; padding: var(--space-md) var(--space-sm); }
+    .grand-total { background: var(--color-primary); color: white; }
+    .grand-total td { padding: var(--space-md); }
+    
+    .declined-section { border-left: 4px solid #f59e0b; }
+    .declined-section .section-header { background: #fffbeb; }
+    
+    .change-order-section { border-left: 4px solid var(--color-primary); }
+    .change-order-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; margin-left: var(--space-sm); }
+    .change-order-badge.accepted { background: #d1fae5; color: #047857; }
+    .change-order-badge.sent { background: #dbeafe; color: #1d4ed8; }
+    .change-order-badge.draft { background: #e5e7eb; color: #374151; }
+    .change-order-badge.declined { background: #fee2e2; color: #dc2626; }
+    
+    .customer-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg); }
+    .info-label { font-size: 0.75rem; color: var(--color-text-muted); text-transform: uppercase; margin-bottom: 4px; }
+    .info-value { font-weight: 500; }
+    
+    .totals-section { max-width: 400px; margin-left: auto; }
+    .totals-row { display: flex; justify-content: space-between; padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-border-light); }
+    .totals-row:last-child { border-bottom: none; }
+    .totals-row.grand { background: var(--color-primary); color: white; padding: var(--space-md); margin: var(--space-md) calc(-1 * var(--space-lg)); margin-bottom: calc(-1 * var(--space-lg)); border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+    
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-lg); }
+    .tab { padding: var(--space-sm) var(--space-lg); cursor: pointer; border-bottom: 2px solid transparent; color: var(--color-text-muted); font-size: 0.875rem; margin-bottom: -1px; }
+    .tab:hover { color: var(--color-text); }
+    .tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+    
+    .dropdown { position: relative; }
+    .dropdown-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: white; border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 180px; z-index: 100; display: none; }
+    .dropdown.open .dropdown-menu { display: block; }
+    .dropdown-item { display: block; padding: var(--space-sm) var(--space-md); font-size: 0.875rem; color: var(--color-text); cursor: pointer; text-decoration: none; }
+    .dropdown-item:hover { background: var(--color-bg-soft); }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <img src="/images/logo.gif" alt="Homestead Cabinet Design" style="height: 40px; filter: brightness(0) invert(1);">
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Deals Pipeline</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+        </ul>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Lead Capture</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/booking-forms.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Booking Forms</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Catalog</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/catalog.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Items Catalog</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Settings</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/settings.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+    
+    <main class="app-main">
+      <header class="app-header">
+        <div class="quote-header">
+          <div>
+            <a href="/admin/quotes.html" class="text-muted text-sm">← Back to Quotes</a>
+            <h2 class="quote-title" id="quote-title">Loading...</h2>
+            <p class="quote-meta" id="quote-meta"></p>
+          </div>
+          <div class="quote-actions">
+            <a href="#" id="view-deal-btn" class="btn btn-secondary" style="display:none;">View Deal</a>
+            <a href="#" id="edit-quote-btn" class="btn btn-secondary">Edit Quote</a>
+            <a href="#" id="view-invoice-btn" class="btn btn-secondary" style="display:none;">View Invoice</a>
+            <div class="dropdown" id="change-order-dropdown">
+              <button class="btn btn-secondary" onclick="toggleDropdown('change-order-dropdown')">
+                New Change Order ▾
+              </button>
+              <div class="dropdown-menu">
+                <a href="#" class="dropdown-item" onclick="createChangeOrder()">Create Change Order</a>
+              </div>
+            </div>
+            <a href="#" id="customer-view-btn" class="btn btn-primary" target="_blank">👁️ Customer View</a>
+          </div>
+        </div>
+      </header>
+      
+      <div class="app-content">
+        <!-- Customer Info -->
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Customer Information</div>
+            <span class="status-badge" id="quote-status">Draft</span>
+          </div>
+          <div class="section-body">
+            <div class="customer-info" id="customer-info">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- Line Items -->
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Line Items</div>
+          </div>
+          <div class="section-body" style="padding: 0;">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Product / Service</th>
+                  <th class="text-right">Quantity</th>
+                  <th class="text-right">Price</th>
+                  <th class="text-right">Subtotal</th>
+                  <th class="text-right">Tax</th>
+                  <th class="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody id="line-items-body"></tbody>
+              <tfoot id="line-items-footer"></tfoot>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Declined Options -->
+        <div class="section-card declined-section" id="declined-section" style="display: none;">
+          <div class="section-header">
+            <div class="section-title">⚠️ Declined Options</div>
+          </div>
+          <div class="section-body" style="padding: 0;">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Product / Service</th>
+                  <th class="text-right">Quantity</th>
+                  <th class="text-right">Price</th>
+                  <th class="text-right">Subtotal</th>
+                  <th class="text-right">Tax</th>
+                  <th class="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody id="declined-items-body"></tbody>
+              <tfoot>
+                <tr class="total-row">
+                  <td colspan="3"><strong>Total</strong></td>
+                  <td class="text-right" id="declined-subtotal">$0.00</td>
+                  <td class="text-right" id="declined-tax">$0.00</td>
+                  <td class="text-right" id="declined-total">$0.00</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Change Orders -->
+        <div id="change-orders-container"></div>
+        
+        <!-- Grand Totals -->
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">Totals</div>
+          </div>
+          <div class="section-body">
+            <div class="totals-section">
+              <div class="totals-row">
+                <span>Subtotal</span>
+                <span id="grand-subtotal">$0.00</span>
+              </div>
+              <div class="totals-row">
+                <span>Tax</span>
+                <span id="grand-tax">$0.00</span>
+              </div>
+              <div class="totals-row grand">
+                <span><strong>Total</strong></span>
+                <span id="grand-total"><strong>$0.00</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tabs for Notes, etc -->
+        <div class="section-card">
+          <div class="tabs">
+            <div class="tab active" data-tab="notes">Notes</div>
+            <div class="tab" data-tab="attachments">Attachments</div>
+            <div class="tab" data-tab="activity">Activity Log</div>
+          </div>
+          <div class="section-body">
+            <div id="tab-notes" class="tab-content active">
+              <div id="quote-notes" class="text-muted">No notes</div>
+            </div>
+            <div id="tab-attachments" class="tab-content" style="display:none;">
+              <div id="quote-attachments" class="text-muted">No attachments</div>
+            </div>
+            <div id="tab-activity" class="tab-content" style="display:none;">
+              <div id="quote-activity" class="text-muted">No activity</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <!-- Change Order Modal -->
+  <div id="change-order-modal" class="modal-overlay">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">New Change Order</h3>
+        <button class="modal-close" onclick="closeChangeOrderModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="co-id">
+        <div class="form-group">
+          <label class="form-label">Title (optional)</label>
+          <input type="text" id="co-title" class="form-input" placeholder="e.g., Additional bathroom cabinets">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Line Items</label>
+          <div id="co-items-list"></div>
+          <button type="button" class="btn btn-secondary btn-sm mt-sm" onclick="addChangeOrderItem()">+ Add Item</button>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="co-notes" class="form-input" rows="3"></textarea>
+        </div>
+        
+        <div class="flex justify-between items-center mt-lg p-md" style="background: var(--color-bg-soft); border-radius: var(--radius-md);">
+          <span>Total:</span>
+          <span id="co-total" style="font-size: 1.25rem; font-weight: 600;">$0.00</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeChangeOrderModal()">Cancel</button>
+        <button class="btn btn-secondary" onclick="saveChangeOrder('draft')">Save as Draft</button>
+        <button class="btn btn-primary" onclick="saveChangeOrder('sent')">Send to Customer</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script>
+    let quote = null;
+    let customer = null;
+    let lineItems = [];
+    let changeOrders = [];
+    let coItems = [];
+    const TAX_RATE = 0.0625;
+    
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const quoteId = params.get('id');
+      
+      if (!quoteId) {
+        window.location.href = '/admin/quotes.html';
+        return;
+      }
+      
+      await loadQuote(quoteId);
+      setupTabs();
+      setupDropdowns();
+    }
+    
+    async function loadQuote(quoteId) {
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Load quote with customer
+        const { data: q, error } = await supabase
+          .from('quotes')
+          .select('*, customers(*)')
+          .eq('id', quoteId)
+          .single();
+        
+        if (error) throw error;
+        quote = q;
+        customer = q.customers;
+        
+        // Load line items
+        const { data: items } = await supabase
+          .from('quote_line_items')
+          .select('*')
+          .eq('quote_id', quoteId)
+          .order('sort_order');
+        lineItems = items || [];
+        
+        // Load change orders
+        const { data: cos } = await supabase
+          .from('change_orders')
+          .select('*, change_order_items(*)')
+          .eq('quote_id', quoteId)
+          .order('created_at');
+        changeOrders = cos || [];
+        
+        renderQuote();
+        
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to load quote', 'error');
+      }
+    }
+    
+    function renderQuote() {
+      // Header
+      document.title = `Quote #${quote.quote_number} | Admin`;
+      $('#quote-title').textContent = `Quote #${quote.quote_number} - ${quote.title}`;
+      $('#quote-meta').textContent = `Created ${formatDate(quote.created_at)}`;
+      
+      // Status badge
+      const statusEl = $('#quote-status');
+      statusEl.textContent = quote.status.charAt(0).toUpperCase() + quote.status.slice(1);
+      statusEl.className = `status-badge status-${quote.status}`;
+      
+      // Action buttons
+      $('#edit-quote-btn').href = `/admin/quote-builder.html?id=${quote.id}`;
+      $('#customer-view-btn').href = `/portal/quote.html?id=${quote.id}&token=${quote.access_token || ''}`;
+      
+      // Customer info
+      $('#customer-info').innerHTML = `
+        <div>
+          <div class="info-label">Customer</div>
+          <div class="info-value">${customer?.name || 'N/A'}</div>
+        </div>
+        <div>
+          <div class="info-label">Email</div>
+          <div class="info-value">${customer?.email || 'N/A'}</div>
+        </div>
+        <div>
+          <div class="info-label">Phone</div>
+          <div class="info-value">${customer?.phone || 'N/A'}</div>
+        </div>
+        <div>
+          <div class="info-label">Address</div>
+          <div class="info-value">${customer?.address || 'N/A'}</div>
+        </div>
+      `;
+      
+      // Render line items (non-optional only, or selected options)
+      const acceptedItems = lineItems.filter(item => !item.is_optional || item.is_selected);
+      const declinedItems = lineItems.filter(item => item.is_optional && !item.is_selected);
+      
+      renderLineItems(acceptedItems, '#line-items-body', '#line-items-footer');
+      
+      // Render declined options
+      if (declinedItems.length > 0) {
+        $('#declined-section').style.display = 'block';
+        renderDeclinedItems(declinedItems);
+      }
+      
+      // Render change orders
+      renderChangeOrders();
+      
+      // Calculate grand totals
+      calculateGrandTotals();
+      
+      // Notes
+      $('#quote-notes').innerHTML = quote.notes ? quote.notes.replace(/\n/g, '<br>') : '<span class="text-muted">No notes</span>';
+    }
+    
+    function renderLineItems(items, bodySelector, footerSelector) {
+      let subtotal = 0, tax = 0;
+      
+      $(bodySelector).innerHTML = items.map(item => {
+        const price = item.unit_price || 0;
+        const qty = item.quantity || 1;
+        const lineSubtotal = price * qty;
+        const lineTax = item.is_taxable ? lineSubtotal * TAX_RATE : 0;
+        const lineTotal = lineSubtotal + lineTax;
+        
+        subtotal += lineSubtotal;
+        tax += lineTax;
+        
+        return `
+          <tr>
+            <td>
+              <div class="item-name">${item.description}</div>
+              ${item.details ? `<div class="text-sm text-muted">${item.details}</div>` : ''}
+            </td>
+            <td class="text-right">${qty.toFixed(2)}</td>
+            <td class="text-right">${formatCurrency(price)} / Ea</td>
+            <td class="text-right">${formatCurrency(lineSubtotal)}</td>
+            <td class="text-right">${formatCurrency(lineTax)}</td>
+            <td class="text-right">${formatCurrency(lineTotal)}</td>
+          </tr>
+        `;
+      }).join('');
+      
+      $(footerSelector).innerHTML = `
+        <tr class="total-row">
+          <td colspan="3"><strong>Total</strong></td>
+          <td class="text-right"><strong>${formatCurrency(subtotal)}</strong></td>
+          <td class="text-right"><strong>${formatCurrency(tax)}</strong></td>
+          <td class="text-right" style="background: var(--color-primary); color: white;"><strong>${formatCurrency(subtotal + tax)}</strong></td>
+        </tr>
+      `;
+      
+      return { subtotal, tax, total: subtotal + tax };
+    }
+    
+    function renderDeclinedItems(items) {
+      let subtotal = 0, tax = 0;
+      
+      $('#declined-items-body').innerHTML = items.map(item => {
+        const price = item.unit_price || 0;
+        const qty = item.quantity || 1;
+        const lineSubtotal = price * qty;
+        const lineTax = item.is_taxable ? lineSubtotal * TAX_RATE : 0;
+        
+        subtotal += lineSubtotal;
+        tax += lineTax;
+        
+        return `
+          <tr style="color: var(--color-text-muted);">
+            <td>
+              <div class="item-name" style="color: #f59e0b;">${item.description}</div>
+              ${item.details ? `<div class="text-sm">${item.details}</div>` : ''}
+            </td>
+            <td class="text-right">${qty.toFixed(2)}</td>
+            <td class="text-right">${formatCurrency(price)} / Ea</td>
+            <td class="text-right">${formatCurrency(lineSubtotal)}</td>
+            <td class="text-right">${formatCurrency(lineTax)}</td>
+            <td class="text-right">${formatCurrency(lineSubtotal + lineTax)}</td>
+          </tr>
+        `;
+      }).join('');
+      
+      $('#declined-subtotal').textContent = formatCurrency(subtotal);
+      $('#declined-tax').textContent = formatCurrency(tax);
+      $('#declined-total').textContent = formatCurrency(subtotal + tax);
+    }
+    
+    function renderChangeOrders() {
+      const container = $('#change-orders-container');
+      
+      container.innerHTML = changeOrders.map(co => {
+        const items = co.change_order_items || [];
+        let subtotal = 0, tax = 0;
+        
+        const itemsHtml = items.map(item => {
+          const qty = item.quantity || 1;
+          const price = item.unit_price || 0;
+          const lineSubtotal = price * qty;
+          const lineTax = lineSubtotal * TAX_RATE;
+          
+          subtotal += lineSubtotal;
+          tax += lineTax;
+          
+          return `
+            <tr>
+              <td><div class="item-name" style="color: var(--color-primary);">${item.description}</div></td>
+              <td class="text-right">${qty.toFixed(2)}</td>
+              <td class="text-right">${formatCurrency(price)} / Ea</td>
+              <td class="text-right">${formatCurrency(lineSubtotal)}</td>
+              <td class="text-right">${formatCurrency(lineTax)}</td>
+              <td class="text-right">${formatCurrency(lineSubtotal + lineTax)}</td>
+            </tr>
+          `;
+        }).join('');
+        
+        const statusBadge = co.status === 'accepted' 
+          ? `<span class="change-order-badge accepted">Accepted – on ${formatDate(co.accepted_at)}</span>`
+          : co.status === 'declined'
+          ? `<span class="change-order-badge declined">Declined</span>`
+          : co.status === 'sent'
+          ? `<span class="change-order-badge sent">Sent – Awaiting Response</span>`
+          : `<span class="change-order-badge draft">Draft</span>`;
+        
+        return `
+          <div class="section-card change-order-section">
+            <div class="section-header">
+              <div class="section-title">
+                Change Order #${co.change_order_number}
+                ${statusBadge}
+              </div>
+              <div class="flex gap-sm">
+                ${co.status === 'draft' ? `<button class="btn btn-sm btn-secondary" onclick="editChangeOrder('${co.id}')">Edit</button>` : ''}
+                ${co.status === 'draft' ? `<button class="btn btn-sm btn-primary" onclick="sendChangeOrder('${co.id}')">Send</button>` : ''}
+              </div>
+            </div>
+            <div class="section-body" style="padding: 0;">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Product / Service</th>
+                    <th class="text-right">Quantity</th>
+                    <th class="text-right">Price</th>
+                    <th class="text-right">Subtotal</th>
+                    <th class="text-right">Tax</th>
+                    <th class="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>${itemsHtml}</tbody>
+                <tfoot>
+                  <tr class="total-row">
+                    <td colspan="3"><strong>Total</strong></td>
+                    <td class="text-right"><strong>${formatCurrency(subtotal)}</strong></td>
+                    <td class="text-right"><strong>${formatCurrency(tax)}</strong></td>
+                    <td class="text-right" style="background: var(--color-primary); color: white;"><strong>${formatCurrency(subtotal + tax)}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function calculateGrandTotals() {
+      // Line items (accepted only)
+      const acceptedItems = lineItems.filter(item => !item.is_optional || item.is_selected);
+      let subtotal = 0, tax = 0;
+      
+      acceptedItems.forEach(item => {
+        const qty = item.quantity || 1;
+        const price = item.unit_price || 0;
+        const lineSubtotal = price * qty;
+        subtotal += lineSubtotal;
+        if (item.is_taxable) tax += lineSubtotal * TAX_RATE;
+      });
+      
+      // Add accepted change orders
+      changeOrders.forEach(co => {
+        if (co.status === 'accepted') {
+          (co.change_order_items || []).forEach(item => {
+            const qty = item.quantity || 1;
+            const price = item.unit_price || 0;
+            const lineSubtotal = price * qty;
+            subtotal += lineSubtotal;
+            tax += lineSubtotal * TAX_RATE;
+          });
+        }
+      });
+      
+      $('#grand-subtotal').textContent = formatCurrency(subtotal);
+      $('#grand-tax').textContent = formatCurrency(tax);
+      $('#grand-total').innerHTML = `<strong>${formatCurrency(subtotal + tax)}</strong>`;
+    }
+    
+    // Change Order Functions
+    function createChangeOrder() {
+      coItems = [{ id: crypto.randomUUID(), description: '', quantity: 1, unit_price: 0 }];
+      $('#co-id').value = '';
+      $('#co-title').value = '';
+      $('#co-notes').value = '';
+      renderCoItems();
+      $('#change-order-modal').classList.add('active');
+      closeDropdowns();
+    }
+    
+    function editChangeOrder(id) {
+      const co = changeOrders.find(c => c.id === id);
+      if (!co) return;
+      
+      coItems = (co.change_order_items || []).map(item => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity || 1,
+        unit_price: item.unit_price || 0
+      }));
+      
+      if (coItems.length === 0) {
+        coItems = [{ id: crypto.randomUUID(), description: '', quantity: 1, unit_price: 0 }];
+      }
+      
+      $('#co-id').value = co.id;
+      $('#co-title').value = co.title || '';
+      $('#co-notes').value = co.notes || '';
+      renderCoItems();
+      $('#change-order-modal').classList.add('active');
+    }
+    
+    function closeChangeOrderModal() {
+      $('#change-order-modal').classList.remove('active');
+    }
+    
+    function addChangeOrderItem() {
+      coItems.push({ id: crypto.randomUUID(), description: '', quantity: 1, unit_price: 0 });
+      renderCoItems();
+    }
+    
+    function removeCoItem(id) {
+      coItems = coItems.filter(i => i.id !== id);
+      if (coItems.length === 0) addChangeOrderItem();
+      else renderCoItems();
+    }
+    
+    function renderCoItems() {
+      $('#co-items-list').innerHTML = coItems.map((item, i) => `
+        <div class="flex gap-sm mb-sm items-start">
+          <input type="text" class="form-input" style="flex: 2;" placeholder="Description" value="${item.description}" onchange="updateCoItem('${item.id}', 'description', this.value)">
+          <input type="number" class="form-input" style="width: 80px;" placeholder="Qty" value="${item.quantity}" step="0.01" onchange="updateCoItem('${item.id}', 'quantity', this.value)">
+          <input type="number" class="form-input" style="width: 120px;" placeholder="Price" value="${item.unit_price}" step="0.01" onchange="updateCoItem('${item.id}', 'unit_price', this.value)">
+          <button type="button" class="btn btn-sm" style="color: var(--color-danger);" onclick="removeCoItem('${item.id}')">×</button>
+        </div>
+      `).join('');
+      
+      updateCoTotal();
+    }
+    
+    function updateCoItem(id, field, value) {
+      const item = coItems.find(i => i.id === id);
+      if (item) {
+        item[field] = field === 'description' ? value : parseFloat(value) || 0;
+        updateCoTotal();
+      }
+    }
+    
+    function updateCoTotal() {
+      const total = coItems.reduce((sum, item) => sum + (item.quantity || 0) * (item.unit_price || 0), 0);
+      const tax = total * TAX_RATE;
+      $('#co-total').textContent = formatCurrency(total + tax);
+    }
+    
+    async function saveChangeOrder(status) {
+      const validItems = coItems.filter(i => i.description && i.unit_price > 0);
+      if (validItems.length === 0) {
+        showToast('Please add at least one item', 'error');
+        return;
+      }
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const coId = $('#co-id').value;
+        
+        const subtotal = validItems.reduce((sum, i) => sum + (i.quantity * i.unit_price), 0);
+        const tax = subtotal * TAX_RATE;
+        
+        const coData = {
+          quote_id: quote.id,
+          title: $('#co-title').value || null,
+          status,
+          subtotal,
+          tax,
+          total: subtotal + tax,
+          notes: $('#co-notes').value || null,
+          updated_at: new Date().toISOString()
+        };
+        
+        if (status === 'sent') {
+          coData.sent_at = new Date().toISOString();
+        }
+        
+        let savedCo;
+        if (coId) {
+          const { data } = await supabase.from('change_orders').update(coData).eq('id', coId).select().single();
+          savedCo = data;
+          await supabase.from('change_order_items').delete().eq('change_order_id', coId);
+        } else {
+          const { data: numData } = await supabase.rpc('generate_change_order_number');
+          coData.change_order_number = numData;
+          const { data } = await supabase.from('change_orders').insert([coData]).select().single();
+          savedCo = data;
+        }
+        
+        // Insert items
+        const itemsToInsert = validItems.map((item, index) => ({
+          change_order_id: savedCo.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total: item.quantity * item.unit_price,
+          sort_order: index
+        }));
+        await supabase.from('change_order_items').insert(itemsToInsert);
+        
+        closeChangeOrderModal();
+        await loadQuote(quote.id);
+        showToast(status === 'sent' ? 'Change order sent!' : 'Change order saved', 'success');
+        
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to save change order', 'error');
+      }
+    }
+    
+    async function sendChangeOrder(id) {
+      if (!confirm('Send this change order to the customer?')) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('change_orders').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', id);
+        await loadQuote(quote.id);
+        showToast('Change order sent!', 'success');
+      } catch (err) {
+        showToast('Failed to send', 'error');
+      }
+    }
+    
+    // Tabs
+    function setupTabs() {
+      $$('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          $$('.tab').forEach(t => t.classList.remove('active'));
+          $$('.tab-content').forEach(c => c.style.display = 'none');
+          tab.classList.add('active');
+          $(`#tab-${tab.dataset.tab}`).style.display = 'block';
+        });
+      });
+    }
+    
+    // Dropdowns
+    function setupDropdowns() {
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.dropdown')) closeDropdowns();
+      });
+    }
+    
+    function toggleDropdown(id) {
+      const dd = $('#' + id);
+      dd.classList.toggle('open');
+    }
+    
+    function closeDropdowns() {
+      $$('.dropdown.open').forEach(d => d.classList.remove('open'));
+    }
+    
+    init();
+  </script>
+</body>
+</html>

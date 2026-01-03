@@ -259,6 +259,98 @@
       margin-bottom: var(--space-xl);
     }
     
+    /* Change Order Styles */
+    .change-order-card {
+      background: var(--color-bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      margin-bottom: var(--space-xl);
+      overflow: hidden;
+      border-left: 4px solid var(--color-primary);
+    }
+    
+    .change-order-header {
+      background: var(--color-bg-alt);
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: 1px solid var(--color-border-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .change-order-title {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    
+    .change-order-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    
+    .change-order-badge.pending {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+    
+    .change-order-badge.accepted {
+      background: #d1fae5;
+      color: #047857;
+    }
+    
+    .change-order-badge.declined {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    
+    .change-order-body {
+      padding: var(--space-lg);
+    }
+    
+    .change-order-item {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+    
+    .change-order-item:last-child {
+      border-bottom: none;
+    }
+    
+    .change-order-total {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-md);
+      background: var(--color-primary);
+      color: white;
+      font-weight: 600;
+      margin-top: var(--space-md);
+      border-radius: var(--radius-md);
+    }
+    
+    .change-order-actions {
+      display: flex;
+      gap: var(--space-sm);
+      margin-top: var(--space-lg);
+      padding-top: var(--space-lg);
+      border-top: 1px solid var(--color-border-light);
+    }
+    
+    .declined-item {
+      opacity: 0.7;
+      color: var(--color-text-muted);
+    }
+    
+    .declined-item .line-item-content h4 {
+      color: #f59e0b;
+    }
+    
     .quote-actions {
       display: flex;
       gap: var(--space-md);
@@ -431,6 +523,26 @@
           </div>
         </div>
         
+        <!-- Declined Options Section -->
+        <div id="declined-options-section" class="quote-section" style="display: none; border-left: 4px solid #f59e0b;">
+          <div class="quote-section-header" style="background: #fffbeb;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Declined Options
+          </div>
+          <div class="quote-section-body" id="declined-options-container">
+            <!-- Declined options will be rendered here -->
+          </div>
+        </div>
+        
+        <!-- Change Orders Section -->
+        <div id="change-orders-section" style="display: none;">
+          <!-- Change orders will be rendered here -->
+        </div>
+        
         <!-- Totals Section -->
         <div class="totals-section" id="totals-section">
           <div class="totals-row">
@@ -518,6 +630,7 @@
     let quote = null;
     let lineItems = [];
     let attachments = [];
+    let changeOrders = [];
     let stripe = null;
     let accessToken = null;
     let isPublicAccess = false;
@@ -568,6 +681,7 @@
         quote = response.quote;
         lineItems = response.line_items;
         attachments = response.attachments;
+        changeOrders = response.change_orders || [];
         
         renderQuote();
         
@@ -650,11 +764,177 @@
         $('#notes-content').textContent = quote.notes;
       }
       
+      // Render declined options (optional items not selected)
+      renderDeclinedOptions();
+      
+      // Render change orders
+      renderChangeOrders();
+      
       // Load and display terms
       loadTerms();
       
       // Calculate totals
       updateTotals();
+    }
+    
+    function renderDeclinedOptions() {
+      const declinedItems = lineItems.filter(item => item.is_optional && !item.is_selected);
+      
+      if (declinedItems.length === 0) {
+        $('#declined-options-section').style.display = 'none';
+        return;
+      }
+      
+      $('#declined-options-section').style.display = 'block';
+      const container = $('#declined-options-container');
+      clearElement(container);
+      
+      declinedItems.forEach(item => {
+        const itemEl = createElement('div', { className: 'line-item declined-item' });
+        
+        // Empty action cell
+        itemEl.appendChild(createElement('div', { className: 'line-item-action' }));
+        
+        // Photo or placeholder
+        if (item.photo_url) {
+          itemEl.appendChild(createElement('img', { className: 'line-item-photo', src: item.photo_url, alt: item.description }));
+        } else {
+          itemEl.appendChild(createElement('div', { className: 'line-item-photo-placeholder', innerHTML: '📦' }));
+        }
+        
+        // Content
+        const contentDiv = createElement('div', { className: 'line-item-content' });
+        contentDiv.appendChild(createElement('h4', { textContent: item.description }));
+        if (item.details) contentDiv.appendChild(createElement('p', { textContent: item.details }));
+        itemEl.appendChild(contentDiv);
+        
+        // Price
+        const priceCell = createElement('div', { className: 'line-item-price' });
+        priceCell.appendChild(createElement('div', { className: 'line-item-price-value', textContent: formatCurrency(item.line_total || 0) }));
+        itemEl.appendChild(priceCell);
+        
+        container.appendChild(itemEl);
+      });
+    }
+    
+    function renderChangeOrders() {
+      if (changeOrders.length === 0) {
+        $('#change-orders-section').style.display = 'none';
+        return;
+      }
+      
+      $('#change-orders-section').style.display = 'block';
+      const container = $('#change-orders-section');
+      clearElement(container);
+      
+      changeOrders.forEach(co => {
+        const items = co.change_order_items || [];
+        const isPending = ['sent', 'viewed'].includes(co.status);
+        const isAccepted = co.status === 'accepted';
+        const isDeclined = co.status === 'declined';
+        
+        const card = createElement('div', { className: 'change-order-card' });
+        
+        // Header
+        const header = createElement('div', { className: 'change-order-header' });
+        const titleDiv = createElement('div', { className: 'change-order-title' });
+        titleDiv.innerHTML = `Change Order #${co.change_order_number}`;
+        
+        let badgeClass = 'pending';
+        let badgeText = 'Awaiting Response';
+        if (isAccepted) {
+          badgeClass = 'accepted';
+          badgeText = `Accepted – on ${formatDate(co.accepted_at)}`;
+        } else if (isDeclined) {
+          badgeClass = 'declined';
+          badgeText = 'Declined';
+        }
+        
+        header.appendChild(titleDiv);
+        header.appendChild(createElement('span', { className: `change-order-badge ${badgeClass}`, textContent: badgeText }));
+        card.appendChild(header);
+        
+        // Body with items
+        const body = createElement('div', { className: 'change-order-body' });
+        
+        let subtotal = 0;
+        items.forEach(item => {
+          const qty = item.quantity || 1;
+          const price = item.unit_price || 0;
+          const total = qty * price;
+          subtotal += total;
+          
+          const itemRow = createElement('div', { className: 'change-order-item' });
+          itemRow.innerHTML = `
+            <div>
+              <strong>${item.description}</strong>
+              <span style="color: var(--color-text-muted); margin-left: var(--space-sm);">${qty} × ${formatCurrency(price)}</span>
+            </div>
+            <div>${formatCurrency(total)}</div>
+          `;
+          body.appendChild(itemRow);
+        });
+        
+        // Total
+        const taxRate = parseFloat(quote.tax_rate || 0);
+        const tax = subtotal * taxRate;
+        const total = subtotal + tax;
+        
+        const totalDiv = createElement('div', { className: 'change-order-total' });
+        totalDiv.innerHTML = `<span>Total</span><span>${formatCurrency(total)}</span>`;
+        body.appendChild(totalDiv);
+        
+        // Actions for pending change orders
+        if (isPending) {
+          const actionsDiv = createElement('div', { className: 'change-order-actions' });
+          
+          const acceptBtn = createElement('button', { className: 'btn btn-primary', textContent: 'Accept Change Order' });
+          acceptBtn.onclick = () => respondToChangeOrder(co.id, 'accept');
+          
+          const declineBtn = createElement('button', { className: 'btn btn-secondary', textContent: 'Decline' });
+          declineBtn.onclick = () => respondToChangeOrder(co.id, 'decline');
+          
+          actionsDiv.appendChild(acceptBtn);
+          actionsDiv.appendChild(declineBtn);
+          body.appendChild(actionsDiv);
+        }
+        
+        card.appendChild(body);
+        container.appendChild(card);
+      });
+    }
+    
+    async function respondToChangeOrder(changeOrderId, action) {
+      if (action === 'decline' && !confirm('Are you sure you want to decline this change order?')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch('/.netlify/functions/change-order-response', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: accessToken, change_order_id: changeOrderId, action })
+        });
+        
+        if (!response.ok) throw new Error('Failed to process response');
+        
+        // Update local state
+        const co = changeOrders.find(c => c.id === changeOrderId);
+        if (co) {
+          co.status = action === 'accept' ? 'accepted' : 'declined';
+          if (action === 'accept') co.accepted_at = new Date().toISOString();
+        }
+        
+        // Re-render
+        renderChangeOrders();
+        updateTotals();
+        
+        showToast(action === 'accept' ? 'Change order accepted!' : 'Change order declined', 'success');
+        
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to process response', 'error');
+      }
     }
     
     async function loadTerms() {
@@ -831,6 +1111,25 @@
               taxableSubtotalHigh += total;
             }
           }
+        }
+      });
+      
+      // Add accepted change orders to totals
+      changeOrders.forEach(co => {
+        if (co.status === 'accepted') {
+          const items = co.change_order_items || [];
+          items.forEach(item => {
+            const qty = item.quantity || 1;
+            const price = item.unit_price || 0;
+            const total = qty * price;
+            subtotal += total;
+            subtotalLow += total;
+            subtotalHigh += total;
+            // Change order items are always taxable
+            taxableSubtotal += total;
+            taxableSubtotalLow += total;
+            taxableSubtotalHigh += total;
+          });
         }
       });
       

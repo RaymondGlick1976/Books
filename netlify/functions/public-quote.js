@@ -56,6 +56,13 @@ exports.handler = async (event) => {
       .eq('quote_id', quote.id)
       .order('display_order');
     
+    // Get change orders with their items
+    const { data: changeOrders } = await supabase
+      .from('change_orders')
+      .select('*, change_order_items(*)')
+      .eq('quote_id', quote.id)
+      .order('created_at');
+    
     // Update to viewed if sent
     if (quote.status === 'sent') {
       await supabase
@@ -77,6 +84,7 @@ exports.handler = async (event) => {
       quote,
       line_items: lineItems || [],
       attachments: attachments || [],
+      change_orders: changeOrders || [],
     });
     
   } catch (err) {

@@ -117,7 +117,7 @@
         
         const row = createElement('tr');
         row.innerHTML = `
-          <td><strong>${quote.quote_number}</strong></td>
+          <td><a href="/admin/quote-detail.html?id=${quote.id}" style="color: var(--color-primary); font-weight: 600;">${quote.quote_number}</a></td>
           <td>
             <div>${quote.customers?.name || '—'}</div>
             <div class="text-sm text-muted">${quote.customers?.email || ''}</div>
@@ -128,9 +128,9 @@
           <td>${formatDate(quote.created_at)}</td>
           <td>${quote.expires_at ? formatDate(quote.expires_at) : '—'}</td>
           <td class="table-actions">
+            <a href="/admin/quote-detail.html?id=${quote.id}" class="btn btn-ghost btn-sm">View</a>
             <a href="/admin/quote-builder.html?id=${quote.id}" class="btn btn-ghost btn-sm">Edit</a>
             <button class="btn btn-ghost btn-sm" onclick="duplicateQuote('${quote.id}')">Duplicate</button>
-            ${['sent', 'viewed'].includes(quote.status) ? `<button class="btn btn-ghost btn-sm" onclick="approveQuote('${quote.id}')">Approve</button>` : ''}
             ${quote.status === 'accepted' ? `<button class="btn btn-ghost btn-sm" onclick="createInvoice('${quote.id}')">→ Invoice</button>` : ''}
           </td>
         `;
@@ -233,6 +233,47 @@
           .select('*')
           .eq('quote_id', quoteId);
         
+        // Get accepted change orders with items
+        const { data: changeOrders } = await supabase
+          .from('change_orders')
+          .select('*, change_order_items(*)')
+          .eq('quote_id', quoteId)
+          .eq('status', 'accepted');
+        
+        // Calculate totals including change orders
+        let subtotal = 0;
+        let taxableSubtotal = 0;
+        const taxRate = quote.tax_rate || 0;
+        
+        // Selected line items
+        const selectedItems = (lineItems || []).filter(i => !i.is_optional || i.is_selected);
+        selectedItems.forEach(item => {
+          const lineTotal = (item.unit_price || item.price_range_low || 0) * item.quantity;
+          subtotal += lineTotal;
+          if (item.is_taxable) taxableSubtotal += lineTotal;
+        });
+        
+        // Change order items
+        const changeOrderItems = [];
+        (changeOrders || []).forEach(co => {
+          (co.change_order_items || []).forEach(item => {
+            const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
+            subtotal += lineTotal;
+            taxableSubtotal += lineTotal; // Change order items are taxable
+            changeOrderItems.push({
+              description: item.description,
+              details: `Change Order #${co.change_order_number}`,
+              quantity: item.quantity || 1,
+              unit_price: item.unit_price || 0,
+              line_total: lineTotal,
+              is_taxable: true
+            });
+          });
+        });
+        
+        const taxAmount = taxableSubtotal * taxRate;
+        const total = subtotal + taxAmount;
+        
         // Generate invoice number
         const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
         
@@ -245,11 +286,11 @@
             customer_id: quote.customer_id,
             title: quote.title,
             status: 'draft',
-            subtotal: quote.subtotal,
-            tax_rate: quote.tax_rate,
-            tax_amount: quote.tax_amount,
-            total: quote.total,
-            amount_due: quote.total,
+            subtotal: subtotal,
+            tax_rate: taxRate,
+            tax_amount: taxAmount,
+            total: total,
+            amount_due: total,
             due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
           })
           .select()
@@ -258,20 +299,38 @@
         if (error) throw error;
         
         // Copy line items to invoice
-        if (lineItems?.length) {
-          const selected = lineItems.filter(i => !i.is_optional || i.is_selected);
-          await supabase.from('invoice_line_items').insert(
-            selected.map((item, index) => ({
-              invoice_id: invoice.id,
-              description: item.description,
-              details: item.details,
-              quantity: item.quantity,
-              unit_price: item.unit_price || item.price_range_low,
-              line_total: (item.unit_price || item.price_range_low) * item.quantity,
-              is_taxable: item.is_taxable,
-              sort_order: index
-            }))
-          );
+        const allInvoiceItems = [];
+        
+        // Add selected quote line items
+        selectedItems.forEach((item, index) => {
+          allInvoiceItems.push({
+            invoice_id: invoice.id,
+            description: item.description,
+            details: item.details,
+            quantity: item.quantity,
+            unit_price: item.unit_price || item.price_range_low,
+            line_total: (item.unit_price || item.price_range_low) * item.quantity,
+            is_taxable: item.is_taxable,
+            sort_order: index
+          });
+        });
+        
+        // Add change order items
+        changeOrderItems.forEach((item, index) => {
+          allInvoiceItems.push({
+            invoice_id: invoice.id,
+            description: item.description,
+            details: item.details,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            line_total: item.line_total,
+            is_taxable: item.is_taxable,
+            sort_order: selectedItems.length + index
+          });
+        });
+        
+        if (allInvoiceItems.length > 0) {
+          await supabase.from('invoice_line_items').insert(allInvoiceItems);
         }
         
         // Update quote status
