@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jobs Pipeline | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css?v=30">
+  <style>
+    /* Pipeline specific styles */
+    .pipeline-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-lg);
+      flex-wrap: wrap;
+      gap: var(--space-md);
+    }
+    
+    .pipeline-header h2 {
+      margin: 0;
+    }
+    
+    .pipeline-actions {
+      display: flex;
+      gap: var(--space-sm);
+    }
+    
+    .pipeline-container {
+      display: flex;
+      gap: var(--space-md);
+      overflow-x: auto;
+      padding-bottom: var(--space-lg);
+      min-height: calc(100vh - 200px);
+    }
+    
+    .pipeline-column {
+      flex: 0 0 280px;
+      background: var(--color-bg-soft);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 200px);
+    }
+    
+    .column-header {
+      padding: var(--space-md);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      position: sticky;
+      top: 0;
+      background: var(--color-bg-soft);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+    
+    .stage-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    
+    .column-title {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--color-text);
+      flex: 1;
+    }
+    
+    .column-count {
+      background: var(--color-bg);
+      color: var(--color-text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    
+    .column-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-sm);
+    }
+    
+    .job-card {
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      margin-bottom: var(--space-sm);
+      cursor: grab;
+      transition: all 0.2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    .job-card:hover {
+      border-color: var(--color-primary);
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+    }
+    
+    .job-card.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+    
+    .job-card-title {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--color-text);
+      margin-bottom: 4px;
+    }
+    
+    .job-card-customer {
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-sm);
+    }
+    
+    .job-card-stats {
+      display: flex;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-sm);
+    }
+    
+    .job-card-stat {
+      font-size: 0.75rem;
+      color: var(--color-text-light);
+      background: var(--color-bg-soft);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    
+    .job-card-dates {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+    
+    .job-card-date {
+      margin-top: 2px;
+    }
+    
+    .job-card-value {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--color-primary);
+      margin-top: var(--space-sm);
+    }
+    
+    .empty-column {
+      text-align: center;
+      padding: var(--space-xl);
+      color: var(--color-text-muted);
+      font-size: 0.8125rem;
+    }
+    
+    .drop-zone {
+      min-height: 100px;
+      border: 2px dashed transparent;
+      border-radius: var(--radius-md);
+      transition: all 0.2s;
+    }
+    
+    .drop-zone.drag-over {
+      border-color: var(--color-primary);
+      background: rgba(99, 102, 241, 0.05);
+    }
+    
+    /* Job Modal */
+    .job-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+    
+    .job-detail-full {
+      grid-column: 1 / -1;
+    }
+    
+    .job-items-list {
+      background: var(--color-bg-soft);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+    }
+    
+    .job-item-row {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+    
+    .job-item-row:last-child {
+      border-bottom: none;
+    }
+    
+    .color-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: var(--space-xs) var(--space-sm);
+      margin: 2px;
+      font-size: 0.8125rem;
+    }
+    
+    /* Stage Settings */
+    .stage-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    
+    .stage-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      background: var(--color-bg-soft);
+      border-radius: var(--radius-md);
+    }
+    
+    .stage-item .stage-dot {
+      width: 16px;
+      height: 16px;
+    }
+    
+    .stage-item-label {
+      flex: 1;
+      font-weight: 500;
+    }
+    
+    .stage-item-actions {
+      display: flex;
+      gap: var(--space-xs);
+    }
+    
+    .view-toggle {
+      display: flex;
+      background: var(--color-bg-soft);
+      border-radius: var(--radius-md);
+      padding: 4px;
+    }
+    
+    .view-toggle button {
+      padding: var(--space-sm) var(--space-md);
+      border: none;
+      background: transparent;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+    }
+    
+    .view-toggle button.active {
+      background: white;
+      color: var(--color-primary);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <img src="/images/logo.gif" alt="Homestead Cabinet Design" style="height: 40px; filter: brightness(0) invert(1);">
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Jobs Pipeline</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+        </ul>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Catalog</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/catalog.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Items Catalog</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Settings</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/settings.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+    
+    <main class="app-main">
+      <header class="app-header">
+        <div class="pipeline-header">
+          <div>
+            <h2>Jobs Pipeline</h2>
+            <p class="text-muted" id="job-summary">Loading...</p>
+          </div>
+          <div class="pipeline-actions">
+            <div class="view-toggle">
+              <button class="active" data-view="pipeline">Pipeline</button>
+              <button data-view="calendar">Calendar</button>
+              <button data-view="list">List</button>
+            </div>
+            <button class="btn btn-secondary" onclick="openStageSettings()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+              Stages
+            </button>
+            <button class="btn btn-primary" onclick="openJobModal()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Job
+            </button>
+          </div>
+        </div>
+      </header>
+      
+      <div class="app-content">
+        <!-- Pipeline View -->
+        <div id="pipeline-view">
+          <div class="pipeline-container" id="pipeline-container">
+            <!-- Columns rendered by JS -->
+          </div>
+        </div>
+        
+        <!-- Calendar View (hidden by default) -->
+        <div id="calendar-view" style="display: none;">
+          <div class="card">
+            <div class="card-body text-center p-2xl">
+              <p class="text-muted">Calendar view coming soon!</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- List View (hidden by default) -->
+        <div id="list-view" style="display: none;">
+          <div class="card">
+            <div class="card-body">
+              <table class="data-table" id="jobs-table">
+                <thead>
+                  <tr>
+                    <th>Job</th>
+                    <th>Customer</th>
+                    <th>Stage</th>
+                    <th>Shop Date</th>
+                    <th>Install Date</th>
+                    <th>Value</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="jobs-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <!-- Job Modal -->
+  <div id="job-modal" class="modal-overlay">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="job-modal-title">New Job</h3>
+        <button class="modal-close" onclick="closeJobModal()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="job-form">
+          <input type="hidden" id="job-id">
+          
+          <div class="job-detail-grid">
+            <div class="form-group job-detail-full">
+              <label class="form-label">Job Name *</label>
+              <input type="text" id="job-name" class="form-input" required placeholder="e.g., Smith Kitchen Reface">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Customer *</label>
+              <select id="job-customer" class="form-input" required>
+                <option value="">Select customer...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Stage</label>
+              <select id="job-stage" class="form-input">
+                <!-- Populated by JS -->
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Shop Date</label>
+              <input type="date" id="job-shop-date" class="form-input">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Installation Date</label>
+              <input type="date" id="job-install-date" class="form-input">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Estimated Value</label>
+              <input type="number" id="job-value" class="form-input" step="0.01" placeholder="0.00">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Link to Quote</label>
+              <select id="job-quote" class="form-input">
+                <option value="">None</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Job Items Section -->
+          <div class="form-group mt-xl">
+            <div class="flex items-center justify-between mb-md">
+              <label class="form-label mb-0">Job Items</label>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addJobItem()">+ Add Item</button>
+            </div>
+            <div id="job-items-container" class="job-items-list">
+              <p class="text-muted text-sm" id="no-items-msg">No items added. Click "+ Add Item" to add doors, drawer fronts, etc.</p>
+            </div>
+          </div>
+          
+          <!-- Colors Section -->
+          <div class="form-group mt-lg">
+            <div class="flex items-center justify-between mb-md">
+              <label class="form-label mb-0">Colors / Finishes</label>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addColor()">+ Add Color</button>
+            </div>
+            <div id="colors-container">
+              <p class="text-muted text-sm" id="no-colors-msg">No colors added.</p>
+            </div>
+          </div>
+          
+          <div class="form-group mt-lg">
+            <label class="form-label">Refacing Materials</label>
+            <textarea id="job-materials" class="form-input" rows="2" placeholder="e.g., Maple veneer, White RTF..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea id="job-notes" class="form-input" rows="3"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeJobModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" id="delete-job-btn" style="display: none;" onclick="deleteJob()">Delete</button>
+        <button type="button" class="btn btn-primary" onclick="saveJob()">Save Job</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Stage Settings Modal -->
+  <div id="stage-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Pipeline Stages</h3>
+        <button class="modal-close" onclick="closeStageSettings()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-lg">Customize your pipeline stages. Drag to reorder.</p>
+        <div id="stage-list" class="stage-list"></div>
+        
+        <div class="mt-xl" id="add-stage-form" style="display: none;">
+          <h4 class="mb-md">Add New Stage</h4>
+          <div class="flex gap-sm">
+            <input type="text" id="new-stage-label" class="form-input" placeholder="Stage name">
+            <input type="color" id="new-stage-color" value="#6366f1" style="width: 50px; height: 38px;">
+            <button class="btn btn-primary" onclick="saveNewStage()">Add</button>
+            <button class="btn btn-secondary" onclick="cancelAddStage()">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="showAddStageForm()">+ Add Stage</button>
+        <button class="btn btn-primary" onclick="closeStageSettings()">Done</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script>
+    // Data
+    let jobs = [];
+    let stages = [];
+    let customers = [];
+    let quotes = [];
+    let draggedJob = null;
+    let jobItems = [];
+    let colors = [];
+    
+    // Initialize
+    async function init() {
+      await loadData();
+      renderPipeline();
+      setupViewToggle();
+    }
+    
+    async function loadData() {
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Load all data in parallel
+        const [stagesRes, jobsRes, customersRes, quotesRes] = await Promise.all([
+          supabase.from('job_stages').select('*').order('sort_order'),
+          supabase.from('jobs').select('*, customers(name, email, phone)').order('created_at', { ascending: false }),
+          supabase.from('customers').select('id, name, email').order('name'),
+          supabase.from('quotes').select('id, quote_number, title, customer_id, total').eq('status', 'sent').or('status.eq.viewed').order('created_at', { ascending: false })
+        ]);
+        
+        if (stagesRes.error) throw stagesRes.error;
+        if (jobsRes.error) throw jobsRes.error;
+        if (customersRes.error) throw customersRes.error;
+        
+        stages = stagesRes.data || [];
+        jobs = jobsRes.data || [];
+        customers = customersRes.data || [];
+        quotes = quotesRes.data || [];
+        
+        // Update summary
+        const totalJobs = jobs.length;
+        const totalValue = jobs.reduce((sum, j) => sum + (parseFloat(j.estimated_value) || 0), 0);
+        $('#job-summary').textContent = `${totalJobs} jobs • ${formatCurrency(totalValue)} total value`;
+        
+        // Populate dropdowns
+        populateDropdowns();
+        
+      } catch (err) {
+        console.error('Error loading data:', err);
+        showToast('Failed to load data', 'error');
+      }
+    }
+    
+    function populateDropdowns() {
+      // Customer dropdown
+      const customerSelect = $('#job-customer');
+      customerSelect.innerHTML = '<option value="">Select customer...</option>';
+      customers.forEach(c => {
+        customerSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      });
+      
+      // Stage dropdown
+      const stageSelect = $('#job-stage');
+      stageSelect.innerHTML = '';
+      stages.forEach(s => {
+        stageSelect.innerHTML += `<option value="${s.stage_id}">${s.label}</option>`;
+      });
+      
+      // Quote dropdown
+      const quoteSelect = $('#job-quote');
+      quoteSelect.innerHTML = '<option value="">None</option>';
+      quotes.forEach(q => {
+        quoteSelect.innerHTML += `<option value="${q.id}">${q.quote_number} - ${q.title}</option>`;
+      });
+    }
+    
+    function renderPipeline() {
+      const container = $('#pipeline-container');
+      container.innerHTML = '';
+      
+      stages.forEach(stage => {
+        const stageJobs = jobs.filter(j => j.stage === stage.stage_id);
+        
+        const column = createElement('div', {
+          className: 'pipeline-column',
+          dataset: { stage: stage.stage_id }
+        });
+        
+        // Header
+        column.innerHTML = `
+          <div class="column-header">
+            <span class="stage-dot" style="background-color: ${stage.color}"></span>
+            <span class="column-title">${stage.label}</span>
+            <span class="column-count">${stageJobs.length}</span>
+          </div>
+        `;
+        
+        // Content
+        const content = createElement('div', { className: 'column-content drop-zone' });
+        
+        if (stageJobs.length === 0) {
+          content.innerHTML = '<div class="empty-column">No jobs in this stage</div>';
+        } else {
+          stageJobs.forEach(job => {
+            const card = createJobCard(job);
+            content.appendChild(card);
+          });
+        }
+        
+        // Drag & drop events
+        content.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          content.classList.add('drag-over');
+        });
+        
+        content.addEventListener('dragleave', () => {
+          content.classList.remove('drag-over');
+        });
+        
+        content.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          content.classList.remove('drag-over');
+          if (draggedJob && draggedJob.stage !== stage.stage_id) {
+            await updateJobStage(draggedJob.id, stage.stage_id);
+          }
+        });
+        
+        column.appendChild(content);
+        container.appendChild(column);
+      });
+    }
+    
+    function createJobCard(job) {
+      const card = createElement('div', {
+        className: 'job-card',
+        draggable: true,
+        dataset: { id: job.id }
+      });
+      
+      const customer = job.customers;
+      const totalQty = (job.job_items || []).reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
+      
+      let html = `
+        <div class="job-card-title">${job.name || 'Untitled'}</div>
+        ${customer ? `<div class="job-card-customer">${customer.name}</div>` : ''}
+      `;
+      
+      if (totalQty > 0) {
+        html += `<div class="job-card-stats"><span class="job-card-stat">📦 ${totalQty} pcs</span></div>`;
+      }
+      
+      html += '<div class="job-card-dates">';
+      if (job.shop_date) {
+        html += `<div class="job-card-date">🔨 Shop: ${formatDate(job.shop_date)}</div>`;
+      }
+      if (job.installation_date) {
+        html += `<div class="job-card-date">🏠 Install: ${formatDate(job.installation_date)}</div>`;
+      }
+      html += '</div>';
+      
+      if (job.estimated_value) {
+        html += `<div class="job-card-value">${formatCurrency(job.estimated_value)}</div>`;
+      }
+      
+      card.innerHTML = html;
+      
+      // Drag events
+      card.addEventListener('dragstart', () => {
+        draggedJob = job;
+        card.classList.add('dragging');
+      });
+      
+      card.addEventListener('dragend', () => {
+        draggedJob = null;
+        card.classList.remove('dragging');
+      });
+      
+      // Click to edit
+      card.addEventListener('click', () => openJobModal(job));
+      
+      return card;
+    }
+    
+    async function updateJobStage(jobId, newStage) {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase
+          .from('jobs')
+          .update({ stage: newStage, updated_at: new Date().toISOString() })
+          .eq('id', jobId);
+        
+        if (error) throw error;
+        
+        // Update local data
+        const job = jobs.find(j => j.id === jobId);
+        if (job) job.stage = newStage;
+        
+        renderPipeline();
+        showToast('Job moved', 'success');
+        
+      } catch (err) {
+        console.error('Error updating job:', err);
+        showToast('Failed to move job', 'error');
+      }
+    }
+    
+    // Job Modal
+    function openJobModal(job = null) {
+      const modal = $('#job-modal');
+      const title = $('#job-modal-title');
+      const deleteBtn = $('#delete-job-btn');
+      
+      // Reset form
+      jobItems = [];
+      colors = [];
+      renderJobItems();
+      renderColors();
+      
+      if (job) {
+        title.textContent = 'Edit Job';
+        deleteBtn.style.display = 'block';
+        $('#job-id').value = job.id;
+        $('#job-name').value = job.name || '';
+        $('#job-customer').value = job.customer_id || '';
+        $('#job-stage').value = job.stage || stages[0]?.stage_id;
+        $('#job-shop-date').value = job.shop_date || '';
+        $('#job-install-date').value = job.installation_date || '';
+        $('#job-value').value = job.estimated_value || '';
+        $('#job-quote').value = job.quote_id || '';
+        $('#job-materials').value = job.refacing_materials || '';
+        $('#job-notes').value = job.notes || '';
+        
+        jobItems = job.job_items || [];
+        colors = job.colors || [];
+        renderJobItems();
+        renderColors();
+      } else {
+        title.textContent = 'New Job';
+        deleteBtn.style.display = 'none';
+        $('#job-form').reset();
+        $('#job-id').value = '';
+        $('#job-stage').value = stages[0]?.stage_id || 'quotes';
+      }
+      
+      modal.classList.add('active');
+    }
+    
+    function closeJobModal() {
+      $('#job-modal').classList.remove('active');
+    }
+    
+    async function saveJob() {
+      const id = $('#job-id').value;
+      const data = {
+        name: $('#job-name').value,
+        customer_id: $('#job-customer').value || null,
+        stage: $('#job-stage').value,
+        shop_date: $('#job-shop-date').value || null,
+        installation_date: $('#job-install-date').value || null,
+        estimated_value: parseFloat($('#job-value').value) || null,
+        quote_id: $('#job-quote').value || null,
+        refacing_materials: $('#job-materials').value,
+        notes: $('#job-notes').value,
+        job_items: jobItems,
+        colors: colors,
+        updated_at: new Date().toISOString()
+      };
+      
+      if (!data.name) {
+        showToast('Job name is required', 'error');
+        return;
+      }
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        if (id) {
+          const { error } = await supabase.from('jobs').update(data).eq('id', id);
+          if (error) throw error;
+        } else {
+          // Generate job number for new jobs
+          const { data: numData } = await supabase.rpc('generate_job_number');
+          data.job_number = numData;
+          
+          const { error } = await supabase.from('jobs').insert([data]);
+          if (error) throw error;
+        }
+        
+        closeJobModal();
+        await loadData();
+        renderPipeline();
+        showToast(id ? 'Job updated' : 'Job created', 'success');
+        
+      } catch (err) {
+        console.error('Error saving job:', err);
+        showToast('Failed to save job: ' + err.message, 'error');
+      }
+    }
+    
+    async function deleteJob() {
+      const id = $('#job-id').value;
+      if (!id || !confirm('Delete this job?')) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('jobs').delete().eq('id', id);
+        if (error) throw error;
+        
+        closeJobModal();
+        await loadData();
+        renderPipeline();
+        showToast('Job deleted', 'success');
+        
+      } catch (err) {
+        console.error('Error deleting job:', err);
+        showToast('Failed to delete job', 'error');
+      }
+    }
+    
+    // Job Items
+    function addJobItem() {
+      jobItems.push({ id: crypto.randomUUID(), name: '', quantity: '' });
+      renderJobItems();
+    }
+    
+    function removeJobItem(id) {
+      jobItems = jobItems.filter(item => item.id !== id);
+      renderJobItems();
+    }
+    
+    function renderJobItems() {
+      const container = $('#job-items-container');
+      const noMsg = $('#no-items-msg');
+      
+      if (jobItems.length === 0) {
+        noMsg.style.display = 'block';
+        container.querySelectorAll('.job-item-row').forEach(el => el.remove());
+        return;
+      }
+      
+      noMsg.style.display = 'none';
+      container.querySelectorAll('.job-item-row').forEach(el => el.remove());
+      
+      jobItems.forEach(item => {
+        const row = createElement('div', { className: 'job-item-row' });
+        row.innerHTML = `
+          <input type="text" class="form-input" style="flex: 2;" placeholder="Item name" value="${item.name}" onchange="updateJobItem('${item.id}', 'name', this.value)">
+          <input type="number" class="form-input" style="width: 80px;" placeholder="Qty" value="${item.quantity}" onchange="updateJobItem('${item.id}', 'quantity', this.value)">
+          <button type="button" class="btn btn-sm" style="color: var(--color-danger);" onclick="removeJobItem('${item.id}')">×</button>
+        `;
+        container.appendChild(row);
+      });
+    }
+    
+    function updateJobItem(id, field, value) {
+      const item = jobItems.find(i => i.id === id);
+      if (item) item[field] = value;
+    }
+    
+    // Colors
+    function addColor() {
+      colors.push({ id: crypto.randomUUID(), name: '', colorName: '', primer: '', topcoat: '', sheen: '' });
+      renderColors();
+    }
+    
+    function removeColor(id) {
+      colors = colors.filter(c => c.id !== id);
+      renderColors();
+    }
+    
+    function renderColors() {
+      const container = $('#colors-container');
+      const noMsg = $('#no-colors-msg');
+      
+      if (colors.length === 0) {
+        noMsg.style.display = 'block';
+        container.querySelectorAll('.color-card').forEach(el => el.remove());
+        return;
+      }
+      
+      noMsg.style.display = 'none';
+      container.querySelectorAll('.color-card').forEach(el => el.remove());
+      
+      colors.forEach((color, idx) => {
+        const card = createElement('div', { className: 'color-card card mb-sm' });
+        card.innerHTML = `
+          <div class="card-body">
+            <div class="flex items-center justify-between mb-sm">
+              <strong>Color ${idx + 1}</strong>
+              <button type="button" class="btn btn-sm" style="color: var(--color-danger);" onclick="removeColor('${color.id}')">×</button>
+            </div>
+            <div class="grid grid-cols-2 gap-sm">
+              <input type="text" class="form-input" placeholder="Location (e.g., Uppers)" value="${color.name || ''}" onchange="updateColor('${color.id}', 'name', this.value)">
+              <input type="text" class="form-input" placeholder="Color name" value="${color.colorName || ''}" onchange="updateColor('${color.id}', 'colorName', this.value)">
+              <input type="text" class="form-input" placeholder="Primer" value="${color.primer || ''}" onchange="updateColor('${color.id}', 'primer', this.value)">
+              <input type="text" class="form-input" placeholder="Topcoat" value="${color.topcoat || ''}" onchange="updateColor('${color.id}', 'topcoat', this.value)">
+              <input type="text" class="form-input" placeholder="Sheen" value="${color.sheen || ''}" onchange="updateColor('${color.id}', 'sheen', this.value)">
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+    
+    function updateColor(id, field, value) {
+      const color = colors.find(c => c.id === id);
+      if (color) color[field] = value;
+    }
+    
+    // Stage Settings
+    function openStageSettings() {
+      renderStageList();
+      $('#stage-modal').classList.add('active');
+    }
+    
+    function closeStageSettings() {
+      $('#stage-modal').classList.remove('active');
+      $('#add-stage-form').style.display = 'none';
+    }
+    
+    function renderStageList() {
+      const container = $('#stage-list');
+      container.innerHTML = '';
+      
+      stages.forEach((stage, idx) => {
+        const item = createElement('div', { className: 'stage-item' });
+        item.innerHTML = `
+          <span class="stage-dot" style="background-color: ${stage.color}"></span>
+          <span class="stage-item-label">${stage.label}</span>
+          <div class="stage-item-actions">
+            <button class="btn btn-sm" onclick="moveStage('${stage.id}', 'up')" ${idx === 0 ? 'disabled' : ''}>↑</button>
+            <button class="btn btn-sm" onclick="moveStage('${stage.id}', 'down')" ${idx === stages.length - 1 ? 'disabled' : ''}>↓</button>
+            <button class="btn btn-sm" style="color: var(--color-danger);" onclick="deleteStage('${stage.id}')">×</button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+    
+    function showAddStageForm() {
+      $('#add-stage-form').style.display = 'block';
+      $('#new-stage-label').value = '';
+      $('#new-stage-label').focus();
+    }
+    
+    function cancelAddStage() {
+      $('#add-stage-form').style.display = 'none';
+    }
+    
+    async function saveNewStage() {
+      const label = $('#new-stage-label').value.trim();
+      const color = $('#new-stage-color').value;
+      
+      if (!label) {
+        showToast('Stage name is required', 'error');
+        return;
+      }
+      
+      const stageId = label.toLowerCase().replace(/\s+/g, '-');
+      const maxOrder = Math.max(...stages.map(s => s.sort_order), -1);
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('job_stages').insert([{
+          stage_id: stageId,
+          label: label,
+          color: color,
+          sort_order: maxOrder + 1
+        }]);
+        
+        if (error) throw error;
+        
+        await loadData();
+        renderStageList();
+        renderPipeline();
+        cancelAddStage();
+        showToast('Stage added', 'success');
+        
+      } catch (err) {
+        console.error('Error adding stage:', err);
+        showToast('Failed to add stage', 'error');
+      }
+    }
+    
+    async function deleteStage(id) {
+      if (!confirm('Delete this stage? Jobs in this stage will need to be reassigned.')) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('job_stages').delete().eq('id', id);
+        if (error) throw error;
+        
+        await loadData();
+        renderStageList();
+        renderPipeline();
+        showToast('Stage deleted', 'success');
+        
+      } catch (err) {
+        console.error('Error deleting stage:', err);
+        showToast('Failed to delete stage', 'error');
+      }
+    }
+    
+    async function moveStage(id, direction) {
+      const idx = stages.findIndex(s => s.id === id);
+      if (idx === -1) return;
+      
+      const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= stages.length) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const stage1 = stages[idx];
+        const stage2 = stages[newIdx];
+        
+        await supabase.from('job_stages').update({ sort_order: stage2.sort_order }).eq('id', stage1.id);
+        await supabase.from('job_stages').update({ sort_order: stage1.sort_order }).eq('id', stage2.id);
+        
+        await loadData();
+        renderStageList();
+        renderPipeline();
+        
+      } catch (err) {
+        console.error('Error reordering stages:', err);
+      }
+    }
+    
+    // View Toggle
+    function setupViewToggle() {
+      $$('.view-toggle button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          $$('.view-toggle button').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          const view = btn.dataset.view;
+          $('#pipeline-view').style.display = view === 'pipeline' ? 'block' : 'none';
+          $('#calendar-view').style.display = view === 'calendar' ? 'block' : 'none';
+          $('#list-view').style.display = view === 'list' ? 'block' : 'none';
+          
+          if (view === 'list') renderListView();
+        });
+      });
+    }
+    
+    function renderListView() {
+      const tbody = $('#jobs-table-body');
+      tbody.innerHTML = '';
+      
+      jobs.forEach(job => {
+        const stage = stages.find(s => s.stage_id === job.stage);
+        const tr = createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <strong>${job.name}</strong>
+            ${job.job_number ? `<br><span class="text-muted text-sm">${job.job_number}</span>` : ''}
+          </td>
+          <td>${job.customers?.name || '—'}</td>
+          <td><span class="badge" style="background-color: ${stage?.color || '#666'}; color: white;">${stage?.label || job.stage}</span></td>
+          <td>${job.shop_date ? formatDate(job.shop_date) : '—'}</td>
+          <td>${job.installation_date ? formatDate(job.installation_date) : '—'}</td>
+          <td>${job.estimated_value ? formatCurrency(job.estimated_value) : '—'}</td>
+          <td><button class="btn btn-sm btn-secondary" onclick="openJobModal(jobs.find(j => j.id === '${job.id}'))">Edit</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    
+    // Initialize
+    init();
+  </script>
+</body>
+</html>

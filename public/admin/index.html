@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard | Homestead Cabinet Design</title>
-  <link rel="stylesheet" href="/css/styles.css?v=27">
+  <link rel="stylesheet" href="/css/styles.css?v=30">
 </head>
 <body>
   <div class="app-layout">
@@ -27,6 +27,20 @@
               Dashboard
             </a>
           </li>
+          <li class="sidebar-nav-item">
+            <a href="/admin/pipeline.html" class="sidebar-nav-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+              Jobs Pipeline
+            </a>
+          </li>
+
           <li class="sidebar-nav-item">
             <a href="/admin/customers.html" class="sidebar-nav-link">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -113,6 +127,10 @@
         <!-- Stats Grid -->
         <div class="grid grid-cols-4 gap-lg mb-xl">
           <div class="stat-card">
+            <div class="stat-card-label">Active Jobs</div>
+            <div class="stat-card-value" id="stat-active-jobs">-</div>
+          </div>
+          <div class="stat-card">
             <div class="stat-card-label">Pending Quotes</div>
             <div class="stat-card-value" id="stat-pending-quotes">-</div>
           </div>
@@ -124,9 +142,18 @@
             <div class="stat-card-label">Payments (30 days)</div>
             <div class="stat-card-value" id="stat-payments">-</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-card-label">Active Customers</div>
-            <div class="stat-card-value" id="stat-customers">-</div>
+        </div>
+        
+        <!-- Pipeline Overview -->
+        <div class="card mb-xl">
+          <div class="card-header flex items-center justify-between">
+            <h3 class="card-title">Jobs Pipeline</h3>
+            <a href="/admin/pipeline.html" class="btn btn-secondary btn-sm">View All</a>
+          </div>
+          <div class="card-body">
+            <div id="pipeline-summary" class="flex gap-md" style="overflow-x: auto;">
+              <div class="text-muted">Loading pipeline...</div>
+            </div>
           </div>
         </div>
         
@@ -214,6 +241,14 @@
     }
     
     async function loadStats(supabase) {
+      // Active jobs count (not completed or lost)
+      const { count: activeJobsCount } = await supabase
+        .from('jobs')
+        .select('*', { count: 'exact', head: true })
+        .not('stage', 'in', '("completed","job-lost")');
+      
+      $('#stat-active-jobs').textContent = activeJobsCount || 0;
+      
       // Pending quotes count
       const { count: pendingCount } = await supabase
         .from('quotes')
@@ -242,14 +277,47 @@
       const paymentTotal = payments?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
       $('#stat-payments').textContent = formatCurrency(paymentTotal);
       
-      // Active customers (with quotes in last 90 days)
-      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-      const { count: customerCount } = await supabase
-        .from('quotes')
-        .select('customer_id', { count: 'exact', head: true })
-        .gte('created_at', ninetyDaysAgo);
+      // Load pipeline summary
+      await loadPipelineSummary(supabase);
+    }
+    
+    async function loadPipelineSummary(supabase) {
+      const container = $('#pipeline-summary');
       
-      $('#stat-customers').textContent = customerCount || 0;
+      try {
+        // Get stages
+        const { data: stages } = await supabase
+          .from('job_stages')
+          .select('*')
+          .order('sort_order');
+        
+        // Get job counts per stage
+        const { data: jobs } = await supabase
+          .from('jobs')
+          .select('stage');
+        
+        if (!stages || stages.length === 0) {
+          container.innerHTML = '<div class="text-muted">No pipeline stages configured. <a href="/admin/pipeline.html">Set up your pipeline</a></div>';
+          return;
+        }
+        
+        const stageCounts = {};
+        (jobs || []).forEach(job => {
+          stageCounts[job.stage] = (stageCounts[job.stage] || 0) + 1;
+        });
+        
+        container.innerHTML = stages.map(stage => `
+          <div style="flex: 1; min-width: 100px; text-align: center; padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+            <div style="width: 12px; height: 12px; background: ${stage.color}; border-radius: 50%; margin: 0 auto var(--space-sm);"></div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text);">${stageCounts[stage.stage_id] || 0}</div>
+            <div style="font-size: 0.75rem; color: var(--color-text-muted);">${stage.label}</div>
+          </div>
+        `).join('');
+        
+      } catch (err) {
+        console.error('Error loading pipeline:', err);
+        container.innerHTML = '<div class="text-muted">Pipeline not yet configured. <a href="/admin/pipeline.html">Set it up</a></div>';
+      }
     }
     
     async function loadRecentActivity(supabase) {

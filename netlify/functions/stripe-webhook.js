@@ -229,17 +229,24 @@ async function sendPaymentConfirmation(supabase, customerId, amount, invoice) {
     to: customer.email,
     subject: 'Payment Confirmation - Homestead Cabinet Design',
     html: `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #1e3a5f; padding: 30px; text-align: center;">
-          <h1 style="color: #fff; margin: 0;">Payment Received</h1>
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #6366f1; padding: 30px; text-align: center;">
+          <h1 style="color: #fff; margin: 0; font-weight: 600;">Payment Received</h1>
+          <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0; font-size: 14px;">Thank you for your payment!</p>
         </div>
-        <div style="padding: 30px; background: #fff; border: 1px solid #e0dcd5;">
-          <p>Hi ${customer.name.split(' ')[0]},</p>
-          <p>Thank you for your payment of <strong>$${amount.toFixed(2)}</strong>.</p>
-          <p><strong>Invoice:</strong> ${invoice.invoice_number}<br>
-          <strong>Remaining Balance:</strong> $${parseFloat(invoice.amount_due).toFixed(2)}</p>
-          <p>You can view your invoice and payment history in your <a href="${process.env.SITE_URL}/portal/invoices.html">customer portal</a>.</p>
-          <p>Thank you for choosing Homestead Cabinet Design!</p>
+        <div style="padding: 30px; background: #f8fafc;">
+          <p style="color: #1e293b;">Hi ${customer.name.split(' ')[0]},</p>
+          <p style="color: #475569;">Thank you for your payment of <strong style="color: #6366f1;">$${amount.toFixed(2)}</strong>.</p>
+          <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <p style="margin: 5px 0; color: #475569;"><strong>Invoice:</strong> ${invoice.invoice_number}</p>
+            <p style="margin: 5px 0; color: #475569;"><strong>Remaining Balance:</strong> <span style="color: ${parseFloat(invoice.amount_due) > 0 ? '#ef4444' : '#10b981'}; font-weight: bold;">$${parseFloat(invoice.amount_due).toFixed(2)}</span></p>
+          </div>
+          <p style="color: #475569;">You can view your invoice and payment history in your <a href="${process.env.SITE_URL}/portal/invoices.html" style="color: #6366f1;">customer portal</a>.</p>
+          <p style="color: #475569;">Thank you for choosing Homestead Cabinet Design!</p>
+        </div>
+        <div style="padding: 20px; text-align: center; background: #1e293b; color: #94a3b8; font-size: 12px;">
+          <p style="margin: 0;">Homestead Cabinet Design</p>
+          <p style="margin: 5px 0;">Western MA & Northern CT</p>
         </div>
       </div>
     `,
