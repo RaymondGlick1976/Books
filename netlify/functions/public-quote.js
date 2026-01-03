@@ -63,6 +63,13 @@ exports.handler = async (event) => {
       .eq('quote_id', quote.id)
       .order('created_at');
     
+    // Get payments for this quote
+    const { data: payments } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('quote_id', quote.id)
+      .order('created_at', { ascending: false });
+    
     // Update to viewed if sent
     if (quote.status === 'sent') {
       await supabase
@@ -85,6 +92,7 @@ exports.handler = async (event) => {
       line_items: lineItems || [],
       attachments: attachments || [],
       change_orders: changeOrders || [],
+      payments: payments || [],
     });
     
   } catch (err) {

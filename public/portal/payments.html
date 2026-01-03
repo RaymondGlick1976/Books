@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment History | Customer Portal | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css?v=36">
+  <style>
+    .payments-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--space-xl);
+    }
+    
+    .payment-card {
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-md);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: box-shadow var(--transition-fast);
+    }
+    
+    .payment-card:hover {
+      box-shadow: var(--shadow-md);
+    }
+    
+    .payment-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .payment-quote {
+      font-weight: 600;
+      color: var(--color-text);
+    }
+    
+    .payment-quote a {
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+    
+    .payment-quote a:hover {
+      text-decoration: underline;
+    }
+    
+    .payment-date {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+    }
+    
+    .payment-method {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      background: var(--color-bg-soft);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      display: inline-block;
+      margin-top: 4px;
+    }
+    
+    .payment-amount {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--color-success);
+    }
+    
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-lg);
+      margin-bottom: var(--space-xl);
+    }
+    
+    .summary-card {
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      text-align: center;
+    }
+    
+    .summary-card-label {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-sm);
+    }
+    
+    .summary-card-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+    
+    .summary-card-value.success {
+      color: var(--color-success);
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: var(--space-3xl);
+      color: var(--color-text-muted);
+    }
+    
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: var(--space-md);
+    }
+  </style>
+</head>
+<body>
+  <header class="portal-header">
+    <a href="/portal/dashboard.html" class="portal-logo">
+      <img src="/images/logo.gif" alt="Homestead Cabinet Design" style="height: 36px; filter: brightness(0) invert(1);">
+    </a>
+    <nav class="portal-nav">
+      <a href="/portal/dashboard.html" class="portal-nav-link">Dashboard</a>
+      <a href="/portal/quotes.html" class="portal-nav-link">Quotes</a>
+      <a href="/portal/invoices.html" class="portal-nav-link">Invoices</a>
+      <a href="/portal/payments.html" class="portal-nav-link active">Payments</a>
+      <a href="/portal/files.html" class="portal-nav-link">Files</a>
+      <a href="/portal/uploads.html" class="portal-nav-link">Uploads</a>
+    </nav>
+  </header>
+  
+  <main class="portal-container">
+    <div class="payments-header">
+      <div>
+        <h1>Payment History</h1>
+        <p class="text-muted">View all payments you've made</p>
+      </div>
+    </div>
+    
+    <!-- Loading State -->
+    <div id="loading-state">
+      <div class="skeleton" style="height: 100px; margin-bottom: 16px;"></div>
+      <div class="skeleton" style="height: 100px; margin-bottom: 16px;"></div>
+      <div class="skeleton" style="height: 100px;"></div>
+    </div>
+    
+    <!-- Content -->
+    <div id="content" style="display: none;">
+      <!-- Summary Cards -->
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="summary-card-label">Total Paid</div>
+          <div class="summary-card-value success" id="total-paid">$0.00</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-label">Number of Payments</div>
+          <div class="summary-card-value" id="payment-count">0</div>
+        </div>
+      </div>
+      
+      <!-- Payments List -->
+      <div id="payments-list"></div>
+      
+      <!-- Empty State -->
+      <div id="empty-state" class="empty-state" style="display: none;">
+        <div class="empty-state-icon">💳</div>
+        <h3>No Payments Yet</h3>
+        <p>Your payment history will appear here once you make a payment.</p>
+        <a href="/portal/quotes.html" class="btn btn-primary mt-lg">View Quotes</a>
+      </div>
+    </div>
+  </main>
+  
+  <script src="/js/utils.js"></script>
+  <script src="/js/portal-auth.js"></script>
+  <script>
+    let payments = [];
+    let quotes = {};
+    
+    async function init() {
+      try {
+        // Load payments
+        const response = await apiCall('portal-payments');
+        payments = response.payments || [];
+        
+        // Load quotes to get titles
+        const quotesResponse = await apiCall('portal-quotes');
+        (quotesResponse.quotes || []).forEach(q => {
+          quotes[q.id] = q;
+        });
+        
+        render();
+        
+      } catch (err) {
+        console.error('Failed to load payments:', err);
+        showToast('Failed to load payment history', 'error');
+      }
+      
+      $('#loading-state').style.display = 'none';
+      $('#content').style.display = 'block';
+    }
+    
+    function render() {
+      if (payments.length === 0) {
+        $('#empty-state').style.display = 'block';
+        return;
+      }
+      
+      // Calculate totals
+      const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+      $('#total-paid').textContent = formatCurrency(totalPaid);
+      $('#payment-count').textContent = payments.length;
+      
+      // Render payments
+      const container = $('#payments-list');
+      container.innerHTML = payments.map(payment => {
+        // Check for quote or invoice relationship
+        let title = 'Payment';
+        let link = '#';
+        
+        if (payment.quotes) {
+          title = `Quote #${payment.quotes.quote_number} - ${payment.quotes.title}`;
+          link = `/portal/quote.html?id=${payment.quote_id}`;
+        } else if (payment.invoices) {
+          title = `Invoice #${payment.invoices.invoice_number} - ${payment.invoices.title}`;
+          link = `/portal/invoices.html`;
+        } else if (payment.quote_id) {
+          // Fallback - quote data might be in separate lookup
+          const quote = quotes[payment.quote_id];
+          if (quote) {
+            title = `Quote #${quote.quote_number} - ${quote.title}`;
+            link = `/portal/quote.html?id=${quote.id}`;
+          }
+        }
+        
+        return `
+          <div class="payment-card">
+            <div class="payment-info">
+              <div class="payment-quote">
+                <a href="${link}">${title}</a>
+              </div>
+              <div class="payment-date">${formatDate(payment.created_at)}</div>
+              <div class="payment-method">${payment.payment_method || 'Card'}</div>
+            </div>
+            <div class="payment-amount">${formatCurrency(payment.amount)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // Wait for auth then init
+    window.addEventListener('portal-ready', init);
+  </script>
+</body>
+</html>

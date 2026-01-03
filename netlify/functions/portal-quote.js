@@ -47,10 +47,26 @@ exports.handler = async (event) => {
       .eq('quote_id', quoteId)
       .order('display_order');
     
+    // Get change orders with their items
+    const { data: changeOrders } = await supabase
+      .from('change_orders')
+      .select('*, change_order_items(*)')
+      .eq('quote_id', quoteId)
+      .order('created_at');
+    
+    // Get payments for this quote
+    const { data: payments } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('quote_id', quoteId)
+      .order('created_at', { ascending: false });
+    
     return success({
       quote,
       line_items: lineItems || [],
       attachments: attachments || [],
+      change_orders: changeOrders || [],
+      payments: payments || [],
     });
     
   } catch (err) {

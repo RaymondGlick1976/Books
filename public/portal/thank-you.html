@@ -137,7 +137,7 @@
       
       <div class="thank-you-actions">
         <a href="/portal/dashboard.html" class="btn btn-primary btn-block">Go to Dashboard</a>
-        <a href="/" class="btn btn-secondary btn-block">Return to Home</a>
+        <a href="#" id="back-to-quote" class="btn btn-secondary btn-block" style="display:none;">View Quote</a>
       </div>
       
       <div style="margin-top: var(--space-2xl); color: var(--color-text-muted); font-size: 0.875rem;">
@@ -153,6 +153,8 @@
     const params = new URLSearchParams(window.location.search);
     const amount = params.get('amount');
     const reference = params.get('reference') || params.get('session_id');
+    const quoteId = params.get('quote_id');
+    const token = params.get('token');
     
     if (amount) {
       document.getElementById('amount-paid').textContent = new Intl.NumberFormat('en-US', {
@@ -172,6 +174,17 @@
       month: 'long',
       day: 'numeric'
     });
+    
+    // Show back to quote link if we have quote info
+    if (quoteId || token) {
+      const backLink = document.getElementById('back-to-quote');
+      backLink.style.display = 'block';
+      if (token) {
+        backLink.href = `/portal/quote.html?token=${token}`;
+      } else {
+        backLink.href = `/portal/quote.html?id=${quoteId}`;
+      }
+    }
   </script>
 </body>
 </html>

@@ -351,6 +351,85 @@
       color: #f59e0b;
     }
     
+    /* Payment History Styles */
+    .payment-history {
+      background: var(--color-bg-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      margin-bottom: var(--space-xl);
+      overflow: hidden;
+      border-left: 4px solid var(--color-success);
+    }
+    
+    .payment-history-header {
+      background: #d1fae5;
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: 1px solid var(--color-border-light);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      color: #047857;
+    }
+    
+    .payment-history-body {
+      padding: var(--space-lg);
+    }
+    
+    .payment-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-md);
+      background: var(--color-bg-soft);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-sm);
+    }
+    
+    .payment-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .payment-item-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .payment-item-date {
+      font-weight: 500;
+    }
+    
+    .payment-item-method {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+    
+    .payment-item-amount {
+      font-weight: 600;
+      color: var(--color-success);
+      font-size: 1.125rem;
+    }
+    
+    .payment-summary {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-md);
+      background: #d1fae5;
+      border-radius: var(--radius-md);
+      margin-top: var(--space-md);
+    }
+    
+    .payment-summary-label {
+      font-weight: 500;
+      color: #047857;
+    }
+    
+    .payment-summary-value {
+      font-weight: 600;
+      color: #047857;
+    }
+    
     .quote-actions {
       display: flex;
       gap: var(--space-md);
@@ -448,6 +527,7 @@
       <a href="/portal/dashboard.html" class="portal-nav-link">Dashboard</a>
       <a href="/portal/quotes.html" class="portal-nav-link active">Quotes</a>
       <a href="/portal/invoices.html" class="portal-nav-link">Invoices</a>
+      <a href="/portal/payments.html" class="portal-nav-link">Payments</a>
       <a href="/portal/files.html" class="portal-nav-link">Files</a>
       <a href="/portal/uploads.html" class="portal-nav-link">Uploads</a>
     </nav>
@@ -543,6 +623,20 @@
           <!-- Change orders will be rendered here -->
         </div>
         
+        <!-- Payment History Section -->
+        <div id="payment-history-section" class="payment-history" style="display: none;">
+          <div class="payment-history-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+              <line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
+            Payment History
+          </div>
+          <div class="payment-history-body" id="payment-history-body">
+            <!-- Payments will be rendered here -->
+          </div>
+        </div>
+        
         <!-- Totals Section -->
         <div class="totals-section" id="totals-section">
           <div class="totals-row">
@@ -631,6 +725,7 @@
     let lineItems = [];
     let attachments = [];
     let changeOrders = [];
+    let payments = [];
     let stripe = null;
     let accessToken = null;
     let isPublicAccess = false;
@@ -682,6 +777,7 @@
         lineItems = response.line_items;
         attachments = response.attachments;
         changeOrders = response.change_orders || [];
+        payments = response.payments || [];
         
         renderQuote();
         
@@ -718,7 +814,13 @@
         statusBanner.innerHTML = '<div class="quote-expired">This quote has expired. Please contact us for a new quote.</div>';
         $('#accept-section').style.display = 'none';
       } else if (quote.status === 'accepted' || quote.status === 'converted') {
-        statusBanner.innerHTML = '<div class="quote-accepted">✓ Quote accepted on ' + formatDate(quote.accepted_at) + '</div>';
+        const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+        let statusHtml = `<div class="quote-accepted">✓ Quote accepted on ${formatDate(quote.accepted_at)}`;
+        if (totalPaid > 0) {
+          statusHtml += ` • Deposit paid: ${formatCurrency(totalPaid)}`;
+        }
+        statusHtml += '</div>';
+        statusBanner.innerHTML = statusHtml;
         $('#accept-section').style.display = 'none';
       } else if (quote.status === 'declined') {
         statusBanner.innerHTML = '<div class="quote-expired">This quote was declined.</div>';
@@ -769,6 +871,9 @@
       
       // Render change orders
       renderChangeOrders();
+      
+      // Render payment history
+      renderPayments();
       
       // Load and display terms
       loadTerms();
@@ -941,6 +1046,46 @@
         console.error(err);
         showToast('Failed to process response', 'error');
       }
+    }
+    
+    function renderPayments() {
+      if (payments.length === 0) {
+        $('#payment-history-section').style.display = 'none';
+        return;
+      }
+      
+      $('#payment-history-section').style.display = 'block';
+      const container = $('#payment-history-body');
+      clearElement(container);
+      
+      let totalPaid = 0;
+      
+      payments.forEach(payment => {
+        const amount = parseFloat(payment.amount || 0);
+        totalPaid += amount;
+        
+        const paymentEl = createElement('div', { className: 'payment-item' });
+        
+        const infoDiv = createElement('div', { className: 'payment-item-info' });
+        infoDiv.innerHTML = `
+          <div class="payment-item-date">${formatDate(payment.created_at)}</div>
+          <div class="payment-item-method">${payment.payment_method || 'Card'} ${payment.stripe_payment_id ? '• ' + payment.stripe_payment_id.substring(0, 12) + '...' : ''}</div>
+        `;
+        
+        const amountDiv = createElement('div', { className: 'payment-item-amount', textContent: formatCurrency(amount) });
+        
+        paymentEl.appendChild(infoDiv);
+        paymentEl.appendChild(amountDiv);
+        container.appendChild(paymentEl);
+      });
+      
+      // Add total summary
+      const summaryEl = createElement('div', { className: 'payment-summary' });
+      summaryEl.innerHTML = `
+        <span class="payment-summary-label">Total Paid</span>
+        <span class="payment-summary-value">${formatCurrency(totalPaid)}</span>
+      `;
+      container.appendChild(summaryEl);
     }
     
     async function loadTerms() {
