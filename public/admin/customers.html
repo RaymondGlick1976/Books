@@ -4,7 +4,94 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Customers | Admin | Homestead Cabinet Design</title>
-  <link rel="stylesheet" href="/css/styles.css?v=30">
+  <link rel="stylesheet" href="/css/styles.css?v=37">
+  <style>
+    .import-dropzone {
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-2xl);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      background: var(--color-bg-soft);
+    }
+    
+    .import-dropzone:hover, .import-dropzone.dragover {
+      border-color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
+    
+    .import-dropzone-icon {
+      font-size: 3rem;
+      margin-bottom: var(--space-md);
+    }
+    
+    .import-preview {
+      max-height: 300px;
+      overflow: auto;
+      margin-top: var(--space-lg);
+    }
+    
+    .import-preview table {
+      font-size: 0.75rem;
+    }
+    
+    .import-preview th {
+      position: sticky;
+      top: 0;
+      background: var(--color-bg-soft);
+    }
+    
+    .mapping-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+    
+    .mapping-row:last-child {
+      border-bottom: none;
+    }
+    
+    .mapping-source {
+      flex: 1;
+      font-weight: 500;
+      font-size: 0.875rem;
+    }
+    
+    .mapping-arrow {
+      color: var(--color-text-muted);
+    }
+    
+    .mapping-target {
+      flex: 1;
+    }
+    
+    .import-stats {
+      display: flex;
+      gap: var(--space-xl);
+      padding: var(--space-lg);
+      background: var(--color-bg-soft);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-lg);
+    }
+    
+    .import-stat {
+      text-align: center;
+    }
+    
+    .import-stat-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+    
+    .import-stat-label {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+  </style>
 </head>
 <body>
   <div class="app-layout">
@@ -44,12 +131,20 @@
     <main class="app-main">
       <header class="app-header">
         <h2>Customers</h2>
-        <button class="btn btn-primary" id="add-customer-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Add Customer
-        </button>
+        <div class="btn-group">
+          <button class="btn btn-secondary" id="import-csv-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Import CSV
+          </button>
+          <button class="btn btn-primary" id="add-customer-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Customer
+          </button>
+        </div>
       </header>
       
       <div class="app-content">
@@ -311,6 +406,335 @@
       const customer = customers.find(c => c.id === id);
       if (customer) showCustomerModal(customer);
     };
+    
+    // ==========================================
+    // CSV IMPORT FUNCTIONALITY
+    // ==========================================
+    
+    let csvData = [];
+    let csvHeaders = [];
+    let columnMapping = {};
+    
+    const targetFields = [
+      { key: 'name', label: 'Name', required: true },
+      { key: 'email', label: 'Email', required: true },
+      { key: 'phone', label: 'Phone', required: false },
+      { key: 'address', label: 'Address', required: false },
+      { key: 'city', label: 'City', required: false },
+      { key: 'state', label: 'State', required: false },
+      { key: 'zip', label: 'ZIP', required: false },
+      { key: 'notes', label: 'Notes', required: false }
+    ];
+    
+    $('#import-csv-btn').addEventListener('click', showImportModal);
+    
+    function showImportModal() {
+      csvData = [];
+      csvHeaders = [];
+      columnMapping = {};
+      
+      const content = createElement('div', { id: 'import-content' });
+      content.innerHTML = `
+        <div id="import-step-1">
+          <div class="import-dropzone" id="dropzone">
+            <div class="import-dropzone-icon">📄</div>
+            <p><strong>Drop your CSV file here</strong></p>
+            <p class="text-muted text-sm">or click to browse</p>
+            <input type="file" id="csv-file-input" accept=".csv,.txt" style="display: none;">
+          </div>
+          <p class="text-muted text-sm mt-md">Supported: CSV files from Excel, Google Sheets, etc.</p>
+        </div>
+        
+        <div id="import-step-2" style="display: none;">
+          <div class="import-stats">
+            <div class="import-stat">
+              <div class="import-stat-value" id="row-count">0</div>
+              <div class="import-stat-label">Rows Found</div>
+            </div>
+            <div class="import-stat">
+              <div class="import-stat-value" id="col-count">0</div>
+              <div class="import-stat-label">Columns</div>
+            </div>
+          </div>
+          
+          <h4>Map Columns</h4>
+          <p class="text-muted text-sm mb-md">Match your CSV columns to customer fields</p>
+          <div id="mapping-container"></div>
+          
+          <h4 class="mt-lg">Preview</h4>
+          <div class="import-preview" id="preview-container"></div>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'flex justify-end gap-md' });
+      footer.innerHTML = `
+        <button type="button" class="btn btn-secondary" id="import-cancel-btn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="import-btn" style="display: none;">Import Customers</button>
+      `;
+      
+      const modal = createModal({
+        title: 'Import Customers from CSV',
+        content,
+        footer,
+        size: 'xl'
+      });
+      
+      // Set up dropzone
+      const dropzone = $('#dropzone');
+      const fileInput = $('#csv-file-input');
+      
+      dropzone.addEventListener('click', () => fileInput.click());
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+      });
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) processCSVFile(file);
+      });
+      
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) processCSVFile(file);
+      });
+      
+      $('#import-cancel-btn').addEventListener('click', () => closeModal(modal));
+      $('#import-btn').addEventListener('click', () => {
+        importCustomers();
+        closeModal(modal);
+      });
+    }
+    
+    function processCSVFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        parseCSV(text);
+        showStep2();
+      };
+      reader.readAsText(file);
+    }
+    
+    function parseCSV(text) {
+      const lines = text.split(/\r?\n/).filter(line => line.trim());
+      if (lines.length === 0) return;
+      
+      // Parse header
+      csvHeaders = parseCSVLine(lines[0]);
+      
+      // Parse data rows
+      csvData = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        if (values.some(v => v.trim())) {
+          const row = {};
+          csvHeaders.forEach((header, idx) => {
+            row[header] = values[idx] || '';
+          });
+          csvData.push(row);
+        }
+      }
+      
+      // Auto-map columns
+      autoMapColumns();
+    }
+    
+    function parseCSVLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    }
+    
+    function autoMapColumns() {
+      columnMapping = {};
+      
+      const mappings = {
+        'name': ['name', 'full name', 'fullname', 'customer name', 'customer', 'client'],
+        'email': ['email', 'e-mail', 'email address', 'mail'],
+        'phone': ['phone', 'telephone', 'tel', 'mobile', 'cell', 'phone number'],
+        'address': ['address', 'street', 'street address', 'address1', 'address 1'],
+        'city': ['city', 'town'],
+        'state': ['state', 'province', 'region', 'st'],
+        'zip': ['zip', 'zipcode', 'zip code', 'postal', 'postal code', 'postcode'],
+        'notes': ['notes', 'note', 'comments', 'comment', 'description']
+      };
+      
+      csvHeaders.forEach(header => {
+        const headerLower = header.toLowerCase().trim();
+        for (const [field, aliases] of Object.entries(mappings)) {
+          if (aliases.includes(headerLower)) {
+            columnMapping[header] = field;
+            break;
+          }
+        }
+      });
+    }
+    
+    function showStep2() {
+      $('#import-step-1').style.display = 'none';
+      $('#import-step-2').style.display = 'block';
+      $('#import-btn').style.display = 'inline-flex';
+      
+      $('#row-count').textContent = csvData.length;
+      $('#col-count').textContent = csvHeaders.length;
+      
+      renderMapping();
+      renderPreview();
+    }
+    
+    function renderMapping() {
+      const container = $('#mapping-container');
+      container.innerHTML = csvHeaders.map(header => `
+        <div class="mapping-row">
+          <div class="mapping-source">${header}</div>
+          <div class="mapping-arrow">→</div>
+          <div class="mapping-target">
+            <select class="form-select form-select-sm" data-source="${header}" onchange="updateMapping(this)">
+              <option value="">-- Skip --</option>
+              ${targetFields.map(f => `
+                <option value="${f.key}" ${columnMapping[header] === f.key ? 'selected' : ''}>
+                  ${f.label}${f.required ? ' *' : ''}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    window.updateMapping = (select) => {
+      const source = select.dataset.source;
+      const target = select.value;
+      
+      // Remove any existing mapping to this target
+      Object.keys(columnMapping).forEach(key => {
+        if (columnMapping[key] === target && key !== source) {
+          delete columnMapping[key];
+        }
+      });
+      
+      if (target) {
+        columnMapping[source] = target;
+      } else {
+        delete columnMapping[source];
+      }
+      
+      renderMapping();
+      renderPreview();
+    };
+    
+    function renderPreview() {
+      const container = $('#preview-container');
+      const previewRows = csvData.slice(0, 5);
+      
+      container.innerHTML = `
+        <table class="table">
+          <thead>
+            <tr>
+              ${targetFields.filter(f => Object.values(columnMapping).includes(f.key)).map(f => `<th>${f.label}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${previewRows.map(row => `
+              <tr>
+                ${targetFields.filter(f => Object.values(columnMapping).includes(f.key)).map(f => {
+                  const sourceCol = Object.keys(columnMapping).find(k => columnMapping[k] === f.key);
+                  return `<td>${sourceCol ? row[sourceCol] || '' : ''}</td>`;
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ${csvData.length > 5 ? `<p class="text-muted text-sm mt-sm">Showing 5 of ${csvData.length} rows</p>` : ''}
+      `;
+    }
+    
+    async function importCustomers() {
+      // Validate required mappings
+      const hasName = Object.values(columnMapping).includes('name');
+      const hasEmail = Object.values(columnMapping).includes('email');
+      
+      if (!hasName || !hasEmail) {
+        showToast('Please map both Name and Email columns', 'error');
+        return;
+      }
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Transform data
+        const customersToImport = csvData.map(row => {
+          const customer = {};
+          Object.entries(columnMapping).forEach(([source, target]) => {
+            let value = row[source]?.trim() || null;
+            if (target === 'email' && value) {
+              value = value.toLowerCase();
+            }
+            customer[target] = value;
+          });
+          return customer;
+        }).filter(c => c.name && c.email);
+        
+        if (customersToImport.length === 0) {
+          showToast('No valid customers to import', 'error');
+          return;
+        }
+        
+        // Insert in batches of 100
+        const batchSize = 100;
+        let imported = 0;
+        let skipped = 0;
+        
+        for (let i = 0; i < customersToImport.length; i += batchSize) {
+          const batch = customersToImport.slice(i, i + batchSize);
+          
+          const { data, error } = await supabase
+            .from('customers')
+            .upsert(batch, { onConflict: 'email', ignoreDuplicates: true })
+            .select();
+          
+          if (error) {
+            console.error('Batch error:', error);
+            skipped += batch.length;
+          } else {
+            imported += data?.length || 0;
+            skipped += batch.length - (data?.length || 0);
+          }
+        }
+        
+        showToast(`Imported ${imported} customers${skipped > 0 ? `, ${skipped} skipped (duplicates)` : ''}`, 'success');
+        loadCustomers();
+        
+      } catch (err) {
+        console.error('Import error:', err);
+        showToast('Import failed: ' + err.message, 'error');
+      }
+    }
     
     // Initialize
     loadCustomers();
