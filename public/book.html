@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appointment Request | Homestead Cabinet Design</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; min-height: 100vh; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center; }
+    .logo { max-height: 50px; }
+    .container { max-width: 700px; margin: 0 auto; padding: 20px; }
+    .form-card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 40px; margin-top: -40px; position: relative; }
+    .form-header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+    .form-title { font-size: 1.75rem; font-weight: 600; margin-bottom: 8px; }
+    .form-desc { color: #666; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-label { display: block; font-size: 0.875rem; font-weight: 500; color: #333; margin-bottom: 6px; }
+    .form-label .required { color: #e53e3e; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; transition: border-color 0.2s; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--primary-color, #6366f1); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+    .form-textarea { min-height: 100px; resize: vertical; }
+    .form-help { font-size: 0.75rem; color: #e53e3e; margin-top: 4px; }
+    
+    .upload-zone { border: 2px dashed #ddd; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary-color, #6366f1); background: rgba(99, 102, 241, 0.05); }
+    .upload-zone-text { color: #999; margin-bottom: 10px; }
+    .upload-btn { background: var(--primary-color, #6366f1); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
+    .upload-btn:hover { opacity: 0.9; }
+    .upload-preview { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+    .upload-item { position: relative; width: 80px; height: 80px; border-radius: 6px; overflow: hidden; }
+    .upload-item img { width: 100%; height: 100%; object-fit: cover; }
+    .upload-item-remove { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; font-size: 12px; line-height: 1; }
+    
+    .consent-box { background: #f9fafb; border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+    .consent-title { font-weight: 600; font-size: 0.875rem; margin-bottom: 8px; }
+    .consent-text { font-size: 0.75rem; color: #666; line-height: 1.5; }
+    .consent-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; }
+    .consent-check input { margin-top: 3px; }
+    
+    .submit-btn { width: 100%; padding: 16px; font-size: 1rem; font-weight: 600; color: white; background: var(--primary-color, #6366f1); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .submit-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+    
+    .thank-you { text-align: center; padding: 60px 20px; }
+    .thank-you-icon { font-size: 4rem; margin-bottom: 20px; }
+    .thank-you-title { font-size: 2rem; font-weight: 600; margin-bottom: 10px; }
+    .thank-you-message { color: #666; font-size: 1.1rem; }
+    
+    .loading { display: none; text-align: center; padding: 40px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #eee; border-top-color: var(--primary-color, #6366f1); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .radio-group label, .checkbox-label { display: flex; align-items: center; gap: 8px; padding: 8px 0; cursor: pointer; }
+    
+    @media (max-width: 600px) {
+      .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
+      .form-card { padding: 24px; margin-top: -20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="/images/logo.gif" alt="Homestead Cabinet Design" class="logo" id="logo">
+  </div>
+  
+  <div class="container">
+    <div class="form-card">
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Loading form...</p>
+      </div>
+      
+      <div id="form-content" style="display:none;">
+        <div class="form-header">
+          <h1 class="form-title" id="form-title">Appointment Request</h1>
+          <p class="form-desc" id="form-desc">Choose a phone call or in-home appointment</p>
+        </div>
+        
+        <form id="booking-form">
+          <input type="hidden" id="form-id">
+          
+          <!-- Contact Info -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">First Name <span class="required">*</span></label>
+              <input type="text" class="form-input" id="first-name" required placeholder="First Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Last Name <span class="required">*</span></label>
+              <input type="text" class="form-input" id="last-name" required placeholder="Last Name">
+            </div>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Email Address <span class="required">*</span></label>
+              <input type="email" class="form-input" id="email" required placeholder="Your Email Address">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone Number <span class="required">*</span></label>
+              <input type="tel" class="form-input" id="phone" required placeholder="Your Phone">
+            </div>
+          </div>
+          
+          <!-- Address -->
+          <div id="address-section">
+            <div class="form-group">
+              <label class="form-label">Address <span class="required">*</span></label>
+              <input type="text" class="form-input" id="address" placeholder="Street 1">
+            </div>
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label class="form-label">City <span class="required">*</span></label>
+                <input type="text" class="form-input" id="city" placeholder="City">
+              </div>
+              <div class="form-group">
+                <label class="form-label">State/Province <span class="required">*</span></label>
+                <input type="text" class="form-input" id="state" placeholder="State">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Postal Code <span class="required">*</span></label>
+                <input type="text" class="form-input" id="zip" placeholder="Zip">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Service Details -->
+          <div class="form-group" id="service-section">
+            <label class="form-label">Service Details <span class="required">*</span></label>
+            <textarea class="form-textarea" id="service-details" placeholder="Enter as many details as you can..."></textarea>
+            <div class="form-help" id="service-help" style="display:none;">Please enter 10 more characters.</div>
+          </div>
+          
+          <!-- How Heard -->
+          <div class="form-group" id="how-heard-section">
+            <label class="form-label">How did you hear about us? <span class="required">*</span></label>
+            <select class="form-select" id="how-heard">
+              <option value="">Select...</option>
+            </select>
+          </div>
+          
+          <!-- Date/Time -->
+          <div class="form-grid" id="datetime-section" style="display:none;">
+            <div class="form-group">
+              <label class="form-label">Preferred Date</label>
+              <input type="date" class="form-input" id="preferred-date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Preferred Time</label>
+              <input type="time" class="form-input" id="preferred-time">
+            </div>
+          </div>
+          
+          <!-- Custom Questions -->
+          <div id="custom-questions"></div>
+          
+          <!-- Attachments -->
+          <div class="form-group" id="attachments-section">
+            <label class="form-label" id="attachments-label">Please add a few photos of your project</label>
+            <div class="upload-zone" id="upload-zone">
+              <div class="upload-zone-text">Drag & Drop Images Here</div>
+              <div style="color:#999;margin:8px 0;">or</div>
+              <button type="button" class="upload-btn" id="upload-btn">Browse Files</button>
+              <input type="file" id="file-input" multiple accept="image/*" style="display:none;">
+            </div>
+            <div class="upload-preview" id="upload-preview"></div>
+          </div>
+          
+          <!-- SMS Consent -->
+          <div class="consent-box" id="sms-section">
+            <div class="consent-title">Notification Consent</div>
+            <div class="consent-check">
+              <input type="checkbox" id="sms-consent">
+              <label for="sms-consent" class="consent-text">
+                I agree to receive text messages from Homestead Cabinet Design. These messages may include project-related updates, appointment reminders, and other important project-related information. I understand that standard text messaging data rates may apply, message frequency may vary, and I may receive multiple messages per month. I may opt out of receiving these messages at any time by replying "STOP" to any text message, or by contacting Homestead Cabinet Design directly.
+              </label>
+            </div>
+          </div>
+          
+          <button type="submit" class="submit-btn" id="submit-btn">Submit Request</button>
+        </form>
+      </div>
+      
+      <div class="thank-you" id="thank-you" style="display:none;">
+        <div class="thank-you-icon">✓</div>
+        <h2 class="thank-you-title" id="thank-you-title">Thank You!</h2>
+        <p class="thank-you-message" id="thank-you-message">We have received your request and will contact you shortly.</p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    let formConfig = null;
+    let questions = [];
+    let uploadedFiles = [];
+    
+    async function init() {
+      const slug = window.location.pathname.split('/').pop() || 'default';
+      
+      document.getElementById('loading').style.display = 'block';
+      
+      try {
+        // Fetch form config
+        const response = await fetch(`/.netlify/functions/booking-form?slug=${slug}`);
+        if (!response.ok) throw new Error('Form not found');
+        
+        const data = await response.json();
+        formConfig = data.form;
+        questions = data.questions || [];
+        
+        applyFormConfig();
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('form-content').style.display = 'block';
+        
+      } catch (err) {
+        console.error(err);
+        document.getElementById('loading').innerHTML = '<p style="color:#e53e3e;">Form not found or unavailable.</p>';
+      }
+    }
+    
+    function applyFormConfig() {
+      if (!formConfig) return;
+      
+      // Set colors
+      document.documentElement.style.setProperty('--primary-color', formConfig.primary_color || '#6366f1');
+      document.querySelector('.header').style.background = formConfig.primary_color || '#6366f1';
+      
+      // Set header
+      document.getElementById('form-title').textContent = formConfig.header_title || 'Appointment Request';
+      document.getElementById('form-title').style.color = formConfig.primary_color;
+      document.getElementById('form-desc').textContent = formConfig.header_description || '';
+      document.getElementById('form-id').value = formConfig.id;
+      document.title = `${formConfig.header_title || 'Appointment Request'} | Homestead Cabinet Design`;
+      
+      // Toggle sections
+      document.getElementById('address-section').style.display = formConfig.show_address !== false ? 'block' : 'none';
+      document.getElementById('service-section').style.display = formConfig.show_service_details !== false ? 'block' : 'none';
+      document.getElementById('how-heard-section').style.display = formConfig.show_how_heard !== false ? 'block' : 'none';
+      document.getElementById('datetime-section').style.display = formConfig.show_date_time ? 'grid' : 'none';
+      document.getElementById('attachments-section').style.display = formConfig.allow_attachments !== false ? 'block' : 'none';
+      document.getElementById('sms-section').style.display = formConfig.show_sms_consent !== false ? 'block' : 'none';
+      
+      // How heard options
+      const howHeardSelect = document.getElementById('how-heard');
+      const options = formConfig.how_heard_options || ['Google Search', 'Facebook', 'Referral', 'Other'];
+      options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt;
+        howHeardSelect.appendChild(option);
+      });
+      
+      // Attachments label
+      if (formConfig.attachments_label) {
+        document.getElementById('attachments-label').textContent = formConfig.attachments_label;
+      }
+      
+      // Render custom questions
+      renderQuestions();
+      
+      // Thank you messages
+      document.getElementById('thank-you-title').textContent = formConfig.thank_you_title || 'Thank You!';
+      document.getElementById('thank-you-message').textContent = formConfig.thank_you_message || '';
+    }
+    
+    function renderQuestions() {
+      const container = document.getElementById('custom-questions');
+      container.innerHTML = '';
+      
+      questions.forEach(q => {
+        const div = document.createElement('div');
+        div.className = 'form-group';
+        
+        const label = document.createElement('label');
+        label.className = 'form-label';
+        label.innerHTML = q.prompt + (q.is_required ? ' <span class="required">*</span>' : '');
+        div.appendChild(label);
+        
+        if (q.field_type === 'textarea') {
+          const textarea = document.createElement('textarea');
+          textarea.className = 'form-textarea';
+          textarea.id = `q_${q.id}`;
+          textarea.required = q.is_required;
+          div.appendChild(textarea);
+        } else if (q.field_type === 'dropdown') {
+          const select = document.createElement('select');
+          select.className = 'form-select';
+          select.id = `q_${q.id}`;
+          select.required = q.is_required;
+          select.innerHTML = '<option value="">Select...</option>' + 
+            (q.choices || []).map(c => `<option value="${c}">${c}</option>`).join('');
+          div.appendChild(select);
+        } else if (q.field_type === 'radio') {
+          const group = document.createElement('div');
+          group.className = 'radio-group';
+          (q.choices || []).forEach((c, i) => {
+            const lbl = document.createElement('label');
+            lbl.innerHTML = `<input type="radio" name="q_${q.id}" value="${c}" ${q.is_required && i === 0 ? 'required' : ''}> ${c}`;
+            group.appendChild(lbl);
+          });
+          div.appendChild(group);
+        } else if (q.field_type === 'checkbox') {
+          const lbl = document.createElement('label');
+          lbl.className = 'checkbox-label';
+          lbl.innerHTML = `<input type="checkbox" id="q_${q.id}" ${q.is_required ? 'required' : ''}> ${q.prompt}`;
+          div.innerHTML = '';
+          div.appendChild(lbl);
+        } else {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'form-input';
+          input.id = `q_${q.id}`;
+          input.required = q.is_required;
+          div.appendChild(input);
+        }
+        
+        container.appendChild(div);
+      });
+    }
+    
+    // File upload handling
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    const uploadBtn = document.getElementById('upload-btn');
+    const preview = document.getElementById('upload-preview');
+    
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+    
+    uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('drag-over');
+      handleFiles(e.dataTransfer.files);
+    });
+    
+    function handleFiles(files) {
+      Array.from(files).forEach(file => {
+        if (!file.type.startsWith('image/')) return;
+        if (uploadedFiles.length >= 10) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          uploadedFiles.push({ file, dataUrl: e.target.result });
+          renderPreviews();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    function renderPreviews() {
+      preview.innerHTML = uploadedFiles.map((f, i) => `
+        <div class="upload-item">
+          <img src="${f.dataUrl}" alt="Upload ${i + 1}">
+          <button type="button" class="upload-item-remove" onclick="removeFile(${i})">×</button>
+        </div>
+      `).join('');
+    }
+    
+    function removeFile(index) {
+      uploadedFiles.splice(index, 1);
+      renderPreviews();
+    }
+    
+    // Form submission
+    document.getElementById('booking-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const submitBtn = document.getElementById('submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+      
+      // Gather form data
+      const formData = {
+        form_id: document.getElementById('form-id').value,
+        first_name: document.getElementById('first-name').value,
+        last_name: document.getElementById('last-name').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        address: document.getElementById('address')?.value || '',
+        city: document.getElementById('city')?.value || '',
+        state: document.getElementById('state')?.value || '',
+        zip: document.getElementById('zip')?.value || '',
+        service_details: document.getElementById('service-details')?.value || '',
+        how_heard: document.getElementById('how-heard')?.value || '',
+        preferred_date: document.getElementById('preferred-date')?.value || null,
+        preferred_time: document.getElementById('preferred-time')?.value || null,
+        sms_consent: document.getElementById('sms-consent')?.checked || false,
+        custom_answers: {},
+        attachments: []
+      };
+      
+      // Custom questions
+      questions.forEach(q => {
+        if (q.field_type === 'radio') {
+          const checked = document.querySelector(`input[name="q_${q.id}"]:checked`);
+          formData.custom_answers[q.id] = checked ? checked.value : '';
+        } else if (q.field_type === 'checkbox') {
+          formData.custom_answers[q.id] = document.getElementById(`q_${q.id}`)?.checked || false;
+        } else {
+          formData.custom_answers[q.id] = document.getElementById(`q_${q.id}`)?.value || '';
+        }
+      });
+      
+      // Upload files and get URLs
+      if (uploadedFiles.length > 0) {
+        for (const f of uploadedFiles) {
+          formData.attachments.push(f.dataUrl);
+        }
+      }
+      
+      try {
+        const response = await fetch('/.netlify/functions/booking-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) throw new Error('Submission failed');
+        
+        // Show thank you
+        document.getElementById('form-content').style.display = 'none';
+        document.getElementById('thank-you').style.display = 'block';
+        
+      } catch (err) {
+        console.error(err);
+        alert('There was an error submitting your request. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Request';
+      }
+    });
+    
+    init();
+  </script>
+</body>
+</html>

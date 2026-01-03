@@ -58,6 +58,112 @@ ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all access to appointments" ON appointments;
 CREATE POLICY "Allow all access to appointments" ON appointments FOR ALL USING (true) WITH CHECK (true);
 
+-- =============================================
+-- BOOKING FORMS
+-- =============================================
+CREATE TABLE IF NOT EXISTS booking_forms (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(100) NOT NULL DEFAULT 'Default',
+  slug VARCHAR(100) UNIQUE NOT NULL,
+  header_title VARCHAR(255) DEFAULT 'Appointment Request',
+  header_description TEXT DEFAULT 'Choose a phone call or in-home appointment',
+  
+  -- Field visibility toggles
+  show_service_details BOOLEAN DEFAULT true,
+  show_date_time BOOLEAN DEFAULT false,
+  show_address BOOLEAN DEFAULT true,
+  show_how_heard BOOLEAN DEFAULT true,
+  allow_attachments BOOLEAN DEFAULT true,
+  attachments_required BOOLEAN DEFAULT false,
+  attachments_label VARCHAR(255) DEFAULT 'Please add a few photos of your project',
+  show_sms_consent BOOLEAN DEFAULT true,
+  
+  -- "How did you hear" options (JSON array)
+  how_heard_options JSONB DEFAULT '["Google Search", "Facebook", "Instagram", "Referral", "Home Show", "Other"]',
+  
+  -- Styling
+  primary_color VARCHAR(20) DEFAULT '#6366f1',
+  
+  -- Thank you page
+  thank_you_title VARCHAR(255) DEFAULT 'Thank You!',
+  thank_you_message TEXT DEFAULT 'We have received your request and will contact you shortly.',
+  
+  -- Pipeline integration
+  default_stage VARCHAR(50) DEFAULT 'new-lead',
+  
+  is_active BOOLEAN DEFAULT true,
+  submission_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Custom questions for forms
+CREATE TABLE IF NOT EXISTS booking_form_questions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  form_id UUID REFERENCES booking_forms(id) ON DELETE CASCADE,
+  prompt VARCHAR(255) NOT NULL,
+  field_type VARCHAR(20) DEFAULT 'text' CHECK (field_type IN ('text', 'textarea', 'dropdown', 'checkbox', 'radio')),
+  choices JSONB, -- For dropdown/radio: ["Option 1", "Option 2"]
+  is_required BOOLEAN DEFAULT false,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Form submissions (leads)
+CREATE TABLE IF NOT EXISTS booking_submissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  form_id UUID REFERENCES booking_forms(id) ON DELETE SET NULL,
+  customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
+  deal_id UUID REFERENCES jobs(id) ON DELETE SET NULL,
+  
+  -- Contact info
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50),
+  
+  -- Address
+  address TEXT,
+  city VARCHAR(100),
+  state VARCHAR(50),
+  zip VARCHAR(20),
+  
+  -- Details
+  service_details TEXT,
+  how_heard VARCHAR(100),
+  preferred_date DATE,
+  preferred_time TIME,
+  sms_consent BOOLEAN DEFAULT false,
+  
+  -- Custom answers (JSON object: { question_id: answer })
+  custom_answers JSONB,
+  
+  -- Attachments (JSON array of URLs)
+  attachments JSONB,
+  
+  status VARCHAR(20) DEFAULT 'new' CHECK (status IN ('new', 'contacted', 'converted', 'closed')),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_booking_submissions_form ON booking_submissions(form_id);
+CREATE INDEX idx_booking_submissions_status ON booking_submissions(status);
+CREATE INDEX idx_booking_forms_slug ON booking_forms(slug);
+
+-- RLS
+ALTER TABLE booking_forms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE booking_form_questions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE booking_submissions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow all access to booking_forms" ON booking_forms FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access to booking_form_questions" ON booking_form_questions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access to booking_submissions" ON booking_submissions FOR ALL USING (true) WITH CHECK (true);
+
+-- Insert default form
+INSERT INTO booking_forms (name, slug, header_title, header_description) VALUES
+  ('Default', 'default', 'Appointment Request', 'Choose a phone call or in-home appointment')
+ON CONFLICT (slug) DO NOTHING;
+
 -- Update default stages for full customer journey (optional - only if you want to reset stages)
 -- DELETE FROM job_stages;
 -- INSERT INTO job_stages (stage_id, label, color, sort_order) VALUES

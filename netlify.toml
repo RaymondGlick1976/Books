@@ -22,6 +22,12 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
+# Booking forms
+[[redirects]]
+  from = "/book/*"
+  to = "/book.html"
+  status = 200
+
 # Environment variables (set these in Netlify dashboard)
 # SUPABASE_URL
 # SUPABASE_ANON_KEY
