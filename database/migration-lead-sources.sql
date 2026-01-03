@@ -9,6 +9,19 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS lead_source VARCHAR(100);
 -- Add company column to customers
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS company VARCHAR(255);
 
+-- Add unique constraint on email if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'customers_email_key'
+  ) THEN
+    ALTER TABLE customers ADD CONSTRAINT customers_email_key UNIQUE (email);
+  END IF;
+EXCEPTION WHEN others THEN
+  -- Constraint might already exist with different name, that's ok
+  NULL;
+END $$;
+
 -- Create index for filtering by lead source
 CREATE INDEX IF NOT EXISTS idx_customers_lead_source ON customers(lead_source);
 

@@ -774,28 +774,62 @@
           return;
         }
         
-        // Insert in batches of 100
-        const batchSize = 100;
-        let imported = 0;
-        let skipped = 0;
+        // Get existing emails to check for duplicates
+        const emails = customersToImport.map(c => c.email);
+        const { data: existingCustomers } = await supabase
+          .from('customers')
+          .select('email')
+          .in('email', emails);
         
-        for (let i = 0; i < customersToImport.length; i += batchSize) {
-          const batch = customersToImport.slice(i, i + batchSize);
-          
-          const { data, error } = await supabase
-            .from('customers')
-            .upsert(batch, { onConflict: 'email', ignoreDuplicates: false })
-            .select();
-          
-          if (error) {
-            console.error('Batch error:', error);
-            skipped += batch.length;
-          } else {
-            imported += data?.length || 0;
+        const existingEmails = new Set((existingCustomers || []).map(c => c.email));
+        
+        // Split into new and updates
+        const newCustomers = customersToImport.filter(c => !existingEmails.has(c.email));
+        const updateCustomers = customersToImport.filter(c => existingEmails.has(c.email));
+        
+        let imported = 0;
+        let updated = 0;
+        let failed = 0;
+        
+        // Insert new customers in batches
+        if (newCustomers.length > 0) {
+          const batchSize = 50;
+          for (let i = 0; i < newCustomers.length; i += batchSize) {
+            const batch = newCustomers.slice(i, i + batchSize);
+            const { data, error } = await supabase
+              .from('customers')
+              .insert(batch)
+              .select();
+            
+            if (error) {
+              console.error('Insert batch error:', error);
+              failed += batch.length;
+            } else {
+              imported += data?.length || 0;
+            }
           }
         }
         
-        showToast(`Imported ${imported} customers${skipped > 0 ? `, ${skipped} failed` : ''}`, 'success');
+        // Update existing customers one by one
+        for (const customer of updateCustomers) {
+          const { error } = await supabase
+            .from('customers')
+            .update(customer)
+            .eq('email', customer.email);
+          
+          if (error) {
+            console.error('Update error for', customer.email, error);
+            failed++;
+          } else {
+            updated++;
+          }
+        }
+        
+        let message = `Imported ${imported} new customers`;
+        if (updated > 0) message += `, updated ${updated}`;
+        if (failed > 0) message += `, ${failed} failed`;
+        
+        showToast(message, failed > 0 ? 'warning' : 'success');
         loadCustomers();
         
       } catch (err) {
