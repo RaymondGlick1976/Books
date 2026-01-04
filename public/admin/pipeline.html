@@ -6,7 +6,7 @@
   <title>Deals Pipeline | Admin | Homestead Cabinet Design</title>
   <link rel="stylesheet" href="/css/styles.css?v=33">
   <style>
-    .pipeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg); flex-wrap: wrap; gap: var(--space-md); }
+    .pipeline-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-md); }
     .pipeline-header h2 { margin: 0; }
     .pipeline-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; }
     .pipeline-container { display: flex; gap: var(--space-md); overflow-x: auto; padding-bottom: var(--space-lg); min-height: calc(100vh - 200px); }
@@ -124,8 +124,8 @@
     </aside>
     
     <main class="app-main">
-      <header class="app-header">
-        <div class="pipeline-header">
+      <header class="app-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div class="pipeline-header" style="flex: 1;">
           <div>
             <h2>Deals Pipeline</h2>
             <p class="text-muted" id="pipeline-summary">Loading...</p>
