@@ -607,3 +607,125 @@ window.formatCurrency = formatCurrency;
 window.formatDate = formatDate;
 window.formatPhone = formatPhone;
 window.debounce = debounce;
+
+// =============================================
+// USER AUTHENTICATION & ROLES
+// =============================================
+
+function getCurrentUser() {
+  const userJson = localStorage.getItem('app_user');
+  if (!userJson) return null;
+  try {
+    return JSON.parse(userJson);
+  } catch {
+    return null;
+  }
+}
+
+function isLoggedIn() {
+  return !!getCurrentUser();
+}
+
+function isAdmin() {
+  const user = getCurrentUser();
+  return user?.role === 'admin';
+}
+
+function isShopManager() {
+  const user = getCurrentUser();
+  return user?.role === 'shop_manager';
+}
+
+function logout() {
+  localStorage.removeItem('app_user');
+  window.location.href = '/admin/login.html';
+}
+
+function requireAuth() {
+  // Skip auth check on login page
+  if (window.location.pathname.includes('/admin/login.html')) return;
+  
+  if (!isLoggedIn()) {
+    window.location.href = '/admin/login.html';
+    return false;
+  }
+  return true;
+}
+
+function requireAdmin() {
+  if (!requireAuth()) return false;
+  if (!isAdmin()) {
+    showToast('Access denied. Admin only.', 'error');
+    window.location.href = '/admin/index.html';
+    return false;
+  }
+  return true;
+}
+
+// Apply role-based UI restrictions
+function applyRoleRestrictions() {
+  const user = getCurrentUser();
+  if (!user) return;
+  
+  // Shop managers: hide certain elements
+  if (user.role === 'shop_manager') {
+    // Hide all elements with data-admin-only attribute
+    $$('[data-admin-only]').forEach(el => el.style.display = 'none');
+    
+    // Hide Settings link in sidebar
+    $$('.sidebar-nav-link').forEach(link => {
+      if (link.href.includes('/admin/settings.html')) {
+        link.closest('.sidebar-nav-item')?.remove();
+      }
+    });
+    
+    // Hide delete buttons
+    $$('[data-action="delete"], .btn-danger').forEach(btn => {
+      if (btn.textContent.toLowerCase().includes('delete') || 
+          btn.getAttribute('onclick')?.includes('delete')) {
+        btn.style.display = 'none';
+      }
+    });
+    
+    // Hide financial columns/info with data-financial attribute
+    $$('[data-financial]').forEach(el => el.style.display = 'none');
+  }
+  
+  // Add user info to header if exists
+  const header = $('.app-header');
+  if (header && !$('.user-badge', header)) {
+    const userBadge = createElement('div', {
+      className: 'user-badge',
+      style: 'display: flex; align-items: center; gap: var(--space-sm); margin-left: auto; padding-left: var(--space-lg);',
+      innerHTML: `
+        <span style="font-size: 0.875rem; color: var(--color-text-muted);">${user.name}</span>
+        <button class="btn btn-ghost btn-sm" onclick="logout()" title="Logout">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+        </button>
+      `
+    });
+    header.appendChild(userBadge);
+  }
+}
+
+// Run auth check and apply restrictions when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  // Only check auth on admin pages
+  if (window.location.pathname.includes('/admin/')) {
+    if (requireAuth()) {
+      applyRoleRestrictions();
+    }
+  }
+});
+
+// Export auth functions
+window.getCurrentUser = getCurrentUser;
+window.isLoggedIn = isLoggedIn;
+window.isAdmin = isAdmin;
+window.isShopManager = isShopManager;
+window.logout = logout;
+window.requireAuth = requireAuth;
+window.requireAdmin = requireAdmin;
+window.applyRoleRestrictions = applyRoleRestrictions;

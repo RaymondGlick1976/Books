@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css?v=39">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-bg-soft);
+    }
+    
+    .login-container {
+      width: 100%;
+      max-width: 400px;
+      padding: var(--space-xl);
+    }
+    
+    .login-card {
+      background: white;
+      border-radius: var(--radius-xl);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      padding: var(--space-2xl);
+    }
+    
+    .login-logo {
+      text-align: center;
+      margin-bottom: var(--space-xl);
+    }
+    
+    .login-logo img {
+      height: 60px;
+    }
+    
+    .login-title {
+      text-align: center;
+      margin-bottom: var(--space-xl);
+      color: var(--color-text);
+    }
+    
+    .user-select-grid {
+      display: grid;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+    }
+    
+    .user-select-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--color-bg-soft);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    
+    .user-select-btn:hover {
+      border-color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
+    
+    .user-select-btn.selected {
+      border-color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
+    
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    
+    .user-info {
+      flex: 1;
+      text-align: left;
+    }
+    
+    .user-name {
+      font-weight: 600;
+      color: var(--color-text);
+    }
+    
+    .user-role {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      text-transform: capitalize;
+    }
+    
+    .pin-section {
+      display: none;
+    }
+    
+    .pin-section.visible {
+      display: block;
+    }
+    
+    .pin-input {
+      text-align: center;
+      font-size: 1.5rem;
+      letter-spacing: 0.5rem;
+      padding: var(--space-md);
+    }
+    
+    .login-error {
+      color: var(--color-danger);
+      text-align: center;
+      margin-top: var(--space-md);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="/images/logo.gif" alt="Homestead Cabinet Design">
+      </div>
+      <h2 class="login-title">Welcome Back</h2>
+      
+      <div id="user-list">
+        <p style="text-align: center; color: var(--color-text-muted); margin-bottom: var(--space-md);">Select your account:</p>
+        <div class="user-select-grid" id="user-grid">
+          <div style="text-align: center; padding: var(--space-xl);">
+            <div class="loading-spinner" style="margin: 0 auto;"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="pin-section" id="pin-section">
+        <p style="text-align: center; color: var(--color-text-muted); margin-bottom: var(--space-md);">
+          Enter PIN for <strong id="selected-user-name"></strong>
+        </p>
+        <input type="password" id="pin-input" class="form-input pin-input" maxlength="10" placeholder="••••" autofocus>
+        <button class="btn btn-primary" style="width: 100%; margin-top: var(--space-md);" onclick="login()">
+          Login
+        </button>
+        <button class="btn btn-ghost" style="width: 100%; margin-top: var(--space-sm);" onclick="backToUsers()">
+          ← Back
+        </button>
+        <div class="login-error" id="login-error"></div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script>
+    let users = [];
+    let selectedUser = null;
+    
+    async function loadUsers() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase
+          .from('app_users')
+          .select('id, name, role')
+          .eq('is_active', true)
+          .order('name');
+        
+        if (error) throw error;
+        users = data || [];
+        renderUsers();
+      } catch (err) {
+        console.error('Failed to load users:', err);
+        document.getElementById('user-grid').innerHTML = '<p class="text-danger">Failed to load users</p>';
+      }
+    }
+    
+    function renderUsers() {
+      const grid = document.getElementById('user-grid');
+      
+      if (users.length === 0) {
+        grid.innerHTML = '<p style="text-align: center; color: var(--color-text-muted);">No users found. Please run the migration.</p>';
+        return;
+      }
+      
+      grid.innerHTML = users.map(user => `
+        <button class="user-select-btn" onclick="selectUser('${user.id}')">
+          <div class="user-avatar">${user.name.charAt(0).toUpperCase()}</div>
+          <div class="user-info">
+            <div class="user-name">${user.name}</div>
+            <div class="user-role">${user.role.replace('_', ' ')}</div>
+          </div>
+        </button>
+      `).join('');
+    }
+    
+    function selectUser(userId) {
+      selectedUser = users.find(u => u.id === userId);
+      if (!selectedUser) return;
+      
+      document.getElementById('user-list').style.display = 'none';
+      document.getElementById('pin-section').classList.add('visible');
+      document.getElementById('selected-user-name').textContent = selectedUser.name;
+      document.getElementById('pin-input').value = '';
+      document.getElementById('pin-input').focus();
+      document.getElementById('login-error').textContent = '';
+    }
+    
+    function backToUsers() {
+      selectedUser = null;
+      document.getElementById('user-list').style.display = 'block';
+      document.getElementById('pin-section').classList.remove('visible');
+    }
+    
+    async function login() {
+      const pin = document.getElementById('pin-input').value;
+      
+      if (!pin) {
+        document.getElementById('login-error').textContent = 'Please enter your PIN';
+        return;
+      }
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase
+          .from('app_users')
+          .select('*')
+          .eq('id', selectedUser.id)
+          .eq('pin', pin)
+          .eq('is_active', true)
+          .single();
+        
+        if (error || !data) {
+          document.getElementById('login-error').textContent = 'Incorrect PIN';
+          document.getElementById('pin-input').value = '';
+          document.getElementById('pin-input').focus();
+          return;
+        }
+        
+        // Update last login
+        await supabase
+          .from('app_users')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', data.id);
+        
+        // Store user session
+        localStorage.setItem('app_user', JSON.stringify({
+          id: data.id,
+          name: data.name,
+          role: data.role
+        }));
+        
+        // Redirect to dashboard
+        window.location.href = '/admin/index.html';
+        
+      } catch (err) {
+        console.error('Login error:', err);
+        document.getElementById('login-error').textContent = 'Login failed. Please try again.';
+      }
+    }
+    
+    // Handle Enter key
+    document.getElementById('pin-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') login();
+    });
+    
+    // Check if already logged in
+    const existingUser = localStorage.getItem('app_user');
+    if (existingUser) {
+      window.location.href = '/admin/index.html';
+    } else {
+      loadUsers();
+    }
+  </script>
+</body>
+</html>
