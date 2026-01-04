@@ -165,7 +165,7 @@
         const supabase = await app.waitForSupabase();
         const { data, error } = await supabase
           .from('app_users')
-          .select('id, name, role')
+          .select('id, name, role_id, app_roles(name)')
           .eq('is_active', true)
           .order('name');
         
@@ -191,7 +191,7 @@
           <div class="user-avatar">${user.name.charAt(0).toUpperCase()}</div>
           <div class="user-info">
             <div class="user-name">${user.name}</div>
-            <div class="user-role">${user.role.replace('_', ' ')}</div>
+            <div class="user-role">${user.app_roles?.name || 'No Role'}</div>
           </div>
         </button>
       `).join('');
@@ -227,7 +227,7 @@
         const supabase = await app.waitForSupabase();
         const { data, error } = await supabase
           .from('app_users')
-          .select('*')
+          .select('*, app_roles(*)')
           .eq('id', selectedUser.id)
           .eq('pin', pin)
           .eq('is_active', true)
@@ -246,11 +246,22 @@
           .update({ last_login: new Date().toISOString() })
           .eq('id', data.id);
         
-        // Store user session
+        // Store user session with role permissions
         localStorage.setItem('app_user', JSON.stringify({
           id: data.id,
           name: data.name,
-          role: data.role
+          role_id: data.role_id,
+          role_name: data.app_roles?.name || 'Unknown',
+          permissions: {
+            can_access_settings: data.app_roles?.can_access_settings || false,
+            can_view_financials: data.app_roles?.can_view_financials || false,
+            can_delete: data.app_roles?.can_delete || false,
+            can_manage_users: data.app_roles?.can_manage_users || false,
+            can_send_invoices: data.app_roles?.can_send_invoices || false,
+            can_edit_quotes: data.app_roles?.can_edit_quotes || false,
+            can_edit_customers: data.app_roles?.can_edit_customers || false,
+            can_edit_pipeline: data.app_roles?.can_edit_pipeline || false
+          }
         }));
         
         // Redirect to dashboard

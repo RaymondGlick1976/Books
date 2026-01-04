@@ -626,14 +626,50 @@ function isLoggedIn() {
   return !!getCurrentUser();
 }
 
-function isAdmin() {
+function hasPermission(permission) {
   const user = getCurrentUser();
-  return user?.role === 'admin';
+  return user?.permissions?.[permission] || false;
+}
+
+function canAccessSettings() {
+  return hasPermission('can_access_settings');
+}
+
+function canViewFinancials() {
+  return hasPermission('can_view_financials');
+}
+
+function canDelete() {
+  return hasPermission('can_delete');
+}
+
+function canManageUsers() {
+  return hasPermission('can_manage_users');
+}
+
+function canSendInvoices() {
+  return hasPermission('can_send_invoices');
+}
+
+function canEditQuotes() {
+  return hasPermission('can_edit_quotes');
+}
+
+function canEditCustomers() {
+  return hasPermission('can_edit_customers');
+}
+
+function canEditPipeline() {
+  return hasPermission('can_edit_pipeline');
+}
+
+// Legacy compatibility
+function isAdmin() {
+  return canAccessSettings() && canManageUsers();
 }
 
 function isShopManager() {
-  const user = getCurrentUser();
-  return user?.role === 'shop_manager';
+  return !canAccessSettings();
 }
 
 function logout() {
@@ -652,14 +688,19 @@ function requireAuth() {
   return true;
 }
 
-function requireAdmin() {
+function requirePermission(permission) {
   if (!requireAuth()) return false;
-  if (!isAdmin()) {
-    showToast('Access denied. Admin only.', 'error');
+  if (!hasPermission(permission)) {
+    showToast('Access denied. Insufficient permissions.', 'error');
     window.location.href = '/admin/index.html';
     return false;
   }
   return true;
+}
+
+// Legacy compatibility
+function requireAdmin() {
+  return requirePermission('can_access_settings');
 }
 
 // Apply role-based UI restrictions
@@ -667,29 +708,46 @@ function applyRoleRestrictions() {
   const user = getCurrentUser();
   if (!user) return;
   
-  // Shop managers: hide certain elements
-  if (user.role === 'shop_manager') {
-    // Hide all elements with data-admin-only attribute
-    $$('[data-admin-only]').forEach(el => el.style.display = 'none');
-    
+  // Hide elements based on permissions
+  if (!user.permissions?.can_access_settings) {
     // Hide Settings link in sidebar
     $$('.sidebar-nav-link').forEach(link => {
-      if (link.href.includes('/admin/settings.html')) {
+      if (link.href?.includes('/admin/settings.html')) {
         link.closest('.sidebar-nav-item')?.remove();
       }
     });
-    
+    // Also remove the Settings section header if empty
+    $$('.sidebar-section').forEach(section => {
+      const title = section.querySelector('.sidebar-section-title');
+      if (title?.textContent === 'Settings') {
+        section.remove();
+      }
+    });
+  }
+  
+  if (!user.permissions?.can_delete) {
     // Hide delete buttons
     $$('[data-action="delete"], .btn-danger').forEach(btn => {
-      if (btn.textContent.toLowerCase().includes('delete') || 
-          btn.getAttribute('onclick')?.includes('delete')) {
+      const text = btn.textContent?.toLowerCase() || '';
+      const onclick = btn.getAttribute('onclick') || '';
+      if (text.includes('delete') || onclick.includes('delete')) {
         btn.style.display = 'none';
       }
     });
-    
-    // Hide financial columns/info with data-financial attribute
+  }
+  
+  if (!user.permissions?.can_view_financials) {
+    // Hide financial info with data-financial attribute
     $$('[data-financial]').forEach(el => el.style.display = 'none');
   }
+  
+  // Hide elements with data-permission attribute
+  $$('[data-permission]').forEach(el => {
+    const permission = el.dataset.permission;
+    if (!hasPermission(permission)) {
+      el.style.display = 'none';
+    }
+  });
   
   // Add user info to header if exists
   const header = $('.app-header');
@@ -723,9 +781,19 @@ document.addEventListener('DOMContentLoaded', () => {
 // Export auth functions
 window.getCurrentUser = getCurrentUser;
 window.isLoggedIn = isLoggedIn;
+window.hasPermission = hasPermission;
+window.canAccessSettings = canAccessSettings;
+window.canViewFinancials = canViewFinancials;
+window.canDelete = canDelete;
+window.canManageUsers = canManageUsers;
+window.canSendInvoices = canSendInvoices;
+window.canEditQuotes = canEditQuotes;
+window.canEditCustomers = canEditCustomers;
+window.canEditPipeline = canEditPipeline;
 window.isAdmin = isAdmin;
 window.isShopManager = isShopManager;
 window.logout = logout;
 window.requireAuth = requireAuth;
+window.requirePermission = requirePermission;
 window.requireAdmin = requireAdmin;
 window.applyRoleRestrictions = applyRoleRestrictions;

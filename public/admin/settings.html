@@ -12,7 +12,7 @@
     const user = JSON.parse(localStorage.getItem('app_user') || 'null');
     if (!user) {
       window.location.href = '/admin/login.html';
-    } else if (user.role !== 'admin') {
+    } else if (!user.permissions?.can_access_settings) {
       window.location.href = '/admin/index.html';
     }
   </script>
@@ -271,9 +271,30 @@
           </div>
           <div class="card-body">
             <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
-              Manage users who can access the admin panel. Shop Managers have limited access (no settings, financials, or delete permissions).
+              Manage users who can access the admin panel. Assign roles to control their permissions.
             </p>
             <div id="users-list">
+              <div class="loading-spinner"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Roles Management -->
+        <div class="card mb-xl">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 class="card-title">Roles & Permissions</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addRole()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Role
+            </button>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              Define roles with specific permissions. Users inherit permissions from their assigned role.
+            </p>
+            <div id="roles-list">
               <div class="loading-spinner"></div>
             </div>
           </div>
@@ -1042,13 +1063,31 @@ If you have any questions about your project, please don't hesitate to reach out
     // USER MANAGEMENT
     // ==========================================
     let appUsers = [];
+    let appRoles = [];
+    
+    async function loadRoles() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase
+          .from('app_roles')
+          .select('*')
+          .order('sort_order');
+        
+        if (error) throw error;
+        appRoles = data || [];
+        renderRoles();
+      } catch (err) {
+        console.error('Failed to load roles:', err);
+        $('#roles-list').innerHTML = '<p class="text-muted">Failed to load roles</p>';
+      }
+    }
     
     async function loadUsers() {
       try {
         const supabase = await app.waitForSupabase();
         const { data, error } = await supabase
           .from('app_users')
-          .select('*')
+          .select('*, app_roles(name)')
           .order('name');
         
         if (error) throw error;
@@ -1072,11 +1111,11 @@ If you have any questions about your project, please don't hesitate to reach out
         <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
           ${appUsers.map(user => `
             <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
-              <div style="width: 36px; height: 36px; border-radius: 50%; background: ${user.role === 'admin' ? 'var(--color-primary)' : 'var(--color-text-muted)'}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600;">
+              <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--color-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600;">
                 ${user.name.charAt(0).toUpperCase()}
               </div>
               <span style="flex: 1; font-weight: 500;">${user.name}</span>
-              <span class="badge ${user.role === 'admin' ? 'badge-primary' : 'badge-info'}">${user.role === 'admin' ? 'Admin' : 'Shop Manager'}</span>
+              <span class="badge badge-info">${user.app_roles?.name || 'No Role'}</span>
               ${user.last_login ? `<span style="font-size: 0.75rem; color: var(--color-text-muted);">Last login: ${formatDate(user.last_login)}</span>` : ''}
               <label style="display: flex; align-items: center; gap: var(--space-xs); font-size: 0.75rem; color: var(--color-text-muted);">
                 <input type="checkbox" ${user.is_active ? 'checked' : ''} onchange="toggleUser('${user.id}', this.checked)">
@@ -1090,6 +1129,49 @@ If you have any questions about your project, please don't hesitate to reach out
       `;
     }
     
+    function renderRoles() {
+      const container = $('#roles-list');
+      
+      if (appRoles.length === 0) {
+        container.innerHTML = '<p class="text-muted">No roles found. Click "Add Role" to create one.</p>';
+        return;
+      }
+      
+      const permissionLabels = {
+        can_access_settings: 'Settings',
+        can_view_financials: 'Financials',
+        can_delete: 'Delete',
+        can_manage_users: 'Users',
+        can_send_invoices: 'Send Invoices',
+        can_edit_quotes: 'Edit Quotes',
+        can_edit_customers: 'Edit Customers',
+        can_edit_pipeline: 'Edit Pipeline'
+      };
+      
+      container.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+          ${appRoles.map(role => {
+            const permissions = Object.entries(permissionLabels)
+              .filter(([key]) => role[key])
+              .map(([, label]) => label);
+            
+            return `
+              <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+                <div style="flex: 1;">
+                  <div style="font-weight: 600;">${role.name} ${role.is_system ? '<span style="font-size: 0.7rem; color: var(--color-text-muted);">(System)</span>' : ''}</div>
+                  <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 2px;">
+                    ${permissions.length > 0 ? permissions.join(' • ') : 'No permissions'}
+                  </div>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="editRole('${role.id}')">Edit</button>
+                ${!role.is_system ? `<button class="btn btn-ghost btn-sm text-danger" onclick="deleteRole('${role.id}')">×</button>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+    
     window.addUser = () => showUserModal();
     
     window.editUser = (id) => {
@@ -1099,6 +1181,10 @@ If you have any questions about your project, please don't hesitate to reach out
     
     function showUserModal(user = null) {
       const isEdit = !!user;
+      
+      const roleOptions = appRoles.map(r => 
+        `<option value="${r.id}" ${user?.role_id === r.id ? 'selected' : ''}>${r.name}</option>`
+      ).join('');
       
       const content = createElement('div');
       content.innerHTML = `
@@ -1114,10 +1200,9 @@ If you have any questions about your project, please don't hesitate to reach out
         <div class="form-group">
           <label class="form-label">Role *</label>
           <select id="user-role" class="form-select">
-            <option value="admin" ${user?.role === 'admin' ? 'selected' : ''}>Admin (Full Access)</option>
-            <option value="shop_manager" ${user?.role === 'shop_manager' ? 'selected' : ''}>Shop Manager (Limited Access)</option>
+            <option value="">-- Select Role --</option>
+            ${roleOptions}
           </select>
-          <div class="form-help">Shop Managers cannot access Settings, financial info, or delete items</div>
         </div>
       `;
       
@@ -1137,7 +1222,7 @@ If you have any questions about your project, please don't hesitate to reach out
       saveBtn.onclick = async () => {
         const name = $('#user-name').value.trim();
         const pin = $('#user-pin').value.trim();
-        const role = $('#user-role').value;
+        const role_id = $('#user-role').value;
         
         if (!name) {
           showToast('Name is required', 'error');
@@ -1154,9 +1239,14 @@ If you have any questions about your project, please don't hesitate to reach out
           return;
         }
         
+        if (!role_id) {
+          showToast('Role is required', 'error');
+          return;
+        }
+        
         try {
           const supabase = await app.waitForSupabase();
-          const data = { name, role };
+          const data = { name, role_id };
           if (pin) data.pin = pin;
           
           if (isEdit) {
@@ -1177,7 +1267,6 @@ If you have any questions about your project, please don't hesitate to reach out
     }
     
     window.toggleUser = async (id, isActive) => {
-      // Prevent deactivating yourself
       const currentUser = getCurrentUser();
       if (currentUser?.id === id && !isActive) {
         showToast('Cannot deactivate your own account', 'error');
@@ -1195,7 +1284,6 @@ If you have any questions about your project, please don't hesitate to reach out
     };
     
     window.deleteUser = async (id) => {
-      // Prevent deleting yourself
       const currentUser = getCurrentUser();
       if (currentUser?.id === id) {
         showToast('Cannot delete your own account', 'error');
@@ -1214,10 +1302,146 @@ If you have any questions about your project, please don't hesitate to reach out
       }
     };
     
+    // ==========================================
+    // ROLES MANAGEMENT
+    // ==========================================
+    
+    window.addRole = () => showRoleModal();
+    
+    window.editRole = (id) => {
+      const role = appRoles.find(r => r.id === id);
+      if (role) showRoleModal(role);
+    };
+    
+    function showRoleModal(role = null) {
+      const isEdit = !!role;
+      
+      const permissions = [
+        { key: 'can_access_settings', label: 'Access Settings', desc: 'Can view and modify system settings' },
+        { key: 'can_view_financials', label: 'View Financials', desc: 'Can see payment info, balances, totals' },
+        { key: 'can_delete', label: 'Delete Items', desc: 'Can delete customers, quotes, jobs, etc.' },
+        { key: 'can_manage_users', label: 'Manage Users', desc: 'Can add/edit/remove users and roles' },
+        { key: 'can_send_invoices', label: 'Send Invoices', desc: 'Can create and send invoices' },
+        { key: 'can_edit_quotes', label: 'Edit Quotes', desc: 'Can create and edit quotes' },
+        { key: 'can_edit_customers', label: 'Edit Customers', desc: 'Can add and edit customer info' },
+        { key: 'can_edit_pipeline', label: 'Edit Pipeline', desc: 'Can manage deals and job status' }
+      ];
+      
+      const content = createElement('div');
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Role Name *</label>
+          <input type="text" id="role-name" class="form-input" value="${role?.name || ''}" placeholder="e.g., Sales Rep" ${role?.is_system ? 'readonly style="background: var(--color-bg-soft);"' : ''}>
+          ${role?.is_system ? '<div class="form-help">System roles cannot be renamed</div>' : ''}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input type="text" id="role-desc" class="form-input" value="${role?.description || ''}" placeholder="Brief description of this role">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Permissions</label>
+          <div style="display: flex; flex-direction: column; gap: var(--space-sm); margin-top: var(--space-sm);">
+            ${permissions.map(p => `
+              <label style="display: flex; align-items: flex-start; gap: var(--space-sm); padding: var(--space-sm); background: var(--color-bg-soft); border-radius: var(--radius-sm); cursor: pointer;">
+                <input type="checkbox" id="perm-${p.key}" ${role?.[p.key] ? 'checked' : ''} style="margin-top: 3px;">
+                <div>
+                  <div style="font-weight: 500;">${p.label}</div>
+                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">${p.desc}</div>
+                </div>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'flex justify-end gap-md' });
+      const cancelBtn = createElement('button', { className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { className: 'btn btn-primary', textContent: isEdit ? 'Save Changes' : 'Add Role' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+      
+      const modal = createModal({
+        title: isEdit ? 'Edit Role' : 'Add Role',
+        content,
+        footer,
+        size: 'lg'
+      });
+      
+      cancelBtn.onclick = () => closeModal(modal);
+      saveBtn.onclick = async () => {
+        const name = $('#role-name').value.trim();
+        const description = $('#role-desc').value.trim();
+        
+        if (!name) {
+          showToast('Role name is required', 'error');
+          return;
+        }
+        
+        const data = {
+          name: role?.is_system ? role.name : name,
+          description,
+          can_access_settings: $('#perm-can_access_settings').checked,
+          can_view_financials: $('#perm-can_view_financials').checked,
+          can_delete: $('#perm-can_delete').checked,
+          can_manage_users: $('#perm-can_manage_users').checked,
+          can_send_invoices: $('#perm-can_send_invoices').checked,
+          can_edit_quotes: $('#perm-can_edit_quotes').checked,
+          can_edit_customers: $('#perm-can_edit_customers').checked,
+          can_edit_pipeline: $('#perm-can_edit_pipeline').checked
+        };
+        
+        try {
+          const supabase = await app.waitForSupabase();
+          
+          if (isEdit) {
+            await supabase.from('app_roles').update(data).eq('id', role.id);
+            showToast('Role updated', 'success');
+          } else {
+            const maxOrder = Math.max(...appRoles.map(r => r.sort_order || 0), 0);
+            data.sort_order = maxOrder + 1;
+            await supabase.from('app_roles').insert(data);
+            showToast('Role added', 'success');
+          }
+          
+          closeModal(modal);
+          loadRoles();
+        } catch (err) {
+          showToast('Failed to save: ' + err.message, 'error');
+        }
+      };
+    }
+    
+    window.deleteRole = async (id) => {
+      const role = appRoles.find(r => r.id === id);
+      if (role?.is_system) {
+        showToast('Cannot delete system roles', 'error');
+        return;
+      }
+      
+      // Check if any users have this role
+      const usersWithRole = appUsers.filter(u => u.role_id === id);
+      if (usersWithRole.length > 0) {
+        showToast(`Cannot delete: ${usersWithRole.length} user(s) have this role`, 'error');
+        return;
+      }
+      
+      if (!confirm('Delete this role?')) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('app_roles').delete().eq('id', id);
+        showToast('Role deleted', 'success');
+        loadRoles();
+      } catch (err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+      }
+    };
+    
     // Initialize
     loadSettings();
     loadLeadSources();
     loadAppointmentTypes();
+    loadRoles();
     loadUsers();
   </script>
 </body>
