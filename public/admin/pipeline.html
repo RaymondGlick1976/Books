@@ -126,17 +126,16 @@
     <main class="app-main">
       <header class="app-header" style="flex-wrap: wrap;">
         <div class="pipeline-header" style="flex: 1; min-width: 0;">
-          <div style="min-width: 0;">
-            <h2>Deals Pipeline</h2>
-            <p class="text-muted" id="pipeline-summary">Loading...</p>
-          </div>
           <div class="pipeline-actions">
             <div class="view-toggle">
               <button class="active" data-view="pipeline">Pipeline</button>
               <button data-view="calendar">Calendar</button>
               <button data-view="list">List</button>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="openStageSettings()">Stages</button>
+            <button class="btn btn-primary btn-sm" onclick="openDealModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Deal
+            </button>
             
             <!-- New Appointment Dropdown -->
             <div class="dropdown" id="appt-dropdown">
@@ -148,10 +147,11 @@
               <div class="dropdown-menu" id="appt-type-menu"></div>
             </div>
             
-            <button class="btn btn-primary btn-sm" onclick="openDealModal()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              New Deal
-            </button>
+            <button class="btn btn-secondary btn-sm" onclick="openStageSettings()">Stages</button>
+          </div>
+          <div style="min-width: 0; text-align: right;">
+            <h2 style="font-size: 1rem; margin: 0;">Deals Pipeline</h2>
+            <p class="text-muted" id="pipeline-summary" style="font-size: 0.75rem; margin: 0;">Loading...</p>
           </div>
         </div>
       </header>
