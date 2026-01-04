@@ -6,9 +6,9 @@
   <title>Deals Pipeline | Admin | Homestead Cabinet Design</title>
   <link rel="stylesheet" href="/css/styles.css?v=33">
   <style>
-    .pipeline-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-md); }
+    .pipeline-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-md); width: 100%; }
     .pipeline-header h2 { margin: 0; }
-    .pipeline-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; }
+    .pipeline-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; flex-shrink: 0; }
     .pipeline-container { display: flex; gap: var(--space-md); overflow-x: auto; padding-bottom: var(--space-lg); min-height: calc(100vh - 200px); }
     .pipeline-column { flex: 0 0 260px; background: var(--color-bg-soft); border-radius: var(--radius-lg); display: flex; flex-direction: column; max-height: calc(100vh - 200px); }
     .column-header { padding: var(--space-md); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: var(--space-sm); position: sticky; top: 0; background: var(--color-bg-soft); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
@@ -68,8 +68,8 @@
     .calendar-more { font-size: 0.65rem; color: var(--color-text-muted); padding: 2px 5px; cursor: pointer; }
     
     /* View toggle */
-    .view-toggle { display: flex; background: var(--color-bg-soft); border-radius: var(--radius-md); padding: 4px; }
-    .view-toggle button { padding: var(--space-sm) var(--space-md); border: none; background: transparent; color: var(--color-text-muted); cursor: pointer; border-radius: var(--radius-sm); font-size: 0.875rem; }
+    .view-toggle { display: flex; background: var(--color-bg-soft); border-radius: var(--radius-md); padding: 3px; }
+    .view-toggle button { padding: var(--space-xs) var(--space-sm); border: none; background: transparent; color: var(--color-text-muted); cursor: pointer; border-radius: var(--radius-sm); font-size: 0.75rem; }
     .view-toggle button.active { background: white; color: var(--color-primary); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
     
     /* Form sections */
@@ -124,9 +124,9 @@
     </aside>
     
     <main class="app-main">
-      <header class="app-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
-        <div class="pipeline-header" style="flex: 1;">
-          <div>
+      <header class="app-header" style="flex-wrap: wrap;">
+        <div class="pipeline-header" style="flex: 1; min-width: 0;">
+          <div style="min-width: 0;">
             <h2>Deals Pipeline</h2>
             <p class="text-muted" id="pipeline-summary">Loading...</p>
           </div>
@@ -136,20 +136,20 @@
               <button data-view="calendar">Calendar</button>
               <button data-view="list">List</button>
             </div>
-            <button class="btn btn-secondary" onclick="openStageSettings()">Stages</button>
+            <button class="btn btn-secondary btn-sm" onclick="openStageSettings()">Stages</button>
             
             <!-- New Appointment Dropdown -->
             <div class="dropdown" id="appt-dropdown">
-              <button class="btn btn-secondary dropdown-btn" onclick="toggleDropdown('appt-dropdown')">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                New Appointment
+              <button class="btn btn-secondary btn-sm dropdown-btn" onclick="toggleDropdown('appt-dropdown')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Appt
                 <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="dropdown-menu" id="appt-type-menu"></div>
             </div>
             
-            <button class="btn btn-primary" onclick="openDealModal()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <button class="btn btn-primary btn-sm" onclick="openDealModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               New Deal
             </button>
           </div>
