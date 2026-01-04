@@ -708,16 +708,16 @@ function applyRoleRestrictions() {
   const user = getCurrentUser();
   if (!user) return;
   
-  // Page permission mapping
+  // Page permission mapping - use VIEW permissions for page access
   const pagePermissions = {
     '/admin/settings.html': 'can_access_settings',
-    '/admin/quotes.html': 'can_edit_quotes',
-    '/admin/quote-builder.html': 'can_edit_quotes',
-    '/admin/quote-detail.html': 'can_edit_quotes',
-    '/admin/invoices.html': 'can_send_invoices',
-    '/admin/customers.html': 'can_edit_customers',
-    '/admin/pipeline.html': 'can_edit_pipeline',
-    '/admin/catalog.html': 'can_edit_quotes',
+    '/admin/quotes.html': 'can_view_quotes',
+    '/admin/quote-builder.html': 'can_view_quotes',
+    '/admin/quote-detail.html': 'can_view_quotes',
+    '/admin/invoices.html': 'can_view_invoices',
+    '/admin/customers.html': 'can_view_customers',
+    '/admin/pipeline.html': 'can_view_pipeline',
+    '/admin/catalog.html': 'can_view_quotes',
     '/admin/booking-forms.html': 'can_access_settings'
   };
   
@@ -727,11 +727,11 @@ function applyRoleRestrictions() {
   
   if (requiredPermission && !user.permissions?.[requiredPermission]) {
     // Redirect to a page they CAN access
-    if (user.permissions?.can_edit_pipeline) {
+    if (user.permissions?.can_view_pipeline) {
       window.location.href = '/admin/pipeline.html';
-    } else if (user.permissions?.can_edit_customers) {
+    } else if (user.permissions?.can_view_customers) {
       window.location.href = '/admin/customers.html';
-    } else if (user.permissions?.can_edit_quotes) {
+    } else if (user.permissions?.can_view_quotes) {
       window.location.href = '/admin/quotes.html';
     } else {
       window.location.href = '/admin/index.html';
@@ -739,15 +739,15 @@ function applyRoleRestrictions() {
     return;
   }
   
-  // Hide sidebar links based on permissions
+  // Hide sidebar links based on VIEW permissions
   const sidebarPermissions = {
     'settings.html': 'can_access_settings',
-    'quotes.html': 'can_edit_quotes',
-    'quote-builder.html': 'can_edit_quotes',
-    'invoices.html': 'can_send_invoices',
-    'customers.html': 'can_edit_customers',
-    'pipeline.html': 'can_edit_pipeline',
-    'catalog.html': 'can_edit_quotes',
+    'quotes.html': 'can_view_quotes',
+    'quote-builder.html': 'can_view_quotes',
+    'invoices.html': 'can_view_invoices',
+    'customers.html': 'can_view_customers',
+    'pipeline.html': 'can_view_pipeline',
+    'catalog.html': 'can_view_quotes',
     'booking-forms.html': 'can_access_settings'
   };
   

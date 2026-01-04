@@ -1142,10 +1142,14 @@ If you have any questions about your project, please don't hesitate to reach out
         can_view_financials: 'Financials',
         can_delete: 'Delete',
         can_manage_users: 'Users',
-        can_send_invoices: 'Send Invoices',
-        can_edit_quotes: 'Edit Quotes',
+        can_view_pipeline: 'View Pipeline',
+        can_edit_pipeline: 'Edit Pipeline',
+        can_view_customers: 'View Customers',
         can_edit_customers: 'Edit Customers',
-        can_edit_pipeline: 'Edit Pipeline'
+        can_view_quotes: 'View Quotes',
+        can_edit_quotes: 'Edit Quotes',
+        can_view_invoices: 'View Invoices',
+        can_send_invoices: 'Send Invoices'
       };
       
       container.innerHTML = `
@@ -1317,15 +1321,26 @@ If you have any questions about your project, please don't hesitate to reach out
       const isEdit = !!role;
       
       const permissions = [
-        { key: 'can_access_settings', label: 'Access Settings', desc: 'Can view and modify system settings' },
-        { key: 'can_view_financials', label: 'View Financials', desc: 'Can see payment info, balances, totals' },
-        { key: 'can_delete', label: 'Delete Items', desc: 'Can delete customers, quotes, jobs, etc.' },
-        { key: 'can_manage_users', label: 'Manage Users', desc: 'Can add/edit/remove users and roles' },
-        { key: 'can_send_invoices', label: 'Send Invoices', desc: 'Can create and send invoices' },
-        { key: 'can_edit_quotes', label: 'Edit Quotes', desc: 'Can create and edit quotes' },
-        { key: 'can_edit_customers', label: 'Edit Customers', desc: 'Can add and edit customer info' },
-        { key: 'can_edit_pipeline', label: 'Edit Pipeline', desc: 'Can manage deals and job status' }
+        { key: 'can_access_settings', label: 'Access Settings', desc: 'Can view and modify system settings', section: 'Admin' },
+        { key: 'can_view_financials', label: 'View Financials', desc: 'Can see payment info, balances, totals', section: 'Admin' },
+        { key: 'can_delete', label: 'Delete Items', desc: 'Can delete customers, quotes, jobs, etc.', section: 'Admin' },
+        { key: 'can_manage_users', label: 'Manage Users', desc: 'Can add/edit/remove users and roles', section: 'Admin' },
+        { key: 'can_view_pipeline', label: 'View Pipeline', desc: 'Can see the deals pipeline page', section: 'Pipeline' },
+        { key: 'can_edit_pipeline', label: 'Edit Pipeline', desc: 'Can manage deals and job status', section: 'Pipeline' },
+        { key: 'can_view_customers', label: 'View Customers', desc: 'Can see the customers page', section: 'Customers' },
+        { key: 'can_edit_customers', label: 'Edit Customers', desc: 'Can add and edit customer info', section: 'Customers' },
+        { key: 'can_view_quotes', label: 'View Quotes', desc: 'Can see quotes and catalog pages', section: 'Quotes' },
+        { key: 'can_edit_quotes', label: 'Edit Quotes', desc: 'Can create and edit quotes', section: 'Quotes' },
+        { key: 'can_view_invoices', label: 'View Invoices', desc: 'Can see the invoices page', section: 'Invoices' },
+        { key: 'can_send_invoices', label: 'Send Invoices', desc: 'Can create and send invoices', section: 'Invoices' }
       ];
+      
+      // Group permissions by section
+      const sections = {};
+      permissions.forEach(p => {
+        if (!sections[p.section]) sections[p.section] = [];
+        sections[p.section].push(p);
+      });
       
       const content = createElement('div');
       content.innerHTML = `
@@ -1340,17 +1355,22 @@ If you have any questions about your project, please don't hesitate to reach out
         </div>
         <div class="form-group">
           <label class="form-label">Permissions</label>
-          <div style="display: flex; flex-direction: column; gap: var(--space-sm); margin-top: var(--space-sm);">
-            ${permissions.map(p => `
-              <label style="display: flex; align-items: flex-start; gap: var(--space-sm); padding: var(--space-sm); background: var(--color-bg-soft); border-radius: var(--radius-sm); cursor: pointer;">
-                <input type="checkbox" id="perm-${p.key}" ${role?.[p.key] ? 'checked' : ''} style="margin-top: 3px;">
-                <div>
-                  <div style="font-weight: 500;">${p.label}</div>
-                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">${p.desc}</div>
-                </div>
-              </label>
-            `).join('')}
-          </div>
+          ${Object.entries(sections).map(([section, perms]) => `
+            <div style="margin-top: var(--space-md);">
+              <div style="font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); margin-bottom: var(--space-xs); text-transform: uppercase;">${section}</div>
+              <div style="display: flex; flex-direction: column; gap: var(--space-xs);">
+                ${perms.map(p => `
+                  <label style="display: flex; align-items: flex-start; gap: var(--space-sm); padding: var(--space-sm); background: var(--color-bg-soft); border-radius: var(--radius-sm); cursor: pointer;">
+                    <input type="checkbox" id="perm-${p.key}" ${role?.[p.key] ? 'checked' : ''} style="margin-top: 3px;">
+                    <div>
+                      <div style="font-weight: 500;">${p.label}</div>
+                      <div style="font-size: 0.75rem; color: var(--color-text-muted);">${p.desc}</div>
+                    </div>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
         </div>
       `;
       
@@ -1384,10 +1404,14 @@ If you have any questions about your project, please don't hesitate to reach out
           can_view_financials: $('#perm-can_view_financials').checked,
           can_delete: $('#perm-can_delete').checked,
           can_manage_users: $('#perm-can_manage_users').checked,
-          can_send_invoices: $('#perm-can_send_invoices').checked,
-          can_edit_quotes: $('#perm-can_edit_quotes').checked,
+          can_view_pipeline: $('#perm-can_view_pipeline').checked,
+          can_edit_pipeline: $('#perm-can_edit_pipeline').checked,
+          can_view_customers: $('#perm-can_view_customers').checked,
           can_edit_customers: $('#perm-can_edit_customers').checked,
-          can_edit_pipeline: $('#perm-can_edit_pipeline').checked
+          can_view_quotes: $('#perm-can_view_quotes').checked,
+          can_edit_quotes: $('#perm-can_edit_quotes').checked,
+          can_view_invoices: $('#perm-can_view_invoices').checked,
+          can_send_invoices: $('#perm-can_send_invoices').checked
         };
         
         try {

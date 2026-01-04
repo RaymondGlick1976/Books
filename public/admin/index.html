@@ -13,7 +13,7 @@
     if (user && user.permissions) {
       const p = user.permissions;
       // If user only has pipeline access, go straight there
-      if (p.can_edit_pipeline && !p.can_edit_quotes && !p.can_edit_customers && !p.can_send_invoices && !p.can_access_settings) {
+      if (p.can_view_pipeline && !p.can_view_quotes && !p.can_view_customers && !p.can_view_invoices && !p.can_access_settings) {
         window.location.href = '/admin/pipeline.html';
       }
     }
