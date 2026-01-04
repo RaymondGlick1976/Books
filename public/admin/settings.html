@@ -1437,12 +1437,48 @@ If you have any questions about your project, please don't hesitate to reach out
       }
     };
     
-    // Initialize
-    loadSettings();
-    loadLeadSources();
-    loadAppointmentTypes();
-    loadRoles();
-    loadUsers();
+    // Initialize - load all data in parallel
+    async function initSettings() {
+      const supabase = await app.waitForSupabase();
+      
+      // Load all data in parallel
+      const [settingsRes, leadSourcesRes, apptTypesRes, rolesRes, usersRes] = await Promise.all([
+        supabase.from('settings').select('*'),
+        supabase.from('lead_sources').select('*').order('sort_order'),
+        supabase.from('appointment_types').select('*').order('sort_order'),
+        supabase.from('app_roles').select('*').order('sort_order'),
+        supabase.from('app_users').select('*, app_roles(name)').order('name')
+      ]);
+      
+      // Process settings
+      if (settingsRes.data) {
+        settingsRes.data.forEach(s => {
+          const input = document.getElementById(s.key);
+          if (input) {
+            if (input.type === 'checkbox') input.checked = s.value === 'true';
+            else input.value = s.value || '';
+          }
+        });
+      }
+      
+      // Process lead sources
+      leadSources = leadSourcesRes.data || [];
+      renderLeadSources();
+      
+      // Process appointment types
+      appointmentTypes = apptTypesRes.data || [];
+      renderAppointmentTypes();
+      
+      // Process roles
+      appRoles = rolesRes.data || [];
+      renderRoles();
+      
+      // Process users
+      appUsers = usersRes.data || [];
+      renderUsers();
+    }
+    
+    initSettings();
   </script>
 </body>
 </html>
