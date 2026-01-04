@@ -48,6 +48,15 @@
   </style>
 </head>
 <body>
+  <script>
+    // Permission check before page loads
+    const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+    if (!user) {
+      window.location.href = '/admin/login.html';
+    } else if (!user.permissions?.can_access_settings) {
+      window.location.href = user.permissions?.can_view_pipeline ? '/admin/pipeline.html' : '/admin/index.html';
+    }
+  </script>
   <div class="app-layout">
     <aside class="app-sidebar">
       <div class="sidebar-logo">

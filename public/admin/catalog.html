@@ -4,9 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Items Catalog | Admin | Homestead Cabinet Design</title>
-  <link rel="stylesheet" href="/css/styles.css?v=30">
+  <link rel="stylesheet" href="/css/styles.css?v=44">
 </head>
 <body>
+  <script>
+    // Permission check before page loads
+    const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+    if (!user) {
+      window.location.href = '/admin/login.html';
+    } else if (!user.permissions?.can_view_quotes) {
+      window.location.href = user.permissions?.can_view_pipeline ? '/admin/pipeline.html' : '/admin/index.html';
+    }
+  </script>
   <div class="app-layout">
     <aside class="app-sidebar">
       <div class="sidebar-logo">
