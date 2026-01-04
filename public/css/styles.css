@@ -160,6 +160,8 @@ a:hover {
   flex: 1;
   margin-left: var(--sidebar-width);
   min-height: 100vh;
+  overflow-x: hidden;
+  max-width: calc(100vw - var(--sidebar-width));
 }
 
 .app-header {
@@ -175,10 +177,14 @@ a:hover {
   min-height: var(--header-height);
   flex-wrap: wrap;
   gap: var(--space-sm);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .app-content {
   padding: var(--space-xl);
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 /* Sidebar Navigation */

@@ -7,9 +7,9 @@
   <link rel="stylesheet" href="/css/styles.css?v=33">
   <style>
     .pipeline-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-md); width: 100%; }
-    .pipeline-header h2 { margin: 0; }
+    .pipeline-header h2 { margin: 0; white-space: nowrap; }
     .pipeline-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center; flex-shrink: 0; }
-    .pipeline-container { display: flex; gap: var(--space-md); overflow-x: auto; padding-bottom: var(--space-lg); min-height: calc(100vh - 200px); }
+    .pipeline-container { display: flex; gap: var(--space-md); overflow-x: auto; padding-bottom: var(--space-lg); min-height: calc(100vh - 200px); max-width: 100%; }
     .pipeline-column { flex: 0 0 260px; background: var(--color-bg-soft); border-radius: var(--radius-lg); display: flex; flex-direction: column; max-height: calc(100vh - 200px); }
     .column-header { padding: var(--space-md); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: var(--space-sm); position: sticky; top: 0; background: var(--color-bg-soft); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
     .stage-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
@@ -156,8 +156,8 @@
         </div>
       </header>
       
-      <div class="app-content">
-        <div id="pipeline-view"><div class="pipeline-container" id="pipeline-container"></div></div>
+      <div class="app-content" style="padding: var(--space-md); overflow: hidden;">
+        <div id="pipeline-view" style="overflow-x: auto; max-width: 100%;"><div class="pipeline-container" id="pipeline-container"></div></div>
         <div id="calendar-view" style="display:none;">
           <div class="calendar-container">
             <div class="calendar-header">
