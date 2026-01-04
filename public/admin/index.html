@@ -4,9 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard | Homestead Cabinet Design</title>
-  <link rel="stylesheet" href="/css/styles.css?v=30">
+  <link rel="stylesheet" href="/css/styles.css?v=41">
 </head>
 <body>
+  <script>
+    // Redirect limited users to their allowed page
+    const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+    if (user && user.permissions) {
+      const p = user.permissions;
+      // If user only has pipeline access, go straight there
+      if (p.can_edit_pipeline && !p.can_edit_quotes && !p.can_edit_customers && !p.can_send_invoices && !p.can_access_settings) {
+        window.location.href = '/admin/pipeline.html';
+      }
+    }
+  </script>
   <div class="app-layout">
     <!-- Sidebar -->
     <aside class="app-sidebar">

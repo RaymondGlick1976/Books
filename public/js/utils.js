@@ -708,22 +708,67 @@ function applyRoleRestrictions() {
   const user = getCurrentUser();
   if (!user) return;
   
-  // Hide elements based on permissions
-  if (!user.permissions?.can_access_settings) {
-    // Hide Settings link in sidebar
-    $$('.sidebar-nav-link').forEach(link => {
-      if (link.href?.includes('/admin/settings.html')) {
-        link.closest('.sidebar-nav-item')?.remove();
-      }
-    });
-    // Also remove the Settings section header if empty
-    $$('.sidebar-section').forEach(section => {
-      const title = section.querySelector('.sidebar-section-title');
-      if (title?.textContent === 'Settings') {
-        section.remove();
-      }
-    });
+  // Page permission mapping
+  const pagePermissions = {
+    '/admin/settings.html': 'can_access_settings',
+    '/admin/quotes.html': 'can_edit_quotes',
+    '/admin/quote-builder.html': 'can_edit_quotes',
+    '/admin/quote-detail.html': 'can_edit_quotes',
+    '/admin/invoices.html': 'can_send_invoices',
+    '/admin/customers.html': 'can_edit_customers',
+    '/admin/pipeline.html': 'can_edit_pipeline',
+    '/admin/catalog.html': 'can_edit_quotes',
+    '/admin/booking-forms.html': 'can_access_settings'
+  };
+  
+  // Check if current page is allowed
+  const currentPath = window.location.pathname;
+  const requiredPermission = pagePermissions[currentPath];
+  
+  if (requiredPermission && !user.permissions?.[requiredPermission]) {
+    // Redirect to a page they CAN access
+    if (user.permissions?.can_edit_pipeline) {
+      window.location.href = '/admin/pipeline.html';
+    } else if (user.permissions?.can_edit_customers) {
+      window.location.href = '/admin/customers.html';
+    } else if (user.permissions?.can_edit_quotes) {
+      window.location.href = '/admin/quotes.html';
+    } else {
+      window.location.href = '/admin/index.html';
+    }
+    return;
   }
+  
+  // Hide sidebar links based on permissions
+  const sidebarPermissions = {
+    'settings.html': 'can_access_settings',
+    'quotes.html': 'can_edit_quotes',
+    'quote-builder.html': 'can_edit_quotes',
+    'invoices.html': 'can_send_invoices',
+    'customers.html': 'can_edit_customers',
+    'pipeline.html': 'can_edit_pipeline',
+    'catalog.html': 'can_edit_quotes',
+    'booking-forms.html': 'can_access_settings'
+  };
+  
+  $$('.sidebar-nav-link').forEach(link => {
+    const href = link.getAttribute('href') || '';
+    for (const [page, permission] of Object.entries(sidebarPermissions)) {
+      if (href.includes(page) && !user.permissions?.[permission]) {
+        const listItem = link.closest('.sidebar-nav-item');
+        if (listItem) listItem.style.display = 'none';
+        break;
+      }
+    }
+  });
+  
+  // Hide empty sidebar sections
+  $$('.sidebar-section').forEach(section => {
+    const visibleItems = section.querySelectorAll('.sidebar-nav-item:not([style*="display: none"])');
+    if (visibleItems.length === 0) {
+      section.style.display = 'none';
+    }
+  });
   
   if (!user.permissions?.can_delete) {
     // Hide delete buttons
