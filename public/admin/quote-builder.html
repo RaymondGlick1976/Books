@@ -480,18 +480,18 @@
               </div>
             </div>
             
-            <!-- Packages Section -->
+            <!-- Bundles Section -->
             <div class="card mb-xl">
               <div class="card-header">
-                <h3 class="card-title">Packages</h3>
+                <h3 class="card-title">Bundles</h3>
                 <div class="btn-group">
                   <button class="btn btn-secondary btn-sm" onclick="addPackage()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
-                    Add Package
+                    Add Bundle
                   </button>
-                  <button class="btn btn-ghost btn-sm" onclick="showPackagesHelp()" title="How Packages Work">
+                  <button class="btn btn-ghost btn-sm" onclick="showPackagesHelp()" title="How Bundles Work">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
@@ -501,8 +501,8 @@
               <div class="card-body">
                 <div class="toggle-row">
                   <div>
-                    <div class="toggle-label">Enable Package Selection</div>
-                    <div class="toggle-description">When enabled, customers must select a package instead of seeing individual line items.</div>
+                    <div class="toggle-label">Enable Bundle Selection</div>
+                    <div class="toggle-description">When enabled, customers must select a bundle instead of seeing individual line items.</div>
                   </div>
                   <label class="toggle">
                     <input type="checkbox" id="packages-enabled" onchange="togglePackagesEnabled()">
@@ -511,11 +511,11 @@
                 </div>
                 
                 <div id="packages-disabled-notice" class="text-center text-muted p-lg" style="display: none;">
-                  <p>Package selection is disabled. Enable it above to let customers choose a package.</p>
+                  <p>Bundle selection is disabled. Enable it above to let customers choose a bundle.</p>
                 </div>
                 
                 <div id="empty-packages" class="text-center text-muted p-xl">
-                  No packages yet. Create packages to offer your customers different pricing tiers.
+                  No bundles yet. Create bundles to offer your customers different pricing tiers.
                 </div>
                 
                 <div id="packages-container"></div>
@@ -1261,13 +1261,13 @@
       
       // Must have either line items OR packages
       if (lineItems.length === 0 && packages.length === 0) {
-        showToast('Please add line items or packages', 'error');
+        showToast('Please add line items or bundles', 'error');
         return;
       }
       
       // If packages enabled, must have at least one package
       if (packagesEnabled && packages.length === 0) {
-        showToast('Please add at least one package', 'error');
+        showToast('Please add at least one bundle', 'error');
         return;
       }
       
@@ -1543,11 +1543,11 @@
                 <div class="package-menu" id="package-menu-${index}">
                   <button class="package-menu-item" onclick="editPackage(${index})">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    Edit Package
+                    Edit Bundle
                   </button>
                   <button class="package-menu-item" onclick="duplicatePackage(${index})">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                    Duplicate Package
+                    Duplicate Bundle
                   </button>
                   <div class="package-menu-divider"></div>
                   <button class="package-menu-item" onclick="toggleRecommended(${index})">
@@ -1556,12 +1556,12 @@
                   </button>
                   <button class="package-menu-item" onclick="toggleSelected(${index})">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    ${pkg.is_selected ? 'Deselect Package' : 'Select Package'}
+                    ${pkg.is_selected ? 'Deselect Bundle' : 'Select Bundle'}
                   </button>
                   <div class="package-menu-divider"></div>
                   <button class="package-menu-item danger" onclick="deletePackage(${index})">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                    Delete Package
+                    Delete Bundle
                   </button>
                 </div>
               </div>
@@ -1594,7 +1594,7 @@
               `).join('')}
               <div class="package-total-row">
                 <div></div>
-                <div>Package Total</div>
+                <div>Bundle Total</div>
                 <div></div>
                 <div style="text-align: right;">${formatCurrency(total)}</div>
                 <div></div>
@@ -1644,7 +1644,7 @@
       const content = createElement('div');
       content.innerHTML = `
         <div class="form-group">
-          <label class="form-label">Package Name *</label>
+          <label class="form-label">Bundle Name *</label>
           <input type="text" id="pkg-name" class="form-input" value="${pkg?.name || ''}" placeholder="e.g., Basic, Standard, Premium">
         </div>
         <div class="form-group">
@@ -1698,7 +1698,7 @@
       footer.appendChild(saveBtn);
       
       const modal = createModal({
-        title: isEdit ? 'Edit Package' : 'Create Package',
+        title: isEdit ? 'Edit Bundle' : 'Create Bundle',
         content,
         footer,
         size: 'md'
@@ -1766,7 +1766,7 @@
     }
     
     function deletePackage(index) {
-      if (!confirm('Delete this package?')) return;
+      if (!confirm('Delete this bundle?')) return;
       packages.splice(index, 1);
       updatePackagesUI();
       showToast('Package deleted', 'success');
@@ -1858,7 +1858,7 @@
       ]);
       
       const modal = createModal({
-        title: 'Add Items to Package',
+        title: 'Add Items to Bundle',
         content,
         footer,
         size: 'xl'
@@ -1939,7 +1939,7 @@
       footer.appendChild(rightBtns);
       
       const modal = createModal({
-        title: isEdit ? 'Edit Item' : 'Add Item to Package',
+        title: isEdit ? 'Edit Item' : 'Add Item to Bundle',
         content,
         footer
       });
@@ -1975,31 +1975,31 @@
       const content = createElement('div');
       content.innerHTML = `
         <div style="line-height: 1.6;">
-          <h4 style="margin-top: 0;">How Packages Work</h4>
-          <p>Packages let you offer customers different pricing tiers (e.g., Basic, Standard, Premium) instead of a single quote.</p>
+          <h4 style="margin-top: 0;">How Bundles Work</h4>
+          <p>Bundles let you offer customers different pricing tiers (e.g., Basic, Standard, Premium) instead of a single quote.</p>
           
-          <h4>Creating Packages</h4>
+          <h4>Creating Bundles</h4>
           <ol>
-            <li>Click <strong>"Add Package"</strong> to create a new package</li>
+            <li>Click <strong>"Add Bundle"</strong> to create a new bundle</li>
             <li>Give it a name and optional description</li>
-            <li>Add line items to the package using the <strong>"Add Item"</strong> button</li>
+            <li>Add line items to the bundle using the <strong>"Add Item"</strong> button</li>
             <li>Items can be marked as "included" or "excluded" (shown crossed out)</li>
           </ol>
           
-          <h4>Package Options</h4>
+          <h4>Bundle Options</h4>
           <ul>
-            <li><strong>Mark as Recommended:</strong> Highlights this package for customers</li>
+            <li><strong>Mark as Recommended:</strong> Highlights this bundle for customers</li>
             <li><strong>Override Price:</strong> Set a flat price instead of calculating from items</li>
             <li><strong>Hide Excluded Items:</strong> Don't show crossed-out items to customers</li>
           </ul>
           
           <h4>Customer Experience</h4>
-          <p>When "Enable Package Selection" is on, customers will see package cards side-by-side and must select one before they can approve the quote.</p>
+          <p>When "Enable Bundle Selection" is on, customers will see bundle cards side-by-side and must select one before they can approve the quote.</p>
         </div>
       `;
       
       createModal({
-        title: 'How Packages Work',
+        title: 'How Bundles Work',
         content,
         size: 'md'
       });

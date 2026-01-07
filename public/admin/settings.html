@@ -596,11 +596,19 @@ If you have any questions about your project, please don't hesitate to reach out
     // Brand color sync
     document.getElementById('brand-color').addEventListener('input', function(e) {
       document.getElementById('brand-color-hex').value = e.target.value;
+      // Preview the color change immediately
+      if (window.applyBrandColor) {
+        applyBrandColor(e.target.value);
+      }
     });
     
     document.getElementById('brand-color-hex').addEventListener('input', function(e) {
       if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
         document.getElementById('brand-color').value = e.target.value;
+        // Preview the color change immediately
+        if (window.applyBrandColor) {
+          applyBrandColor(e.target.value);
+        }
       }
     });
     

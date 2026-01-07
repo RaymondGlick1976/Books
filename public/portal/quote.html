@@ -557,13 +557,14 @@
       border-radius: var(--radius-lg);
       padding: var(--space-lg);
       position: relative;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
       cursor: pointer;
     }
     
     .package-card:hover {
       border-color: var(--color-primary);
-      box-shadow: var(--shadow-md);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+      transform: translateY(-4px);
     }
     
     .package-card.recommended {
@@ -572,7 +573,12 @@
     
     .package-card.selected {
       border-color: var(--color-success);
-      box-shadow: 0 0 0 2px var(--color-success);
+      box-shadow: 0 0 0 2px var(--color-success), 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+    
+    .package-card.selected:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 0 0 2px var(--color-success), 0 10px 40px rgba(0, 0, 0, 0.15);
     }
     
     .package-recommended-badge {
@@ -774,7 +780,7 @@
         
         <!-- Packages Section (shown when packages_enabled) -->
         <div id="packages-section" class="packages-section" style="display: none;">
-          <h2>Select Your Package</h2>
+          <h2>Select Your Bundle</h2>
           <p class="packages-subtitle">Choose the option that best fits your needs</p>
           <div class="packages-grid" id="packages-grid"></div>
           <div id="package-warning" class="package-warning" style="display: none;">
@@ -782,7 +788,7 @@
               <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
               <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            Please select a package to continue with your proposal.
+            Please select a bundle to continue with your proposal.
           </div>
         </div>
         
@@ -1518,7 +1524,7 @@
             `).join('')}
           </div>
           <button class="package-select-btn" onclick="selectPackage('${pkg.id}')">
-            ${isSelected ? 'Selected<br><small>(click to remove)</small>' : 'Select Package'}
+            ${isSelected ? 'Selected<br><small>(click to remove)</small>' : 'Select Bundle'}
           </button>
         `;
         
@@ -1550,7 +1556,7 @@
         card.classList.toggle('selected', isSelected);
         const btn = card.querySelector('.package-select-btn');
         if (btn) {
-          btn.innerHTML = isSelected ? 'Selected<br><small>(click to remove)</small>' : 'Select Package';
+          btn.innerHTML = isSelected ? 'Selected<br><small>(click to remove)</small>' : 'Select Bundle';
         }
       });
       
