@@ -535,8 +535,20 @@
     
     .packages-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: var(--space-lg);
+    }
+    
+    @media (max-width: 900px) {
+      .packages-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 600px) {
+      .packages-grid {
+        grid-template-columns: 1fr;
+      }
     }
     
     .package-card {
@@ -1599,7 +1611,26 @@
             taxableSubtotalHigh = pkgTotal;
           }
         }
-        // If no package selected, totals remain 0
+        
+        // Also add any selected optional line items (add-ons)
+        lineItems.forEach(item => {
+          const isOptional = item.is_optional === true;
+          const isSelected = item.is_selected === true;
+          const isTaxable = item.is_taxable === true;
+          
+          // Only add optional items that are selected
+          if (isOptional && isSelected) {
+            const total = parseFloat(item.line_total || 0);
+            subtotal += total;
+            subtotalLow += total;
+            subtotalHigh += total;
+            if (isTaxable) {
+              taxableSubtotal += total;
+              taxableSubtotalLow += total;
+              taxableSubtotalHigh += total;
+            }
+          }
+        });
       } else {
         // Standard line items calculation
         lineItems.forEach(item => {
