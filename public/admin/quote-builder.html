@@ -1106,7 +1106,7 @@
       
       $('#summary-tax-rate').textContent = (TAX_RATE * 100).toFixed(2);
       $('#summary-deposit').textContent = formatCurrency(deposit);
-      $('#summary-balance').textContent = formatCurrency((hasRange ? totalLow : total) - deposit);
+      $('#summary-balance').textContent = formatCurrency(total - deposit);
       
       summaryItems.innerHTML = '';
       summaryTotals.style.display = 'block';
