@@ -437,8 +437,7 @@
                 <h3 class="card-title">Quote Details</h3>
               </div>
               <div class="card-body">
-                <div class="grid grid-cols-2 gap-lg">
-                  <div class="form-group">
+                <div class="form-group">
                     <label class="form-label">Customer *</label>
                     <select id="customer-select" class="form-select" required>
                       <option value="">Select customer...</option>
@@ -447,14 +446,6 @@
                       <button type="button" class="btn btn-link btn-sm" id="new-customer-btn">+ Add New Customer</button>
                     </div>
                   </div>
-                  <div class="form-group">
-                    <label class="form-label">Quote Type</label>
-                    <select id="quote-type" class="form-select">
-                      <option value="final">Final Quote (Fixed Prices)</option>
-                      <option value="ballpark">Ballpark Estimate (Price Ranges)</option>
-                    </select>
-                  </div>
-                </div>
                 
                 <div class="form-group">
                   <label class="form-label">Project Title *</label>
@@ -485,34 +476,6 @@
                       <span class="input-group-append" id="deposit-suffix">%</span>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Line Items -->
-            <div class="card mb-xl">
-              <div class="card-header">
-                <h3 class="card-title">Line Items</h3>
-                <div class="btn-group">
-                  <button class="btn btn-secondary btn-sm" id="add-from-catalog-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
-                    </svg>
-                    From Catalog
-                  </button>
-                  <button class="btn btn-secondary btn-sm" id="add-custom-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                    Custom Item
-                  </button>
-                </div>
-              </div>
-              <div class="card-body">
-                <div class="text-center text-muted p-xl" id="empty-items">
-                  No line items yet. Add items from the catalog or create custom items.
-                </div>
-                <div class="line-items-list" id="line-items-container">
                 </div>
               </div>
             </div>
@@ -556,6 +519,34 @@
                 </div>
                 
                 <div id="packages-container"></div>
+              </div>
+            </div>
+            
+            <!-- Line Items -->
+            <div class="card mb-xl">
+              <div class="card-header">
+                <h3 class="card-title">Additional Line Items</h3>
+                <div class="btn-group">
+                  <button class="btn btn-secondary btn-sm" id="add-from-catalog-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/>
+                    </svg>
+                    From Catalog
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="add-custom-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Custom Item
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="text-center text-muted p-xl" id="empty-items">
+                  No line items yet. Add items from the catalog or create custom items.
+                </div>
+                <div class="line-items-list" id="line-items-container">
+                </div>
               </div>
             </div>
             
@@ -713,7 +704,6 @@
       
       $('#page-title').textContent = `Edit Quote: ${quote.quote_number}`;
       $('#customer-select').value = quote.customer_id;
-      $('#quote-type').value = quote.quote_type;
       $('#quote-title').value = quote.title;
       $('#quote-description').value = quote.description || '';
       $('#valid-days').value = quote.valid_days;
@@ -853,8 +843,7 @@
           card.appendChild(createElement('div', { className: 'font-bold', textContent: item.name }));
           card.appendChild(createElement('div', { 
             className: 'text-sm text-muted',
-            textContent: item.default_price ? formatCurrency(item.default_price) : 
-              `${formatCurrency(item.price_range_low)} - ${formatCurrency(item.price_range_high)}`
+            textContent: formatCurrency(item.default_price || 0)
           }));
           
           grid.appendChild(card);
@@ -891,9 +880,6 @@
     }
     
     function addLineItem(catalogItem = null) {
-      const quoteType = $('#quote-type').value;
-      const isRangePricing = quoteType === 'ballpark' && catalogItem?.price_range_low;
-      
       const item = {
         id: 'new-' + Date.now(),
         catalogItemId: catalogItem?.id || null,
@@ -901,9 +887,9 @@
         details: catalogItem?.description || '',
         quantity: 1,
         unitPrice: catalogItem?.default_price || 0,
-        priceRangeLow: catalogItem?.price_range_low || 0,
-        priceRangeHigh: catalogItem?.price_range_high || 0,
-        isRangePricing,
+        priceRangeLow: null,
+        priceRangeHigh: null,
+        isRangePricing: false,
         photoUrl: catalogItem?.photo_url || null,
         isOptional: false,
         isTaxable: catalogItem?.is_taxable !== false,
@@ -984,43 +970,16 @@
         // Price
         const priceCell = createElement('div');
         priceCell.appendChild(createElement('label', { className: 'form-label', textContent: 'Price' }));
-        if (item.isRangePricing) {
-          const rangeDiv = createElement('div', { className: 'flex gap-xs' });
-          rangeDiv.appendChild(createElement('input', {
-            type: 'number',
-            className: 'form-input',
-            value: item.priceRangeLow,
-            placeholder: 'Low',
-            style: 'width: 50%;',
-            onInput: (e) => {
-              lineItems[index].priceRangeLow = parseFloat(e.target.value) || 0;
-              updateSummary();
-            }
-          }));
-          rangeDiv.appendChild(createElement('input', {
-            type: 'number',
-            className: 'form-input',
-            value: item.priceRangeHigh,
-            placeholder: 'High',
-            style: 'width: 50%;',
-            onInput: (e) => {
-              lineItems[index].priceRangeHigh = parseFloat(e.target.value) || 0;
-              updateSummary();
-            }
-          }));
-          priceCell.appendChild(rangeDiv);
-        } else {
-          priceCell.appendChild(createElement('input', {
-            type: 'number',
-            className: 'form-input',
-            value: item.unitPrice,
-            step: '0.01',
-            onInput: (e) => {
-              lineItems[index].unitPrice = parseFloat(e.target.value) || 0;
-              updateSummary();
-            }
-          }));
-        }
+        priceCell.appendChild(createElement('input', {
+          type: 'number',
+          className: 'form-input',
+          value: item.unitPrice,
+          step: '0.01',
+          onInput: (e) => {
+            lineItems[index].unitPrice = parseFloat(e.target.value) || 0;
+            updateSummary();
+          }
+        }));
         row.appendChild(priceCell);
         
         // Options
@@ -1077,69 +1036,37 @@
       
       // Calculate totals - separate taxable and non-taxable
       let subtotal = 0;
-      let subtotalLow = 0;
-      let subtotalHigh = 0;
       let taxableSubtotal = 0;
-      let taxableSubtotalLow = 0;
-      let taxableSubtotalHigh = 0;
       
       lineItems.forEach(item => {
         if (!item.isOptional) {
           const qty = item.quantity || 1;
-          if (item.isRangePricing) {
-            const lowTotal = (item.priceRangeLow || 0) * qty;
-            const highTotal = (item.priceRangeHigh || 0) * qty;
-            subtotalLow += lowTotal;
-            subtotalHigh += highTotal;
-            if (item.isTaxable) {
-              taxableSubtotalLow += lowTotal;
-              taxableSubtotalHigh += highTotal;
-            }
-          } else {
-            const lineTotal = (item.unitPrice || 0) * qty;
-            subtotal += lineTotal;
-            subtotalLow += lineTotal;
-            subtotalHigh += lineTotal;
-            if (item.isTaxable) {
-              taxableSubtotal += lineTotal;
-              taxableSubtotalLow += lineTotal;
-              taxableSubtotalHigh += lineTotal;
-            }
+          const lineTotal = (item.unitPrice || 0) * qty;
+          subtotal += lineTotal;
+          if (item.isTaxable) {
+            taxableSubtotal += lineTotal;
           }
         }
       });
       
       // Only tax the taxable portion
       const tax = taxableSubtotal * TAX_RATE;
-      const taxLow = taxableSubtotalLow * TAX_RATE;
-      const taxHigh = taxableSubtotalHigh * TAX_RATE;
-      
       const total = subtotal + tax;
-      const totalLow = subtotalLow + taxLow;
-      const totalHigh = subtotalHigh + taxHigh;
       
       // Deposit
       const depositType = $('#deposit-type').value;
       const depositValue = parseFloat($('#deposit-value').value) || 0;
       let deposit;
       if (depositType === 'percentage') {
-        deposit = totalLow * (depositValue / 100);
+        deposit = total * (depositValue / 100);
       } else {
         deposit = depositValue;
       }
       
       // Update display
-      const hasRange = lineItems.some(i => i.isRangePricing && !i.isOptional);
-      
-      if (hasRange) {
-        $('#summary-subtotal').textContent = `${formatCurrency(subtotalLow)} - ${formatCurrency(subtotalHigh)}`;
-        $('#summary-tax').textContent = `${formatCurrency(taxLow)} - ${formatCurrency(taxHigh)}`;
-        $('#summary-total').textContent = `${formatCurrency(totalLow)} - ${formatCurrency(totalHigh)}`;
-      } else {
-        $('#summary-subtotal').textContent = formatCurrency(subtotal);
-        $('#summary-tax').textContent = formatCurrency(tax);
-        $('#summary-total').textContent = formatCurrency(total);
-      }
+      $('#summary-subtotal').textContent = formatCurrency(subtotal);
+      $('#summary-tax').textContent = formatCurrency(tax);
+      $('#summary-total').textContent = formatCurrency(total);
       
       $('#summary-tax-rate').textContent = (TAX_RATE * 100).toFixed(2);
       $('#summary-deposit').textContent = formatCurrency(deposit);
@@ -1316,39 +1243,22 @@
         const supabase = await app.waitForSupabase();
         
         // Calculate totals - separate taxable and non-taxable
-        let subtotal = 0, subtotalLow = 0, subtotalHigh = 0;
-        let taxableSubtotal = 0, taxableSubtotalLow = 0, taxableSubtotalHigh = 0;
+        let subtotal = 0;
+        let taxableSubtotal = 0;
         
         lineItems.forEach(item => {
           if (!item.isOptional) {
             const qty = item.quantity || 1;
-            if (item.isRangePricing) {
-              const lowTotal = (item.priceRangeLow || 0) * qty;
-              const highTotal = (item.priceRangeHigh || 0) * qty;
-              subtotalLow += lowTotal;
-              subtotalHigh += highTotal;
-              if (item.isTaxable) {
-                taxableSubtotalLow += lowTotal;
-                taxableSubtotalHigh += highTotal;
-              }
-            } else {
-              const lineTotal = (item.unitPrice || 0) * qty;
-              subtotal += lineTotal;
-              subtotalLow += lineTotal;
-              subtotalHigh += lineTotal;
-              if (item.isTaxable) {
-                taxableSubtotal += lineTotal;
-                taxableSubtotalLow += lineTotal;
-                taxableSubtotalHigh += lineTotal;
-              }
+            const lineTotal = (item.unitPrice || 0) * qty;
+            subtotal += lineTotal;
+            if (item.isTaxable) {
+              taxableSubtotal += lineTotal;
             }
           }
         });
         
         // Only tax the taxable portion
         const taxAmount = taxableSubtotal * TAX_RATE;
-        const taxAmountLow = taxableSubtotalLow * TAX_RATE;
-        const taxAmountHigh = taxableSubtotalHigh * TAX_RATE;
         
         const validDays = parseInt($('#valid-days').value) || 30;
         const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000);
@@ -1357,7 +1267,7 @@
           customer_id: customerId,
           title,
           description: $('#quote-description').value.trim() || null,
-          quote_type: $('#quote-type').value,
+          quote_type: 'final',
           status,
           valid_days: validDays,
           expires_at: expiresAt.toISOString(),
@@ -1368,12 +1278,12 @@
           internal_notes: $('#internal-notes').value.trim() || null,
           tax_rate: TAX_RATE,
           subtotal,
-          subtotal_low: subtotalLow,
-          subtotal_high: subtotalHigh,
+          subtotal_low: subtotal,
+          subtotal_high: subtotal,
           tax_amount: taxAmount,
           total: subtotal + taxAmount,
-          total_low: subtotalLow + taxAmountLow,
-          total_high: subtotalHigh + taxAmountHigh,
+          total_low: subtotal + taxAmount,
+          total_high: subtotal + taxAmount,
           packages_enabled: packagesEnabled
         };
         
@@ -1412,19 +1322,20 @@
         
         const lineItemsToInsert = lineItems.map((item, index) => {
           console.log('Saving item:', item.description, 'isOptional:', item.isOptional);
+          const lineTotal = (item.unitPrice || 0) * (item.quantity || 1);
           return {
             quote_id: quoteId,
             catalog_item_id: item.catalogItemId,
             description: item.description,
             details: item.details,
             quantity: item.quantity,
-            unit_price: item.isRangePricing ? null : item.unitPrice,
-            price_range_low: item.isRangePricing ? item.priceRangeLow : null,
-            price_range_high: item.isRangePricing ? item.priceRangeHigh : null,
-            is_range_pricing: item.isRangePricing,
-            line_total: item.isRangePricing ? null : (item.unitPrice * item.quantity),
-            line_total_low: item.isRangePricing ? (item.priceRangeLow * item.quantity) : (item.unitPrice * item.quantity),
-            line_total_high: item.isRangePricing ? (item.priceRangeHigh * item.quantity) : (item.unitPrice * item.quantity),
+            unit_price: item.unitPrice,
+            price_range_low: null,
+            price_range_high: null,
+            is_range_pricing: false,
+            line_total: lineTotal,
+            line_total_low: lineTotal,
+            line_total_high: lineTotal,
             photo_url: item.photoUrl,
             is_optional: item.isOptional,
             is_taxable: item.isTaxable,
@@ -1826,7 +1737,102 @@
     }
     
     function addPackageItem(packageIndex) {
-      showPackageItemModal(packageIndex);
+      showPackageCatalogModal(packageIndex);
+    }
+    
+    function showPackageCatalogModal(packageIndex) {
+      const content = createElement('div');
+      
+      // Group by category
+      const byCategory = {};
+      catalogItems.forEach(item => {
+        const cat = item.category || 'Uncategorized';
+        if (!byCategory[cat]) byCategory[cat] = [];
+        byCategory[cat].push(item);
+      });
+      
+      Object.entries(byCategory).forEach(([category, items]) => {
+        content.appendChild(createElement('h4', { 
+          className: 'mb-md mt-lg',
+          textContent: category
+        }));
+        
+        const grid = createElement('div', { className: 'catalog-modal-grid' });
+        items.forEach(item => {
+          const card = createElement('div', {
+            className: 'catalog-item-card',
+            dataset: { id: item.id },
+            onClick: () => {
+              card.classList.toggle('selected');
+            }
+          });
+          
+          if (item.photo_url) {
+            card.appendChild(createElement('img', {
+              src: item.photo_url,
+              style: 'width: 100%; height: 80px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;'
+            }));
+          }
+          
+          card.appendChild(createElement('div', { className: 'font-bold', textContent: item.name }));
+          card.appendChild(createElement('div', { 
+            className: 'text-sm text-muted',
+            textContent: formatCurrency(item.default_price || 0)
+          }));
+          
+          grid.appendChild(card);
+        });
+        content.appendChild(grid);
+      });
+      
+      // Add custom item option
+      content.appendChild(createElement('div', {
+        className: 'mt-lg pt-lg',
+        style: 'border-top: 1px solid var(--color-border);',
+        innerHTML: '<button class="btn btn-link" id="add-custom-pkg-item">+ Add Custom Item</button>'
+      }));
+      
+      const footer = createElement('div', { className: 'btn-group' }, [
+        createElement('button', {
+          className: 'btn btn-secondary',
+          textContent: 'Cancel',
+          onClick: () => closeModal(modal)
+        }),
+        createElement('button', {
+          className: 'btn btn-primary',
+          textContent: 'Add Selected',
+          onClick: () => {
+            const selected = $$('.catalog-item-card.selected', modal);
+            selected.forEach(card => {
+              const item = catalogItems.find(i => i.id === card.dataset.id);
+              if (item) {
+                packages[packageIndex].items.push({
+                  name: item.name,
+                  description: item.description || '',
+                  quantity: 1,
+                  price: item.default_price || 0,
+                  is_included: true
+                });
+              }
+            });
+            updatePackagesUI();
+            closeModal(modal);
+          }
+        })
+      ]);
+      
+      const modal = createModal({
+        title: 'Add Items to Package',
+        content,
+        footer,
+        size: 'xl'
+      });
+      
+      // Handle custom item button
+      $('#add-custom-pkg-item', modal).onclick = () => {
+        closeModal(modal);
+        showPackageItemModal(packageIndex);
+      };
     }
     
     function editPackageItem(packageIndex, itemIndex) {
