@@ -1047,8 +1047,12 @@
       }
       
       // Check if packages are enabled
-      if (quote.packages_enabled && packages.length > 0) {
-        // Show packages, hide regular line items
+      console.log('Quote packages_enabled:', quote.packages_enabled);
+      console.log('Packages:', packages);
+      console.log('Line items:', lineItems);
+      
+      if (quote.packages_enabled && packages && packages.length > 0) {
+        // Show packages section
         $('#packages-section').style.display = 'block';
         renderPackages();
         
@@ -1057,9 +1061,20 @@
         if (!selectedPackageId && quote.status !== 'accepted' && quote.status !== 'converted') {
           $('#package-warning').style.display = 'flex';
         }
+        
+        // Also show line items if there are any additional items
+        if (lineItems && lineItems.length > 0) {
+          renderLineItems();
+        }
       } else {
         // Show regular line items
         renderLineItems();
+        
+        // If packages exist but not enabled, still show them (for preview)
+        if (packages && packages.length > 0) {
+          $('#packages-section').style.display = 'block';
+          renderPackages();
+        }
       }
       
       // Attachments

@@ -159,6 +159,7 @@
           <td class="table-actions">
             <a href="/admin/quote-detail.html?id=${quote.id}" class="btn btn-ghost btn-sm">View</a>
             <a href="/admin/quote-builder.html?id=${quote.id}" class="btn btn-ghost btn-sm">Edit</a>
+            <a href="/portal/quote.html?token=${quote.access_token}" target="_blank" class="btn btn-ghost btn-sm" title="View as customer">👁️</a>
             <button class="btn btn-ghost btn-sm" onclick="duplicateQuote('${quote.id}')">Duplicate</button>
             ${quote.status === 'accepted' ? `<button class="btn btn-ghost btn-sm" onclick="createInvoice('${quote.id}')">→ Invoice</button>` : ''}
           </td>

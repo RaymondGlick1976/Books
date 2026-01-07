@@ -61,12 +61,21 @@ exports.handler = async (event) => {
       .eq('quote_id', quoteId)
       .order('created_at', { ascending: false });
     
-    // Get packages with items
-    const { data: packages } = await supabase
-      .from('quote_packages')
-      .select('*, items:quote_package_items(*)')
-      .eq('quote_id', quoteId)
-      .order('sort_order');
+    // Get packages with items (with error handling in case table doesn't exist)
+    let packages = [];
+    try {
+      const { data: pkgData, error: pkgError } = await supabase
+        .from('quote_packages')
+        .select('*, items:quote_package_items(*)')
+        .eq('quote_id', quoteId)
+        .order('sort_order');
+      
+      if (!pkgError && pkgData) {
+        packages = pkgData;
+      }
+    } catch (e) {
+      console.log('Packages table may not exist yet:', e.message);
+    }
     
     return success({
       quote,
