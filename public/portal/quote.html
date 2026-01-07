@@ -516,6 +516,194 @@
         display: none;
       }
     }
+    
+    /* Package Selection Styles */
+    .packages-section {
+      margin-bottom: var(--space-xl);
+    }
+    
+    .packages-section h2 {
+      text-align: center;
+      margin-bottom: var(--space-sm);
+    }
+    
+    .packages-section .packages-subtitle {
+      text-align: center;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-xl);
+    }
+    
+    .packages-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--space-lg);
+    }
+    
+    .package-card {
+      background: var(--color-bg-card);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      position: relative;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    
+    .package-card:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .package-card.recommended {
+      border-color: var(--color-primary);
+    }
+    
+    .package-card.selected {
+      border-color: var(--color-success);
+      box-shadow: 0 0 0 2px var(--color-success);
+    }
+    
+    .package-recommended-badge {
+      position: absolute;
+      top: -1px;
+      right: 20px;
+      background: var(--color-text-muted);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 0 0 4px 4px;
+      transform: rotate(0deg);
+    }
+    
+    .package-card.recommended .package-recommended-badge {
+      background: var(--color-primary);
+    }
+    
+    .package-radio {
+      position: absolute;
+      top: var(--space-md);
+      left: var(--space-md);
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--color-border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .package-card.selected .package-radio {
+      border-color: var(--color-success);
+      background: var(--color-success);
+    }
+    
+    .package-card.selected .package-radio::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+    }
+    
+    .package-name {
+      font-size: 1.25rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: var(--space-sm);
+    }
+    
+    .package-description {
+      text-align: center;
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
+      margin-bottom: var(--space-md);
+      min-height: 40px;
+    }
+    
+    .package-price {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--color-text);
+      margin-bottom: var(--space-lg);
+    }
+    
+    .package-price sup {
+      font-size: 1rem;
+      vertical-align: super;
+    }
+    
+    .package-items-list {
+      border-top: 1px solid var(--color-border-light);
+      padding-top: var(--space-md);
+    }
+    
+    .package-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--color-border-light);
+      font-size: 0.875rem;
+    }
+    
+    .package-item.excluded {
+      color: var(--color-text-muted);
+      text-decoration: line-through;
+    }
+    
+    .package-item-name {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+    
+    .package-item-price {
+      font-weight: 500;
+    }
+    
+    .package-item .info-icon {
+      color: var(--color-text-muted);
+      cursor: help;
+    }
+    
+    .package-select-btn {
+      width: 100%;
+      margin-top: var(--space-lg);
+      padding: var(--space-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .package-select-btn:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+    
+    .package-card.selected .package-select-btn {
+      background: var(--color-success);
+      border-color: var(--color-success);
+      color: white;
+    }
+    
+    .package-warning {
+      background: #fef3cd;
+      border: 1px solid #ffc107;
+      color: #856404;
+      padding: var(--space-md) var(--space-lg);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-xl);
+    }
   </style>
 </head>
 <body>
@@ -570,6 +758,20 @@
           <div class="quote-number" id="quote-number"></div>
           <h1 class="quote-title" id="quote-title"></h1>
           <div id="quote-date"></div>
+        </div>
+        
+        <!-- Packages Section (shown when packages_enabled) -->
+        <div id="packages-section" class="packages-section" style="display: none;">
+          <h2>Select Your Package</h2>
+          <p class="packages-subtitle">Choose the option that best fits your needs</p>
+          <div class="packages-grid" id="packages-grid"></div>
+          <div id="package-warning" class="package-warning" style="display: none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            Please select a package to continue with your proposal.
+          </div>
         </div>
         
         <!-- Line Items Section -->
@@ -726,6 +928,8 @@
     let attachments = [];
     let changeOrders = [];
     let payments = [];
+    let packages = [];
+    let selectedPackageId = null;
     let stripe = null;
     let accessToken = null;
     let isPublicAccess = false;
@@ -778,6 +982,7 @@
         attachments = response.attachments;
         changeOrders = response.change_orders || [];
         payments = response.payments || [];
+        packages = response.packages || [];
         
         renderQuote();
         
@@ -841,8 +1046,21 @@
         }
       }
       
-      // Line items
-      renderLineItems();
+      // Check if packages are enabled
+      if (quote.packages_enabled && packages.length > 0) {
+        // Show packages, hide regular line items
+        $('#packages-section').style.display = 'block';
+        renderPackages();
+        
+        // Check if a package is already selected
+        selectedPackageId = quote.selected_package_id || packages.find(p => p.is_selected)?.id || null;
+        if (!selectedPackageId && quote.status !== 'accepted' && quote.status !== 'converted') {
+          $('#package-warning').style.display = 'flex';
+        }
+      } else {
+        // Show regular line items
+        renderLineItems();
+      }
       
       // Attachments
       if (attachments.length > 0) {
@@ -1226,6 +1444,117 @@
       }
     }
     
+    function renderPackages() {
+      const container = $('#packages-grid');
+      clearElement(container);
+      
+      // Sort packages by sort_order
+      const sortedPackages = [...packages].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      
+      sortedPackages.forEach(pkg => {
+        const isSelected = pkg.id === selectedPackageId || pkg.is_selected;
+        const total = pkg.price || pkg.items.filter(i => i.is_included).reduce((sum, item) => sum + (item.quantity * item.price), 0);
+        
+        // Filter items to show
+        const itemsToShow = pkg.hide_non_included 
+          ? pkg.items.filter(i => i.is_included)
+          : pkg.items;
+        
+        const card = createElement('div', {
+          className: `package-card ${pkg.is_recommended ? 'recommended' : ''} ${isSelected ? 'selected' : ''}`,
+          dataset: { packageId: pkg.id }
+        });
+        
+        // Radio button indicator
+        card.innerHTML = `
+          <div class="package-radio"></div>
+          ${pkg.is_recommended ? '<div class="package-recommended-badge">Recommended</div>' : ''}
+          <div class="package-name">${pkg.name}</div>
+          ${pkg.description ? `<div class="package-description">${pkg.description}</div>` : '<div class="package-description"></div>'}
+          <div class="package-price"><sup>$</sup>${formatNumber(total)}</div>
+          <div class="package-items-list">
+            ${itemsToShow.map(item => `
+              <div class="package-item ${!item.is_included ? 'excluded' : ''}">
+                <div class="package-item-name">
+                  ${item.name}
+                  ${item.description ? `<span class="info-icon" title="${item.description}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                  </span>` : ''}
+                </div>
+                <div class="package-item-price">
+                  ${item.is_included ? formatCurrency(item.price * item.quantity) : ''}
+                  ${!item.is_included ? '<span style="color: var(--color-danger);">✕</span>' : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="package-select-btn" onclick="selectPackage('${pkg.id}')">
+            ${isSelected ? 'Selected<br><small>(click to remove)</small>' : 'Select Package'}
+          </button>
+        `;
+        
+        // Make whole card clickable
+        card.addEventListener('click', (e) => {
+          if (!e.target.closest('.package-select-btn')) {
+            selectPackage(pkg.id);
+          }
+        });
+        
+        container.appendChild(card);
+      });
+      
+      // Update totals based on selected package
+      updateTotals();
+    }
+    
+    function selectPackage(packageId) {
+      // Toggle selection
+      if (selectedPackageId === packageId) {
+        selectedPackageId = null;
+      } else {
+        selectedPackageId = packageId;
+      }
+      
+      // Update UI
+      $$('.package-card').forEach(card => {
+        const isSelected = card.dataset.packageId === selectedPackageId;
+        card.classList.toggle('selected', isSelected);
+        const btn = card.querySelector('.package-select-btn');
+        if (btn) {
+          btn.innerHTML = isSelected ? 'Selected<br><small>(click to remove)</small>' : 'Select Package';
+        }
+      });
+      
+      // Update warning message
+      const warning = $('#package-warning');
+      if (warning) {
+        warning.style.display = selectedPackageId ? 'none' : 'flex';
+      }
+      
+      // Update totals
+      updateTotals();
+      
+      // Save selection to server
+      if (isPublicAccess) {
+        fetch('/.netlify/functions/public-quote-selection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: accessToken, package_id: selectedPackageId })
+        }).catch(() => {});
+      } else {
+        apiCall('portal-quote-selection', {
+          method: 'POST',
+          body: JSON.stringify({ quote_id: quote.id, package_id: selectedPackageId })
+        }).catch(() => {});
+      }
+    }
+    
+    function formatNumber(num) {
+      return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+    
     function updateTotals() {
       let subtotal = 0;
       let subtotalLow = 0;
@@ -1235,35 +1564,59 @@
       let taxableSubtotalHigh = 0;
       let hasRange = false;
       
-      lineItems.forEach(item => {
-        const isOptional = item.is_optional === true;
-        const isSelected = item.is_selected === true;
-        const isTaxable = item.is_taxable === true;
-        
-        if (!isOptional || isSelected) {
-          if (item.is_range_pricing) {
-            hasRange = true;
-            const lowTotal = parseFloat(item.line_total_low || 0);
-            const highTotal = parseFloat(item.line_total_high || 0);
-            subtotalLow += lowTotal;
-            subtotalHigh += highTotal;
-            if (isTaxable) {
-              taxableSubtotalLow += lowTotal;
-              taxableSubtotalHigh += highTotal;
-            }
-          } else {
-            const total = parseFloat(item.line_total || 0);
-            subtotal += total;
-            subtotalLow += total;
-            subtotalHigh += total;
-            if (isTaxable) {
-              taxableSubtotal += total;
-              taxableSubtotalLow += total;
-              taxableSubtotalHigh += total;
-            }
+      // If packages are enabled and one is selected, calculate from package
+      if (quote.packages_enabled && packages.length > 0) {
+        const selectedPkg = packages.find(p => p.id === selectedPackageId);
+        if (selectedPkg) {
+          // Calculate package total
+          const pkgTotal = selectedPkg.price || selectedPkg.items
+            .filter(i => i.is_included)
+            .reduce((sum, item) => sum + (item.quantity * item.price), 0);
+          
+          subtotal = pkgTotal;
+          subtotalLow = pkgTotal;
+          subtotalHigh = pkgTotal;
+          
+          // Handle package tax
+          if (selectedPkg.apply_tax) {
+            taxableSubtotal = pkgTotal;
+            taxableSubtotalLow = pkgTotal;
+            taxableSubtotalHigh = pkgTotal;
           }
         }
-      });
+        // If no package selected, totals remain 0
+      } else {
+        // Standard line items calculation
+        lineItems.forEach(item => {
+          const isOptional = item.is_optional === true;
+          const isSelected = item.is_selected === true;
+          const isTaxable = item.is_taxable === true;
+          
+          if (!isOptional || isSelected) {
+            if (item.is_range_pricing) {
+              hasRange = true;
+              const lowTotal = parseFloat(item.line_total_low || 0);
+              const highTotal = parseFloat(item.line_total_high || 0);
+              subtotalLow += lowTotal;
+              subtotalHigh += highTotal;
+              if (isTaxable) {
+                taxableSubtotalLow += lowTotal;
+                taxableSubtotalHigh += highTotal;
+              }
+            } else {
+              const total = parseFloat(item.line_total || 0);
+              subtotal += total;
+              subtotalLow += total;
+              subtotalHigh += total;
+              if (isTaxable) {
+                taxableSubtotal += total;
+                taxableSubtotalLow += total;
+                taxableSubtotalHigh += total;
+              }
+            }
+          }
+        });
+      }
       
       // Add accepted change orders to totals
       changeOrders.forEach(co => {

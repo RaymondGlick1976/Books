@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quote Builder | Admin | Homestead Cabinet Design</title>
-  <link rel="stylesheet" href="/css/styles.css?v=30">
+  <link rel="stylesheet" href="/css/styles.css?v=50">
   <style>
     .builder-layout {
       display: grid;
@@ -31,6 +31,231 @@
     .line-item-row.optional {
       background: rgba(201, 166, 107, 0.05);
       border-color: var(--color-accent);
+    }
+    
+    /* Package styles */
+    .packages-section {
+      margin-top: var(--space-lg);
+    }
+    
+    .packages-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-md);
+    }
+    
+    .packages-header h4 {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    
+    .package-card {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      margin-bottom: var(--space-lg);
+      background: var(--color-bg-card);
+    }
+    
+    .package-card.recommended {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 1px var(--color-primary);
+    }
+    
+    .package-card.selected {
+      border-color: var(--color-success);
+      box-shadow: 0 0 0 2px var(--color-success);
+    }
+    
+    .package-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: var(--space-md) var(--space-lg);
+      background: var(--color-bg-soft);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      cursor: grab;
+    }
+    
+    .package-header:active {
+      cursor: grabbing;
+    }
+    
+    .package-drag-handle {
+      color: var(--color-text-muted);
+      cursor: grab;
+      padding: var(--space-xs);
+    }
+    
+    .package-info {
+      flex: 1;
+      margin-left: var(--space-sm);
+    }
+    
+    .package-title {
+      font-weight: 600;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    
+    .package-description {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      margin-top: var(--space-xs);
+    }
+    
+    .package-price {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+    
+    .package-actions {
+      position: relative;
+    }
+    
+    .package-menu {
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      z-index: 100;
+      min-width: 180px;
+      display: none;
+    }
+    
+    .package-menu.show {
+      display: block;
+    }
+    
+    .package-menu-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      cursor: pointer;
+      font-size: 0.875rem;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+    
+    .package-menu-item:hover {
+      background: var(--color-bg-soft);
+    }
+    
+    .package-menu-item.danger {
+      color: var(--color-danger);
+    }
+    
+    .package-menu-divider {
+      height: 1px;
+      background: var(--color-border);
+      margin: var(--space-xs) 0;
+    }
+    
+    .package-items {
+      padding: var(--space-md) var(--space-lg);
+    }
+    
+    .package-items-header {
+      display: grid;
+      grid-template-columns: 24px 1fr 80px 100px 40px;
+      gap: var(--space-sm);
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--color-border);
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+    }
+    
+    .package-item-row {
+      display: grid;
+      grid-template-columns: 24px 1fr 80px 100px 40px;
+      gap: var(--space-sm);
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--color-border-light);
+      align-items: center;
+      font-size: 0.875rem;
+    }
+    
+    .package-item-row.excluded {
+      opacity: 0.5;
+      text-decoration: line-through;
+    }
+    
+    .package-item-drag {
+      color: var(--color-text-muted);
+      cursor: grab;
+    }
+    
+    .package-item-name {
+      font-weight: 500;
+    }
+    
+    .package-total-row {
+      display: grid;
+      grid-template-columns: 24px 1fr 80px 100px 40px;
+      gap: var(--space-sm);
+      padding: var(--space-md) 0;
+      font-weight: 600;
+      background: var(--color-text);
+      color: white;
+      margin: var(--space-md) calc(-1 * var(--space-lg));
+      padding-left: var(--space-lg);
+      padding-right: var(--space-lg);
+    }
+    
+    .package-add-item {
+      padding: var(--space-md) var(--space-lg);
+      padding-top: 0;
+    }
+    
+    .badge-recommended {
+      background: var(--color-primary);
+      color: white;
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .badge-selected {
+      background: var(--color-success);
+      color: white;
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md);
+      background: var(--color-bg-soft);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-md);
+    }
+    
+    .toggle-label {
+      font-weight: 500;
+    }
+    
+    .toggle-description {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
     }
     
     .line-item-photo-upload {
@@ -292,6 +517,48 @@
               </div>
             </div>
             
+            <!-- Packages Section -->
+            <div class="card mb-xl">
+              <div class="card-header">
+                <h3 class="card-title">Packages</h3>
+                <div class="btn-group">
+                  <button class="btn btn-secondary btn-sm" onclick="addPackage()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Add Package
+                  </button>
+                  <button class="btn btn-ghost btn-sm" onclick="showPackagesHelp()" title="How Packages Work">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="toggle-row">
+                  <div>
+                    <div class="toggle-label">Enable Package Selection</div>
+                    <div class="toggle-description">When enabled, customers must select a package instead of seeing individual line items.</div>
+                  </div>
+                  <label class="toggle">
+                    <input type="checkbox" id="packages-enabled" onchange="togglePackagesEnabled()">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                
+                <div id="packages-disabled-notice" class="text-center text-muted p-lg" style="display: none;">
+                  <p>Package selection is disabled. Enable it above to let customers choose a package.</p>
+                </div>
+                
+                <div id="empty-packages" class="text-center text-muted p-xl">
+                  No packages yet. Create packages to offer your customers different pricing tiers.
+                </div>
+                
+                <div id="packages-container"></div>
+              </div>
+            </div>
+            
             <!-- Video & Notes -->
             <div class="card mb-xl">
               <div class="card-header">
@@ -435,7 +702,7 @@
     async function loadQuote(supabase) {
       const { data: quote } = await supabase
         .from('quotes')
-        .select('*, quote_line_items(*), quote_attachments(*)')
+        .select('*, quote_line_items(*), quote_attachments(*), quote_packages(*, quote_package_items(*))')
         .eq('id', quoteId)
         .single();
       
@@ -474,8 +741,34 @@
       
       attachments = quote.quote_attachments || [];
       
+      // Load packages
+      packagesEnabled = quote.packages_enabled || false;
+      $('#packages-enabled').checked = packagesEnabled;
+      
+      packages = (quote.quote_packages || []).map(pkg => ({
+        id: pkg.id,
+        name: pkg.name,
+        description: pkg.description,
+        price: pkg.price,
+        is_recommended: pkg.is_recommended,
+        is_selected: pkg.is_selected || pkg.id === quote.selected_package_id,
+        apply_tax: pkg.apply_tax,
+        tax_rate: pkg.tax_rate,
+        hide_non_included: pkg.hide_non_included,
+        items: (pkg.quote_package_items || []).map(item => ({
+          id: item.id,
+          name: item.name,
+          description: item.description,
+          quantity: item.quantity,
+          price: item.price,
+          is_included: item.is_included,
+          show_price: item.show_price
+        }))
+      }));
+      
       renderLineItems();
       renderAttachments();
+      updatePackagesUI();
       updateSummary();
     }
     
@@ -1003,8 +1296,15 @@
         return;
       }
       
-      if (lineItems.length === 0) {
-        showToast('Please add at least one line item', 'error');
+      // Must have either line items OR packages
+      if (lineItems.length === 0 && packages.length === 0) {
+        showToast('Please add line items or packages', 'error');
+        return;
+      }
+      
+      // If packages enabled, must have at least one package
+      if (packagesEnabled && packages.length === 0) {
+        showToast('Please add at least one package', 'error');
         return;
       }
       
@@ -1073,7 +1373,8 @@
           tax_amount: taxAmount,
           total: subtotal + taxAmount,
           total_low: subtotalLow + taxAmountLow,
-          total_high: subtotalHigh + taxAmountHigh
+          total_high: subtotalHigh + taxAmountHigh,
+          packages_enabled: packagesEnabled
         };
         
         if (status === 'sent') {
@@ -1133,6 +1434,59 @@
         
         await supabase.from('quote_line_items').insert(lineItemsToInsert);
         
+        // Save packages
+        await supabase.from('quote_package_items').delete().match({ package_id: packages.filter(p => p.id).map(p => p.id) });
+        await supabase.from('quote_packages').delete().eq('quote_id', quoteId);
+        
+        let selectedPackageId = null;
+        
+        for (let i = 0; i < packages.length; i++) {
+          const pkg = packages[i];
+          const { data: savedPkg, error: pkgError } = await supabase
+            .from('quote_packages')
+            .insert({
+              quote_id: quoteId,
+              name: pkg.name,
+              description: pkg.description,
+              price: pkg.price,
+              is_recommended: pkg.is_recommended,
+              is_selected: pkg.is_selected,
+              apply_tax: pkg.apply_tax,
+              tax_rate: pkg.tax_rate,
+              hide_non_included: pkg.hide_non_included,
+              sort_order: i
+            })
+            .select()
+            .single();
+          
+          if (pkgError) throw pkgError;
+          
+          if (pkg.is_selected) {
+            selectedPackageId = savedPkg.id;
+          }
+          
+          // Save package items
+          if (pkg.items && pkg.items.length > 0) {
+            const pkgItemsToInsert = pkg.items.map((item, idx) => ({
+              package_id: savedPkg.id,
+              name: item.name,
+              description: item.description,
+              quantity: item.quantity,
+              price: item.price,
+              is_included: item.is_included,
+              show_price: item.show_price !== false,
+              sort_order: idx
+            }));
+            
+            await supabase.from('quote_package_items').insert(pkgItemsToInsert);
+          }
+        }
+        
+        // Update selected package ID
+        if (selectedPackageId) {
+          await supabase.from('quotes').update({ selected_package_id: selectedPackageId }).eq('id', quoteId);
+        }
+        
         // TODO: Handle attachment uploads to Supabase Storage
         
         // Send email if status is 'sent'
@@ -1175,6 +1529,439 @@
     
     // Initialize
     init();
+    
+    // ==========================================
+    // PACKAGES FUNCTIONALITY
+    // ==========================================
+    
+    let packages = [];
+    let packagesEnabled = false;
+    
+    function togglePackagesEnabled() {
+      packagesEnabled = $('#packages-enabled').checked;
+      updatePackagesUI();
+    }
+    
+    function updatePackagesUI() {
+      const emptyNotice = $('#empty-packages');
+      const disabledNotice = $('#packages-disabled-notice');
+      const container = $('#packages-container');
+      
+      if (packages.length === 0) {
+        emptyNotice.style.display = 'block';
+        disabledNotice.style.display = 'none';
+      } else {
+        emptyNotice.style.display = 'none';
+        disabledNotice.style.display = packagesEnabled ? 'none' : 'block';
+      }
+      
+      renderPackages();
+    }
+    
+    function renderPackages() {
+      const container = $('#packages-container');
+      
+      if (packages.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      
+      container.innerHTML = packages.map((pkg, index) => {
+        const total = pkg.price || pkg.items.filter(i => i.is_included).reduce((sum, item) => sum + (item.quantity * item.price), 0);
+        
+        return `
+          <div class="package-card ${pkg.is_recommended ? 'recommended' : ''} ${pkg.is_selected ? 'selected' : ''}" data-package-index="${index}">
+            <div class="package-header">
+              <div class="package-drag-handle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="8" y1="6" x2="8" y2="6.01"/><line x1="8" y1="12" x2="8" y2="12.01"/><line x1="8" y1="18" x2="8" y2="18.01"/>
+                  <line x1="16" y1="6" x2="16" y2="6.01"/><line x1="16" y1="12" x2="16" y2="12.01"/><line x1="16" y1="18" x2="16" y2="18.01"/>
+                </svg>
+              </div>
+              <div class="package-info">
+                <div class="package-title">
+                  ${pkg.name}
+                  ${pkg.is_recommended ? '<span class="badge-recommended">Recommended</span>' : ''}
+                  ${pkg.is_selected ? '<span class="badge-selected">Selected</span>' : ''}
+                </div>
+                ${pkg.description ? `<div class="package-description">${pkg.description}</div>` : ''}
+              </div>
+              <div class="package-price">${formatCurrency(total)}</div>
+              <div class="package-actions">
+                <button class="btn btn-ghost btn-sm" onclick="togglePackageMenu(${index})">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+                  </svg>
+                </button>
+                <div class="package-menu" id="package-menu-${index}">
+                  <button class="package-menu-item" onclick="editPackage(${index})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Edit Package
+                  </button>
+                  <button class="package-menu-item" onclick="duplicatePackage(${index})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Duplicate Package
+                  </button>
+                  <div class="package-menu-divider"></div>
+                  <button class="package-menu-item" onclick="toggleRecommended(${index})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    ${pkg.is_recommended ? 'Remove Recommended' : 'Mark as Recommended'}
+                  </button>
+                  <button class="package-menu-item" onclick="toggleSelected(${index})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    ${pkg.is_selected ? 'Deselect Package' : 'Select Package'}
+                  </button>
+                  <div class="package-menu-divider"></div>
+                  <button class="package-menu-item danger" onclick="deletePackage(${index})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    Delete Package
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="package-items">
+              <div class="package-items-header">
+                <div></div>
+                <div>Product / Service</div>
+                <div>Qty</div>
+                <div style="text-align: right;">Price</div>
+                <div></div>
+              </div>
+              ${pkg.items.map((item, itemIndex) => `
+                <div class="package-item-row ${!item.is_included ? 'excluded' : ''}" data-item-index="${itemIndex}">
+                  <div class="package-item-drag">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="8" y1="6" x2="8" y2="6.01"/><line x1="8" y1="12" x2="8" y2="12.01"/><line x1="8" y1="18" x2="8" y2="18.01"/>
+                      <line x1="16" y1="6" x2="16" y2="6.01"/><line x1="16" y1="12" x2="16" y2="12.01"/><line x1="16" y1="18" x2="16" y2="18.01"/>
+                    </svg>
+                  </div>
+                  <div class="package-item-name">${item.name}</div>
+                  <div>${item.quantity}</div>
+                  <div style="text-align: right;">${item.is_included ? formatCurrency(item.price) : ''}</div>
+                  <div>
+                    <button class="btn btn-ghost btn-xs" onclick="editPackageItem(${index}, ${itemIndex})" title="Edit">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+              <div class="package-total-row">
+                <div></div>
+                <div>Package Total</div>
+                <div></div>
+                <div style="text-align: right;">${formatCurrency(total)}</div>
+                <div></div>
+              </div>
+            </div>
+            <div class="package-add-item">
+              <button class="btn btn-outline btn-sm" onclick="addPackageItem(${index})">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Item
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function togglePackageMenu(index) {
+      // Close all other menus
+      $$('.package-menu').forEach(m => m.classList.remove('show'));
+      const menu = $(`#package-menu-${index}`);
+      menu.classList.toggle('show');
+      
+      // Close on outside click
+      setTimeout(() => {
+        document.addEventListener('click', function closeMenu(e) {
+          if (!e.target.closest('.package-actions')) {
+            menu.classList.remove('show');
+            document.removeEventListener('click', closeMenu);
+          }
+        });
+      }, 0);
+    }
+    
+    function addPackage() {
+      showPackageModal();
+    }
+    
+    function editPackage(index) {
+      showPackageModal(packages[index], index);
+    }
+    
+    function showPackageModal(pkg = null, index = null) {
+      const isEdit = pkg !== null;
+      
+      const content = createElement('div');
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Package Name *</label>
+          <input type="text" id="pkg-name" class="form-input" value="${pkg?.name || ''}" placeholder="e.g., Basic, Standard, Premium">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="pkg-description" class="form-textarea" rows="3" placeholder="Describe what's included in this package...">${pkg?.description || ''}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Package Price <span class="form-label-optional">(optional override)</span></label>
+          <div class="input-group">
+            <span class="input-group-prepend">$</span>
+            <input type="number" id="pkg-price" class="form-input" value="${pkg?.price || ''}" placeholder="Leave blank to calculate from items" step="0.01">
+          </div>
+          <div class="form-help">Set a manual price or leave empty to auto-calculate from line items</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tax Settings</label>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Apply Tax</div>
+              <div class="toggle-description">Calculate tax on this package</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: var(--space-sm);">
+              <label class="toggle">
+                <input type="checkbox" id="pkg-apply-tax" ${pkg?.apply_tax ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+              <input type="number" id="pkg-tax-rate" class="form-input" style="width: 80px;" value="${pkg?.tax_rate || 0}" step="0.001" placeholder="0">
+              <span>%</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Settings</label>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Hide Non-Included Items</div>
+              <div class="toggle-description">Hides excluded items from customer view</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="pkg-hide-excluded" ${pkg?.hide_non_included ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'flex justify-end gap-md' });
+      const cancelBtn = createElement('button', { className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { className: 'btn btn-primary', textContent: isEdit ? 'Save Changes' : 'Create Package' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+      
+      const modal = createModal({
+        title: isEdit ? 'Edit Package' : 'Create Package',
+        content,
+        footer,
+        size: 'md'
+      });
+      
+      cancelBtn.onclick = () => closeModal(modal);
+      saveBtn.onclick = () => {
+        const name = $('#pkg-name').value.trim();
+        if (!name) {
+          showToast('Package name is required', 'error');
+          return;
+        }
+        
+        const newPkg = {
+          name,
+          description: $('#pkg-description').value.trim(),
+          price: $('#pkg-price').value ? parseFloat($('#pkg-price').value) : null,
+          apply_tax: $('#pkg-apply-tax').checked,
+          tax_rate: parseFloat($('#pkg-tax-rate').value) || 0,
+          hide_non_included: $('#pkg-hide-excluded').checked,
+          is_recommended: pkg?.is_recommended || false,
+          is_selected: pkg?.is_selected || false,
+          items: pkg?.items || []
+        };
+        
+        if (isEdit) {
+          packages[index] = newPkg;
+        } else {
+          packages.push(newPkg);
+        }
+        
+        updatePackagesUI();
+        closeModal(modal);
+        showToast(isEdit ? 'Package updated' : 'Package created', 'success');
+      };
+    }
+    
+    function duplicatePackage(index) {
+      const pkg = packages[index];
+      const newPkg = {
+        ...JSON.parse(JSON.stringify(pkg)),
+        name: pkg.name + ' (Copy)',
+        is_recommended: false,
+        is_selected: false
+      };
+      packages.push(newPkg);
+      updatePackagesUI();
+      showToast('Package duplicated', 'success');
+    }
+    
+    function toggleRecommended(index) {
+      // Only one can be recommended
+      packages.forEach((p, i) => {
+        p.is_recommended = i === index ? !p.is_recommended : false;
+      });
+      updatePackagesUI();
+    }
+    
+    function toggleSelected(index) {
+      // Only one can be selected
+      packages.forEach((p, i) => {
+        p.is_selected = i === index ? !p.is_selected : false;
+      });
+      updatePackagesUI();
+    }
+    
+    function deletePackage(index) {
+      if (!confirm('Delete this package?')) return;
+      packages.splice(index, 1);
+      updatePackagesUI();
+      showToast('Package deleted', 'success');
+    }
+    
+    function addPackageItem(packageIndex) {
+      showPackageItemModal(packageIndex);
+    }
+    
+    function editPackageItem(packageIndex, itemIndex) {
+      showPackageItemModal(packageIndex, packages[packageIndex].items[itemIndex], itemIndex);
+    }
+    
+    function showPackageItemModal(packageIndex, item = null, itemIndex = null) {
+      const isEdit = item !== null;
+      
+      const content = createElement('div');
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Item Name *</label>
+          <input type="text" id="item-name" class="form-input" value="${item?.name || ''}" placeholder="e.g., Cabinet Refacing">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description <span class="form-label-optional">(optional)</span></label>
+          <textarea id="item-description" class="form-textarea" rows="2" placeholder="Item description...">${item?.description || ''}</textarea>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+          <div class="form-group">
+            <label class="form-label">Quantity</label>
+            <input type="number" id="item-qty" class="form-input" value="${item?.quantity || 1}" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price</label>
+            <div class="input-group">
+              <span class="input-group-prepend">$</span>
+              <input type="number" id="item-price" class="form-input" value="${item?.price || 0}" min="0" step="0.01">
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Included in Package</div>
+              <div class="toggle-description">Uncheck to show as excluded (crossed out)</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="item-included" ${item?.is_included !== false ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'flex justify-between' });
+      const leftBtns = createElement('div');
+      const rightBtns = createElement('div', { className: 'flex gap-md' });
+      
+      if (isEdit) {
+        const deleteBtn = createElement('button', { className: 'btn btn-danger', textContent: 'Delete' });
+        deleteBtn.onclick = () => {
+          packages[packageIndex].items.splice(itemIndex, 1);
+          updatePackagesUI();
+          closeModal(modal);
+          showToast('Item removed', 'success');
+        };
+        leftBtns.appendChild(deleteBtn);
+      }
+      
+      const cancelBtn = createElement('button', { className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { className: 'btn btn-primary', textContent: isEdit ? 'Save' : 'Add Item' });
+      rightBtns.appendChild(cancelBtn);
+      rightBtns.appendChild(saveBtn);
+      
+      footer.appendChild(leftBtns);
+      footer.appendChild(rightBtns);
+      
+      const modal = createModal({
+        title: isEdit ? 'Edit Item' : 'Add Item to Package',
+        content,
+        footer
+      });
+      
+      cancelBtn.onclick = () => closeModal(modal);
+      saveBtn.onclick = () => {
+        const name = $('#item-name').value.trim();
+        if (!name) {
+          showToast('Item name is required', 'error');
+          return;
+        }
+        
+        const newItem = {
+          name,
+          description: $('#item-description').value.trim(),
+          quantity: parseFloat($('#item-qty').value) || 1,
+          price: parseFloat($('#item-price').value) || 0,
+          is_included: $('#item-included').checked
+        };
+        
+        if (isEdit) {
+          packages[packageIndex].items[itemIndex] = newItem;
+        } else {
+          packages[packageIndex].items.push(newItem);
+        }
+        
+        updatePackagesUI();
+        closeModal(modal);
+      };
+    }
+    
+    function showPackagesHelp() {
+      const content = createElement('div');
+      content.innerHTML = `
+        <div style="line-height: 1.6;">
+          <h4 style="margin-top: 0;">How Packages Work</h4>
+          <p>Packages let you offer customers different pricing tiers (e.g., Basic, Standard, Premium) instead of a single quote.</p>
+          
+          <h4>Creating Packages</h4>
+          <ol>
+            <li>Click <strong>"Add Package"</strong> to create a new package</li>
+            <li>Give it a name and optional description</li>
+            <li>Add line items to the package using the <strong>"Add Item"</strong> button</li>
+            <li>Items can be marked as "included" or "excluded" (shown crossed out)</li>
+          </ol>
+          
+          <h4>Package Options</h4>
+          <ul>
+            <li><strong>Mark as Recommended:</strong> Highlights this package for customers</li>
+            <li><strong>Override Price:</strong> Set a flat price instead of calculating from items</li>
+            <li><strong>Hide Excluded Items:</strong> Don't show crossed-out items to customers</li>
+          </ul>
+          
+          <h4>Customer Experience</h4>
+          <p>When "Enable Package Selection" is on, customers will see package cards side-by-side and must select one before they can approve the quote.</p>
+        </div>
+      `;
+      
+      createModal({
+        title: 'How Packages Work',
+        content,
+        size: 'md'
+      });
+    }
   </script>
 </body>
 </html>

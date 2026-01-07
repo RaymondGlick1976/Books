@@ -61,12 +61,20 @@ exports.handler = async (event) => {
       .eq('quote_id', quoteId)
       .order('created_at', { ascending: false });
     
+    // Get packages with items
+    const { data: packages } = await supabase
+      .from('quote_packages')
+      .select('*, items:quote_package_items(*)')
+      .eq('quote_id', quoteId)
+      .order('sort_order');
+    
     return success({
       quote,
       line_items: lineItems || [],
       attachments: attachments || [],
       change_orders: changeOrders || [],
       payments: payments || [],
+      packages: packages || [],
     });
     
   } catch (err) {
