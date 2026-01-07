@@ -654,112 +654,148 @@
     // Get quote ID from URL if editing
     const params = new URLSearchParams(window.location.search);
     quoteId = params.get('id');
+    console.log('URL:', window.location.href);
+    console.log('Parsed quoteId:', quoteId);
     
     async function init() {
-      const supabase = await app.waitForSupabase();
-      
-      // Load customers
-      const { data: customerData } = await supabase
-        .from('customers')
-        .select('id, name, email')
-        .order('name');
-      customers = customerData || [];
-      
-      const customerSelect = $('#customer-select');
-      customers.forEach(c => {
-        const option = document.createElement('option');
-        option.value = c.id;
-        option.textContent = `${c.name} (${c.email})`;
-        customerSelect.appendChild(option);
-      });
-      
-      // Load catalog items
-      const { data: catalogData } = await supabase
-        .from('items_catalog')
-        .select('*')
-        .eq('is_active', true)
-        .order('category, name');
-      catalogItems = catalogData || [];
-      
-      // If editing, load quote
-      if (quoteId) {
-        await loadQuote(supabase);
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        console.log('Quote Builder init, quoteId:', quoteId);
+        
+        // Load customers
+        const { data: customerData } = await supabase
+          .from('customers')
+          .select('id, name, email')
+          .order('name');
+        customers = customerData || [];
+        
+        const customerSelect = $('#customer-select');
+        customers.forEach(c => {
+          const option = document.createElement('option');
+          option.value = c.id;
+          option.textContent = `${c.name} (${c.email})`;
+          customerSelect.appendChild(option);
+        });
+        
+        // Load catalog items
+        const { data: catalogData } = await supabase
+          .from('items_catalog')
+          .select('*')
+          .eq('is_active', true)
+          .order('category, name');
+        catalogItems = catalogData || [];
+        
+        // If editing, load quote
+        if (quoteId) {
+          console.log('Loading existing quote:', quoteId);
+          await loadQuote(supabase);
+        }
+        
+        setupEventListeners();
+        updateSummary();
+      } catch (err) {
+        console.error('Init error:', err);
+        showToast('Failed to initialize: ' + err.message, 'error');
       }
-      
-      setupEventListeners();
-      updateSummary();
     }
     
     async function loadQuote(supabase) {
-      const { data: quote } = await supabase
-        .from('quotes')
-        .select('*, quote_line_items(*), quote_attachments(*), quote_packages(*, quote_package_items(*))')
-        .eq('id', quoteId)
-        .single();
-      
-      if (!quote) {
-        showToast('Quote not found', 'error');
-        return;
-      }
-      
-      $('#page-title').textContent = `Edit Quote: ${quote.quote_number}`;
-      $('#customer-select').value = quote.customer_id;
-      $('#quote-title').value = quote.title;
-      $('#quote-description').value = quote.description || '';
-      $('#valid-days').value = quote.valid_days;
-      $('#deposit-type').value = quote.deposit_type;
-      $('#deposit-value').value = quote.deposit_value;
-      $('#video-url').value = quote.video_url || '';
-      $('#customer-notes').value = quote.notes || '';
-      $('#internal-notes').value = quote.internal_notes || '';
-      
-      lineItems = quote.quote_line_items.map(item => ({
-        id: item.id,
-        catalogItemId: item.catalog_item_id,
-        description: item.description,
-        details: item.details,
-        quantity: item.quantity,
-        unitPrice: item.unit_price,
-        priceRangeLow: item.price_range_low,
-        priceRangeHigh: item.price_range_high,
-        isRangePricing: item.is_range_pricing,
-        photoUrl: item.photo_url,
-        isOptional: item.is_optional,
-        isTaxable: item.is_taxable,
-        sortOrder: item.sort_order
-      }));
-      
-      attachments = quote.quote_attachments || [];
-      
-      // Load packages
-      packagesEnabled = quote.packages_enabled || false;
-      $('#packages-enabled').checked = packagesEnabled;
-      
-      packages = (quote.quote_packages || []).map(pkg => ({
-        id: pkg.id,
-        name: pkg.name,
-        description: pkg.description,
-        price: pkg.price,
-        is_recommended: pkg.is_recommended,
-        is_selected: pkg.is_selected || pkg.id === quote.selected_package_id,
-        apply_tax: pkg.apply_tax,
-        tax_rate: pkg.tax_rate,
-        hide_non_included: pkg.hide_non_included,
-        items: (pkg.quote_package_items || []).map(item => ({
+      try {
+        // First load the quote with line items and attachments
+        const { data: quote, error: quoteError } = await supabase
+          .from('quotes')
+          .select('*, quote_line_items(*), quote_attachments(*)')
+          .eq('id', quoteId)
+          .single();
+        
+        if (quoteError) {
+          console.error('Quote load error:', quoteError);
+          showToast('Failed to load quote: ' + quoteError.message, 'error');
+          return;
+        }
+        
+        if (!quote) {
+          showToast('Quote not found', 'error');
+          return;
+        }
+        
+        console.log('Loaded quote:', quote);
+        
+        $('#page-title').textContent = `Edit Quote: ${quote.quote_number}`;
+        $('#customer-select').value = quote.customer_id;
+        $('#quote-title').value = quote.title;
+        $('#quote-description').value = quote.description || '';
+        $('#valid-days').value = quote.valid_days;
+        $('#deposit-type').value = quote.deposit_type;
+        $('#deposit-value').value = quote.deposit_value;
+        $('#video-url').value = quote.video_url || '';
+        $('#customer-notes').value = quote.notes || '';
+        $('#internal-notes').value = quote.internal_notes || '';
+        
+        lineItems = (quote.quote_line_items || []).map(item => ({
           id: item.id,
-          name: item.name,
+          catalogItemId: item.catalog_item_id,
           description: item.description,
+          details: item.details,
           quantity: item.quantity,
-          price: item.price,
-          is_included: item.is_included,
-          show_price: item.show_price
-        }))
-      }));
-      
-      renderLineItems();
-      renderAttachments();
-      updatePackagesUI();
-      updateSummary();
+          unitPrice: item.unit_price,
+          priceRangeLow: item.price_range_low,
+          priceRangeHigh: item.price_range_high,
+          isRangePricing: item.is_range_pricing,
+          photoUrl: item.photo_url,
+          isOptional: item.is_optional,
+          isTaxable: item.is_taxable,
+          sortOrder: item.sort_order
+        }));
+        
+        attachments = quote.quote_attachments || [];
+        
+        // Load packages separately (in case table doesn't exist)
+        packagesEnabled = quote.packages_enabled || false;
+        $('#packages-enabled').checked = packagesEnabled;
+        
+        try {
+          const { data: pkgData } = await supabase
+            .from('quote_packages')
+            .select('*, quote_package_items(*)')
+            .eq('quote_id', quoteId)
+            .order('sort_order');
+          
+          packages = (pkgData || []).map(pkg => ({
+            id: pkg.id,
+            name: pkg.name,
+            description: pkg.description,
+            price: pkg.price,
+            is_recommended: pkg.is_recommended,
+            is_selected: pkg.is_selected || pkg.id === quote.selected_package_id,
+            apply_tax: pkg.apply_tax,
+            tax_rate: pkg.tax_rate,
+            hide_non_included: pkg.hide_non_included,
+            items: (pkg.quote_package_items || []).map(item => ({
+              id: item.id,
+              name: item.name,
+              description: item.description,
+              quantity: item.quantity,
+              price: item.price,
+              is_included: item.is_included,
+              show_price: item.show_price
+            }))
+          }));
+        } catch (pkgErr) {
+          console.log('Packages table may not exist:', pkgErr);
+          packages = [];
+        }
+        
+        renderLineItems();
+        renderAttachments();
+        updatePackagesUI();
+        updateSummary();
+        
+      } catch (err) {
+        console.error('Load quote error:', err);
+        showToast('Failed to load quote', 'error');
+      }
     }
     
     function setupEventListeners() {
