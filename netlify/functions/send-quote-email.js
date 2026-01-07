@@ -113,13 +113,17 @@ exports.handler = async (event) => {
             <a href="${directLink}" style="background: #6366f1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">View Quote</a>
           </div>
           
+          <div style="background: #e0e7ff; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <p style="color: #4338ca; font-size: 14px; margin: 0 0 10px 0; font-weight: 600;">
+              📋 If the button doesn't work, copy and paste this link into your browser:
+            </p>
+            <p style="color: #1e293b; font-size: 13px; margin: 0; word-break: break-all; background: white; padding: 10px; border-radius: 4px; font-family: monospace;">
+              ${directLink}
+            </p>
+          </div>
+          
           <p style="color: #94a3b8; font-size: 14px;">
             This link is unique to your quote and doesn't require a login.
-          </p>
-          
-          <p style="color: #94a3b8; font-size: 12px; word-break: break-all;">
-            If the button doesn't work, copy and paste this link:<br>
-            <a href="${directLink}" style="color: #6366f1;">${directLink}</a>
           </p>
         </div>
         
@@ -138,7 +142,7 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Homestead Cabinet Design <onboarding@resend.dev>',
+        from: 'Homestead Cabinet Design <raymond@homesteadcabinetdesign.com>',
         to: customer.email,
         subject: `Quote #${quote.quote_number}: ${quote.title}`,
         html: emailHtml
