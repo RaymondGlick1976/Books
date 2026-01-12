@@ -217,7 +217,9 @@
     
     async function loadCustomers() {
       try {
+        console.log('Customers: Starting load...');
         const supabase = await app.waitForSupabase();
+        console.log('Customers: Supabase ready');
         
         const { data, error } = await supabase
           .from('customers')
@@ -228,6 +230,7 @@
           `)
           .order('created_at', { ascending: false });
         
+        console.log('Customers: Result count:', data?.length, 'error:', error);
         if (error) throw error;
         customers = data || [];
         renderCustomers(customers);
