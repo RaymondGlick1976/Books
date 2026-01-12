@@ -660,33 +660,60 @@
     console.log('Parsed quoteId:', quoteId);
     
     async function init() {
+      console.log('Quote Builder starting init...');
+      
+      // Always set up event listeners first, even before data loads
+      setupEventListeners();
+      console.log('Event listeners set up');
+      
       try {
         const supabase = await app.waitForSupabase();
+        console.log('Supabase ready');
         
         console.log('Quote Builder init, quoteId:', quoteId);
         
         // Load customers
-        const { data: customerData } = await supabase
-          .from('customers')
-          .select('id, name, email')
-          .order('name');
-        customers = customerData || [];
-        
-        const customerSelect = $('#customer-select');
-        customers.forEach(c => {
-          const option = document.createElement('option');
-          option.value = c.id;
-          option.textContent = `${c.name} (${c.email})`;
-          customerSelect.appendChild(option);
-        });
+        try {
+          const { data: customerData, error: custError } = await supabase
+            .from('customers')
+            .select('id, name, email')
+            .order('name');
+          
+          if (custError) {
+            console.error('Customer load error:', custError);
+          } else {
+            customers = customerData || [];
+            console.log('Loaded', customers.length, 'customers');
+            
+            const customerSelect = $('#customer-select');
+            customers.forEach(c => {
+              const option = document.createElement('option');
+              option.value = c.id;
+              option.textContent = `${c.name} (${c.email})`;
+              customerSelect.appendChild(option);
+            });
+          }
+        } catch (custErr) {
+          console.error('Customer fetch exception:', custErr);
+        }
         
         // Load catalog items
-        const { data: catalogData } = await supabase
-          .from('items_catalog')
-          .select('*')
-          .eq('is_active', true)
-          .order('category, name');
-        catalogItems = catalogData || [];
+        try {
+          const { data: catalogData, error: catError } = await supabase
+            .from('items_catalog')
+            .select('*')
+            .eq('is_active', true)
+            .order('category, name');
+          
+          if (catError) {
+            console.error('Catalog load error:', catError);
+          } else {
+            catalogItems = catalogData || [];
+            console.log('Loaded', catalogItems.length, 'catalog items');
+          }
+        } catch (catErr) {
+          console.error('Catalog fetch exception:', catErr);
+        }
         
         // Load pricing attributes with their options (gracefully handle if tables don't exist)
         try {
@@ -727,8 +754,8 @@
           await loadQuote(supabase);
         }
         
-        setupEventListeners();
         updateSummary();
+        console.log('Quote Builder init complete');
       } catch (err) {
         console.error('Init error:', err);
         showToast('Failed to initialize: ' + err.message, 'error');

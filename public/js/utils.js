@@ -814,6 +814,7 @@ function applyRoleRestrictions() {
 }
 
 // Run auth check and apply restrictions when DOM is ready
+// Run auth check and apply restrictions when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   // Only check auth on admin pages
   if (window.location.pathname.includes('/admin/')) {
@@ -822,8 +823,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
-  // Load and apply brand settings on all pages
-  loadBrandSettings();
+  // Load and apply brand settings on all pages (don't block anything)
+  loadBrandSettings().catch(e => console.log('Brand settings error:', e));
 });
 
 // =============================================
