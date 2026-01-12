@@ -648,6 +648,8 @@
     let lineItems = [];
     let attachments = [];
     let quoteId = null;
+    let pricingAttributes = [];
+    let catalogItemAttributes = {}; // Map: item_id -> [attributes with options]
     
     const TAX_RATE = 0.0625;
     
@@ -686,6 +688,33 @@
           .order('category, name');
         catalogItems = catalogData || [];
         
+        // Load pricing attributes with their options
+        const { data: attrsData } = await supabase
+          .from('pricing_attributes')
+          .select('*, options:pricing_attribute_options(*)')
+          .eq('is_active', true)
+          .order('sort_order, name');
+        pricingAttributes = attrsData || [];
+        
+        // Load catalog item -> attribute mappings
+        const { data: mappingsData } = await supabase
+          .from('catalog_item_attributes')
+          .select('item_id, attribute_id, sort_order')
+          .order('sort_order');
+        
+        // Build catalogItemAttributes map
+        catalogItemAttributes = {};
+        (mappingsData || []).forEach(m => {
+          if (!catalogItemAttributes[m.item_id]) {
+            catalogItemAttributes[m.item_id] = [];
+          }
+          const attr = pricingAttributes.find(a => a.id === m.attribute_id);
+          if (attr) {
+            catalogItemAttributes[m.item_id].push(attr);
+          }
+        });
+        
+        
         // If editing, load quote
         if (quoteId) {
           console.log('Loading existing quote:', quoteId);
@@ -698,6 +727,27 @@
         console.error('Init error:', err);
         showToast('Failed to initialize: ' + err.message, 'error');
       }
+    }
+    
+    // Helper to reverse-calculate base price from unit price and attribute selections
+    function calculateBasePrice(item) {
+      if (!item.attribute_selections || item.attribute_selections.length === 0) {
+        return item.unit_price;
+      }
+      
+      // Reverse the calculation: final = (base + flat_adjustments) * multipliers
+      // So: base = final / multipliers - flat_adjustments
+      let totalMultiplier = 1;
+      let totalFlat = 0;
+      
+      item.attribute_selections.forEach(sel => {
+        totalFlat += sel.flat_adjustment || 0;
+        totalMultiplier *= sel.multiplier || 1;
+      });
+      
+      if (totalMultiplier === 0) return item.unit_price;
+      
+      return Math.round(((item.unit_price / totalMultiplier) - totalFlat) * 100) / 100;
     }
     
     async function loadQuote(supabase) {
@@ -746,7 +796,9 @@
           photoUrl: item.photo_url,
           isOptional: item.is_optional,
           isTaxable: item.is_taxable,
-          sortOrder: item.sort_order
+          sortOrder: item.sort_order,
+          attributeSelections: item.attribute_selections || [],
+          basePrice: item.attribute_selections?.length > 0 ? calculateBasePrice(item) : null
         }));
         
         attachments = quote.quote_attachments || [];
@@ -916,13 +968,43 @@
     }
     
     function addLineItem(catalogItem = null) {
+      // Check if catalog item has pricing attributes
+      const itemAttrs = catalogItem ? (catalogItemAttributes[catalogItem.id] || []) : [];
+      
+      if (itemAttrs.length > 0) {
+        // Show attribute configuration modal
+        showAttributeConfigModal(catalogItem, itemAttrs);
+      } else {
+        // No attributes, add directly
+        addLineItemDirect(catalogItem, []);
+      }
+    }
+    
+    function addLineItemDirect(catalogItem, attributeSelections) {
+      // Calculate price based on base price + attribute adjustments
+      let basePrice = catalogItem?.default_price || 0;
+      let finalPrice = basePrice;
+      
+      // Apply attribute adjustments
+      attributeSelections.forEach(sel => {
+        finalPrice += sel.flat_adjustment || 0;
+      });
+      // Apply multipliers after all flat adjustments
+      attributeSelections.forEach(sel => {
+        if (sel.multiplier && sel.multiplier !== 1) {
+          finalPrice *= sel.multiplier;
+        }
+      });
+      
       const item = {
         id: 'new-' + Date.now(),
         catalogItemId: catalogItem?.id || null,
         description: catalogItem?.name || '',
         details: catalogItem?.description || '',
         quantity: 1,
-        unitPrice: catalogItem?.default_price || 0,
+        unitPrice: Math.round(finalPrice * 100) / 100,
+        basePrice: basePrice,
+        attributeSelections: attributeSelections,
         priceRangeLow: null,
         priceRangeHigh: null,
         isRangePricing: false,
@@ -935,6 +1017,113 @@
       lineItems.push(item);
       renderLineItems();
       updateSummary();
+    }
+    
+    function showAttributeConfigModal(catalogItem, itemAttrs) {
+      const basePrice = catalogItem?.default_price || 0;
+      
+      const content = createElement('div');
+      content.innerHTML = `
+        <div class="mb-lg">
+          <h4 style="margin: 0 0 var(--space-xs);">${catalogItem.name}</h4>
+          <p class="text-muted text-sm" style="margin: 0;">Base price: ${formatCurrency(basePrice)}</p>
+        </div>
+        <div id="attr-selectors">
+          ${itemAttrs.map((attr, idx) => {
+            const defaultOpt = attr.options?.find(o => o.is_default);
+            return `
+              <div class="form-group">
+                <label class="form-label">${attr.name}</label>
+                <select class="form-select attr-select" data-attr-id="${attr.id}" data-attr-name="${attr.name}">
+                  <option value="">-- Select ${attr.name} --</option>
+                  ${(attr.options || []).sort((a,b) => a.sort_order - b.sort_order).map(opt => `
+                    <option value="${opt.id}" 
+                      data-flat="${opt.flat_adjustment || 0}"
+                      data-mult="${opt.multiplier || 1}"
+                      data-name="${opt.name}"
+                      ${defaultOpt?.id === opt.id ? 'selected' : ''}>
+                      ${opt.name}
+                      ${opt.flat_adjustment ? (opt.flat_adjustment > 0 ? ` (+$${opt.flat_adjustment})` : ` (-$${Math.abs(opt.flat_adjustment)})`) : ''}
+                      ${opt.multiplier && opt.multiplier !== 1 ? ` (×${opt.multiplier})` : ''}
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div class="price-preview" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-top: var(--space-lg);">
+          <div class="flex justify-between items-center">
+            <span class="text-muted">Calculated Price:</span>
+            <span id="preview-price" style="font-size: 1.5rem; font-weight: 600; color: var(--color-primary);">${formatCurrency(basePrice)}</span>
+          </div>
+        </div>
+      `;
+      
+      // Update price preview when selections change
+      const updatePreview = () => {
+        const selects = content.querySelectorAll('.attr-select');
+        let price = basePrice;
+        
+        // Apply flat adjustments first
+        selects.forEach(sel => {
+          const opt = sel.selectedOptions[0];
+          if (opt && opt.value) {
+            price += parseFloat(opt.dataset.flat) || 0;
+          }
+        });
+        
+        // Then apply multipliers
+        selects.forEach(sel => {
+          const opt = sel.selectedOptions[0];
+          if (opt && opt.value) {
+            const mult = parseFloat(opt.dataset.mult) || 1;
+            if (mult !== 1) price *= mult;
+          }
+        });
+        
+        content.querySelector('#preview-price').textContent = formatCurrency(price);
+      };
+      
+      content.querySelectorAll('.attr-select').forEach(sel => {
+        sel.addEventListener('change', updatePreview);
+      });
+      
+      // Initial preview with defaults
+      setTimeout(updatePreview, 0);
+      
+      createModal({
+        title: 'Configure Item Options',
+        content,
+        footer: `
+          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" id="add-configured-item">Add to Quote</button>
+        `,
+        size: 'md'
+      });
+      
+      document.getElementById('add-configured-item').addEventListener('click', () => {
+        // Gather selections
+        const selects = content.querySelectorAll('.attr-select');
+        const selections = [];
+        
+        selects.forEach(sel => {
+          const opt = sel.selectedOptions[0];
+          if (opt && opt.value) {
+            selections.push({
+              attribute_id: sel.dataset.attrId,
+              attribute_name: sel.dataset.attrName,
+              option_id: opt.value,
+              option_name: opt.dataset.name,
+              flat_adjustment: parseFloat(opt.dataset.flat) || 0,
+              multiplier: parseFloat(opt.dataset.mult) || 1
+            });
+          }
+        });
+        
+        closeModal();
+        addLineItemDirect(catalogItem, selections);
+      });
     }
     
     function renderLineItems() {
@@ -986,6 +1175,22 @@
             lineItems[index].details = e.target.value;
           }
         }));
+        
+        // Show attribute selections if present (admin view only)
+        if (item.attributeSelections && item.attributeSelections.length > 0) {
+          const attrDisplay = createElement('div', {
+            style: 'margin-top: 6px; font-size: 0.75rem; color: var(--color-primary);'
+          });
+          const attrText = item.attributeSelections.map(sel => 
+            `${sel.attribute_name}: ${sel.option_name}`
+          ).join(' • ');
+          attrDisplay.innerHTML = `⚙ ${attrText}`;
+          if (item.basePrice) {
+            attrDisplay.innerHTML += ` <span style="color: var(--color-text-muted);">(base: ${formatCurrency(item.basePrice)})</span>`;
+          }
+          descCell.appendChild(attrDisplay);
+        }
+        
         row.appendChild(descCell);
         
         // Quantity
@@ -1375,7 +1580,8 @@
             photo_url: item.photoUrl,
             is_optional: item.isOptional,
             is_taxable: item.isTaxable,
-            sort_order: index
+            sort_order: index,
+            attribute_selections: item.attributeSelections || []
           };
         });
         

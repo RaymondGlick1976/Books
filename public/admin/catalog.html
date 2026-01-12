@@ -39,6 +39,7 @@
           <div class="sidebar-section-title">Catalog</div>
           <ul class="sidebar-nav">
             <li class="sidebar-nav-item"><a href="/admin/catalog.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Items Catalog</a></li>
+            <li class="sidebar-nav-item"><a href="/admin/pricing-attributes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Pricing Attributes</a></li>
           </ul>
         </div>
         <div class="sidebar-section">
@@ -106,6 +107,8 @@
     
     let items = [];
     let categories = new Set();
+    let pricingAttributes = [];
+    let itemAttributeMap = {}; // Map of item_id -> [attribute_ids]
     
     async function loadItems() {
       try {
@@ -138,6 +141,36 @@
       }
     }
     
+    async function loadPricingAttributes() {
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Load pricing attributes
+        const { data: attrs } = await supabase
+          .from('pricing_attributes')
+          .select('*, options:pricing_attribute_options(*)')
+          .eq('is_active', true)
+          .order('sort_order, name');
+        
+        pricingAttributes = attrs || [];
+        
+        // Load item-attribute mappings
+        const { data: mappings } = await supabase
+          .from('catalog_item_attributes')
+          .select('item_id, attribute_id');
+        
+        itemAttributeMap = {};
+        (mappings || []).forEach(m => {
+          if (!itemAttributeMap[m.item_id]) {
+            itemAttributeMap[m.item_id] = [];
+          }
+          itemAttributeMap[m.item_id].push(m.attribute_id);
+        });
+      } catch (err) {
+        console.error('Error loading pricing attributes:', err);
+      }
+    }
+    
     function renderItems(data) {
       const tbody = $('#items-tbody');
       clearElement(tbody);
@@ -149,10 +182,18 @@
       
       data.forEach(item => {
         const row = createElement('tr');
+        const itemAttrs = itemAttributeMap[item.id] || [];
+        const attrNames = itemAttrs.map(attrId => {
+          const attr = pricingAttributes.find(a => a.id === attrId);
+          return attr?.name || '';
+        }).filter(Boolean);
         
         let priceDisplay;
         if (item.default_price) {
           priceDisplay = formatCurrency(item.default_price);
+          if (itemAttrs.length > 0) {
+            priceDisplay += ' <span class="text-muted text-sm">(base)</span>';
+          }
         } else if (item.price_range_low && item.price_range_high) {
           priceDisplay = `${formatCurrency(item.price_range_low)} - ${formatCurrency(item.price_range_high)}`;
         } else {
@@ -163,6 +204,7 @@
           <td>
             <strong>${item.name}</strong>
             ${item.description ? `<div class="text-sm text-muted">${item.description}</div>` : ''}
+            ${attrNames.length > 0 ? `<div class="text-sm" style="color: var(--color-primary); margin-top: 4px;">⚙ ${attrNames.join(', ')}</div>` : ''}
           </td>
           <td>${item.category || '—'}</td>
           <td>${priceDisplay}</td>
@@ -208,6 +250,7 @@
     
     function showItemModal(item = null) {
       const isEdit = !!item;
+      const itemAttrs = item ? (itemAttributeMap[item.id] || []) : [];
       
       const content = createElement('form', { id: 'item-form' });
       content.innerHTML = `
@@ -227,32 +270,33 @@
           </datalist>
         </div>
         <div class="form-group">
-          <label class="form-label">Pricing Type</label>
-          <div class="flex gap-lg">
-            <label class="form-check">
-              <input type="radio" name="pricing_type" value="fixed" class="form-check-input" ${!item?.price_range_low ? 'checked' : ''}>
-              <span class="form-check-label">Fixed Price</span>
-            </label>
-            <label class="form-check">
-              <input type="radio" name="pricing_type" value="range" class="form-check-input" ${item?.price_range_low ? 'checked' : ''}>
-              <span class="form-check-label">Price Range</span>
-            </label>
-          </div>
+          <label class="form-label">Base Price</label>
+          <input type="number" name="default_price" class="form-input" value="${item?.default_price || ''}" step="0.01" min="0" placeholder="Base price before attribute adjustments">
+          <small class="text-muted">This is the starting price. Pricing attributes will adjust from this base.</small>
         </div>
-        <div id="fixed-price-fields" class="form-group">
-          <label class="form-label">Default Price</label>
-          <input type="number" name="default_price" class="form-input" value="${item?.default_price || ''}" step="0.01" min="0">
-        </div>
-        <div id="range-price-fields" class="grid grid-cols-2 gap-lg" style="display: none;">
-          <div class="form-group">
-            <label class="form-label">Price Range Low</label>
-            <input type="number" name="price_range_low" class="form-input" value="${item?.price_range_low || ''}" step="0.01" min="0">
+        ${pricingAttributes.length > 0 ? `
+        <div class="form-group">
+          <label class="form-label">Pricing Attributes</label>
+          <p class="text-muted text-sm mb-sm">Select which pricing attributes apply to this item. When added to quotes, users can select options that adjust the price.</p>
+          <div class="attributes-checklist" style="display: grid; gap: var(--space-sm); max-height: 200px; overflow-y: auto; padding: var(--space-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+            ${pricingAttributes.map(attr => `
+              <label class="form-check" style="margin: 0;">
+                <input type="checkbox" name="attributes" value="${attr.id}" ${itemAttrs.includes(attr.id) ? 'checked' : ''}>
+                <span>
+                  <strong>${attr.name}</strong>
+                  <span class="text-muted text-sm"> - ${attr.options?.length || 0} options</span>
+                </span>
+              </label>
+            `).join('')}
           </div>
-          <div class="form-group">
-            <label class="form-label">Price Range High</label>
-            <input type="number" name="price_range_high" class="form-input" value="${item?.price_range_high || ''}" step="0.01" min="0">
-          </div>
+          <a href="/admin/pricing-attributes.html" class="text-sm" style="color: var(--color-primary);">Manage pricing attributes →</a>
         </div>
+        ` : `
+        <div class="form-group">
+          <label class="form-label">Pricing Attributes</label>
+          <p class="text-muted text-sm">No pricing attributes created yet. <a href="/admin/pricing-attributes.html" style="color: var(--color-primary);">Create some</a> to enable dynamic pricing.</p>
+        </div>
+        `}
         <div class="form-group">
           <label class="form-check">
             <input type="checkbox" name="is_taxable" class="form-check-input" ${item?.is_taxable !== false ? 'checked' : ''}>
@@ -266,20 +310,6 @@
           </label>
         </div>
       `;
-      
-      // Toggle pricing fields
-      const pricingRadios = content.querySelectorAll('input[name="pricing_type"]');
-      const fixedFields = content.querySelector('#fixed-price-fields');
-      const rangeFields = content.querySelector('#range-price-fields');
-      
-      function updatePricingFields() {
-        const isRange = content.querySelector('input[name="pricing_type"]:checked').value === 'range';
-        fixedFields.style.display = isRange ? 'none' : 'block';
-        rangeFields.style.display = isRange ? 'grid' : 'none';
-      }
-      
-      pricingRadios.forEach(radio => radio.addEventListener('change', updatePricingFields));
-      if (item?.price_range_low) updatePricingFields();
       
       const footer = createElement('div', { className: 'btn-group' });
       const cancelBtn = createElement('button', {
@@ -306,7 +336,7 @@
       cancelBtn.addEventListener('click', () => closeModal(modal));
       submitBtn.addEventListener('click', async () => {
         if (content.checkValidity()) {
-          await saveItem(new FormData(content), item?.id);
+          await saveItem(content, item?.id);
           closeModal(modal);
         } else {
           content.reportValidity();
@@ -314,30 +344,49 @@
       });
     }
     
-    async function saveItem(formData, id = null) {
+    async function saveItem(form, id = null) {
       try {
         const supabase = await app.waitForSupabase();
-        const isRange = formData.get('pricing_type') === 'range';
         
         const data = {
-          name: formData.get('name'),
-          description: formData.get('description') || null,
-          category: formData.get('category') || null,
-          default_price: isRange ? null : parseFloat(formData.get('default_price')) || null,
-          price_range_low: isRange ? parseFloat(formData.get('price_range_low')) || null : null,
-          price_range_high: isRange ? parseFloat(formData.get('price_range_high')) || null : null,
-          is_taxable: formData.get('is_taxable') === 'on',
-          is_active: formData.get('is_active') === 'on'
+          name: form.querySelector('[name="name"]').value,
+          description: form.querySelector('[name="description"]').value || null,
+          category: form.querySelector('[name="category"]').value || null,
+          default_price: parseFloat(form.querySelector('[name="default_price"]').value) || null,
+          is_taxable: form.querySelector('[name="is_taxable"]').checked,
+          is_active: form.querySelector('[name="is_active"]').checked
         };
+        
+        // Get selected attributes
+        const selectedAttrs = Array.from(form.querySelectorAll('[name="attributes"]:checked'))
+          .map(cb => cb.value);
+        
+        let itemId = id;
         
         if (id) {
           await supabase.from('items_catalog').update(data).eq('id', id);
           showToast('Item updated', 'success');
         } else {
-          await supabase.from('items_catalog').insert(data);
+          const { data: newItem, error } = await supabase.from('items_catalog').insert(data).select().single();
+          if (error) throw error;
+          itemId = newItem.id;
           showToast('Item added', 'success');
         }
         
+        // Update attribute mappings
+        await supabase.from('catalog_item_attributes').delete().eq('item_id', itemId);
+        
+        if (selectedAttrs.length > 0) {
+          const mappings = selectedAttrs.map((attrId, index) => ({
+            item_id: itemId,
+            attribute_id: attrId,
+            sort_order: index
+          }));
+          await supabase.from('catalog_item_attributes').insert(mappings);
+        }
+        
+        // Refresh data
+        await loadPricingAttributes();
         loadItems();
       } catch (err) {
         showToast('Failed to save: ' + err.message, 'error');
@@ -363,7 +412,11 @@
     };
     
     // Initialize
-    loadItems();
+    async function init() {
+      await loadPricingAttributes();
+      await loadItems();
+    }
+    init();
   </script>
 </body>
 </html>
