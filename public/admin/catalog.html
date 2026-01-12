@@ -146,19 +146,21 @@
         const supabase = await app.waitForSupabase();
         
         // Load pricing attributes
-        const { data: attrs } = await supabase
+        const { data: attrs, error: attrError } = await supabase
           .from('pricing_attributes')
           .select('*, options:pricing_attribute_options(*)')
           .eq('is_active', true)
           .order('sort_order, name');
         
+        if (attrError) throw attrError;
         pricingAttributes = attrs || [];
         
         // Load item-attribute mappings
-        const { data: mappings } = await supabase
+        const { data: mappings, error: mapError } = await supabase
           .from('catalog_item_attributes')
           .select('item_id, attribute_id');
         
+        if (mapError) throw mapError;
         itemAttributeMap = {};
         (mappings || []).forEach(m => {
           if (!itemAttributeMap[m.item_id]) {
@@ -167,7 +169,9 @@
           itemAttributeMap[m.item_id].push(m.attribute_id);
         });
       } catch (err) {
-        console.error('Error loading pricing attributes:', err);
+        console.log('Pricing attributes not available (migration may not be run yet):', err.message);
+        pricingAttributes = [];
+        itemAttributeMap = {};
       }
     }
     
@@ -373,16 +377,20 @@
           showToast('Item added', 'success');
         }
         
-        // Update attribute mappings
-        await supabase.from('catalog_item_attributes').delete().eq('item_id', itemId);
-        
-        if (selectedAttrs.length > 0) {
-          const mappings = selectedAttrs.map((attrId, index) => ({
-            item_id: itemId,
-            attribute_id: attrId,
-            sort_order: index
-          }));
-          await supabase.from('catalog_item_attributes').insert(mappings);
+        // Update attribute mappings (if table exists)
+        try {
+          await supabase.from('catalog_item_attributes').delete().eq('item_id', itemId);
+          
+          if (selectedAttrs.length > 0) {
+            const mappings = selectedAttrs.map((attrId, index) => ({
+              item_id: itemId,
+              attribute_id: attrId,
+              sort_order: index
+            }));
+            await supabase.from('catalog_item_attributes').insert(mappings);
+          }
+        } catch (attrErr) {
+          console.log('Could not save attribute mappings (migration may not be run yet)');
         }
         
         // Refresh data

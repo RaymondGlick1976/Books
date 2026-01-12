@@ -688,31 +688,37 @@
           .order('category, name');
         catalogItems = catalogData || [];
         
-        // Load pricing attributes with their options
-        const { data: attrsData } = await supabase
-          .from('pricing_attributes')
-          .select('*, options:pricing_attribute_options(*)')
-          .eq('is_active', true)
-          .order('sort_order, name');
-        pricingAttributes = attrsData || [];
-        
-        // Load catalog item -> attribute mappings
-        const { data: mappingsData } = await supabase
-          .from('catalog_item_attributes')
-          .select('item_id, attribute_id, sort_order')
-          .order('sort_order');
-        
-        // Build catalogItemAttributes map
-        catalogItemAttributes = {};
-        (mappingsData || []).forEach(m => {
-          if (!catalogItemAttributes[m.item_id]) {
-            catalogItemAttributes[m.item_id] = [];
-          }
-          const attr = pricingAttributes.find(a => a.id === m.attribute_id);
-          if (attr) {
-            catalogItemAttributes[m.item_id].push(attr);
-          }
-        });
+        // Load pricing attributes with their options (gracefully handle if tables don't exist)
+        try {
+          const { data: attrsData } = await supabase
+            .from('pricing_attributes')
+            .select('*, options:pricing_attribute_options(*)')
+            .eq('is_active', true)
+            .order('sort_order, name');
+          pricingAttributes = attrsData || [];
+          
+          // Load catalog item -> attribute mappings
+          const { data: mappingsData } = await supabase
+            .from('catalog_item_attributes')
+            .select('item_id, attribute_id, sort_order')
+            .order('sort_order');
+          
+          // Build catalogItemAttributes map
+          catalogItemAttributes = {};
+          (mappingsData || []).forEach(m => {
+            if (!catalogItemAttributes[m.item_id]) {
+              catalogItemAttributes[m.item_id] = [];
+            }
+            const attr = pricingAttributes.find(a => a.id === m.attribute_id);
+            if (attr) {
+              catalogItemAttributes[m.item_id].push(attr);
+            }
+          });
+        } catch (attrErr) {
+          console.log('Pricing attributes not available (migration may not be run yet):', attrErr.message);
+          pricingAttributes = [];
+          catalogItemAttributes = {};
+        }
         
         
         // If editing, load quote
