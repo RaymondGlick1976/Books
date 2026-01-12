@@ -833,11 +833,16 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadBrandSettings() {
   try {
     const supabase = await waitForSupabase();
-    const { data: settings } = await supabase
-      .from('business_settings')
+    const { data: settings, error } = await supabase
+      .from('settings')
       .select('value')
       .eq('key', 'branding')
-      .single();
+      .maybeSingle();
+    
+    if (error) {
+      console.log('Brand settings query error:', error.message);
+      return;
+    }
     
     if (settings?.value) {
       const branding = settings.value;
