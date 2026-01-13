@@ -989,14 +989,12 @@
     }
     
     function addLineItem(catalogItem = null) {
-      // Check if catalog item has pricing attributes
-      const itemAttrs = catalogItem ? (catalogItemAttributes[catalogItem.id] || []) : [];
-      
-      if (itemAttrs.length > 0) {
-        // Show attribute configuration modal
-        showAttributeConfigModal(catalogItem, itemAttrs);
+      // Show attribute configuration modal if ANY pricing attributes exist
+      // All attributes are available for all items
+      if (pricingAttributes.length > 0) {
+        showAttributeConfigModal(catalogItem, pricingAttributes);
       } else {
-        // No attributes, add directly
+        // No attributes defined, add directly
         addLineItemDirect(catalogItem, []);
       }
     }
@@ -1040,19 +1038,8 @@
       const basePrice = catalogItem?.default_price || 0;
       
       // Track attribute instances (for multiple of same attribute)
+      // Start EMPTY - user adds what they need
       let attributeInstances = [];
-      
-      // Initialize with one instance of each attribute
-      itemAttrs.forEach(attr => {
-        const defaultOpt = attr.options?.find(o => o.is_default);
-        attributeInstances.push({
-          attrId: attr.id,
-          attrName: attr.name,
-          attr: attr,
-          optionId: defaultOpt?.id || '',
-          quantity: 1
-        });
-      });
       
       const PRICING_LABELS = {
         sqft: 'Sq. Ft.',
@@ -1064,8 +1051,7 @@
       const content = createElement('div');
       
       function renderAttributeSelectors() {
-        const container = content.querySelector('#attr-instances') || content;
-        const instancesHtml = attributeInstances.map((inst, idx) => {
+        const instancesHtml = attributeInstances.length > 0 ? attributeInstances.map((inst, idx) => {
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           const pricingType = selectedOpt?.pricing_type || 'each';
@@ -1077,11 +1063,9 @@
             <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
                 <label class="form-label" style="margin: 0;">${attr.name}</label>
-                ${attributeInstances.filter(i => i.attrId === attr.id).length > 1 ? `
-                  <button type="button" class="btn btn-ghost btn-sm remove-instance" data-idx="${idx}" title="Remove">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
-                ` : ''}
+                <button type="button" class="btn btn-ghost btn-sm remove-instance" data-idx="${idx}" title="Remove">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
               </div>
               <div style="display: grid; grid-template-columns: 1fr ${showQty ? '100px' : ''} 100px; gap: var(--space-sm); align-items: end;">
                 <select class="form-select attr-select" data-idx="${idx}">
@@ -1119,24 +1103,18 @@
               </div>
             </div>
           `;
-        }).join('');
+        }).join('') : '<p class="text-muted text-center" style="padding: var(--space-lg);">No attributes added yet. Click a button below to add pricing attributes.</p>';
         
-        // Group by attribute for "Add Another" buttons
-        const uniqueAttrs = [...new Set(itemAttrs.map(a => a.id))];
-        const addButtonsHtml = uniqueAttrs.map(attrId => {
-          const attr = itemAttrs.find(a => a.id === attrId);
-          return `
-            <button type="button" class="btn btn-ghost btn-sm add-another-attr" data-attr-id="${attrId}" style="margin-right: var(--space-sm); margin-bottom: var(--space-sm);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Add Another ${attr.name}
-            </button>
-          `;
-        }).join('');
+        // Buttons to add each attribute type
+        const addButtonsHtml = itemAttrs.map(attr => `
+          <button type="button" class="btn btn-secondary btn-sm add-attr-btn" data-attr-id="${attr.id}" style="margin-right: var(--space-sm); margin-bottom: var(--space-sm);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            ${attr.name}
+          </button>
+        `).join('');
         
-        if (content.querySelector('#attr-instances')) {
-          content.querySelector('#attr-instances').innerHTML = instancesHtml;
-          content.querySelector('#add-buttons').innerHTML = addButtonsHtml;
-        }
+        content.querySelector('#attr-instances').innerHTML = instancesHtml;
+        content.querySelector('#add-buttons').innerHTML = addButtonsHtml;
         
         updateTotalPreview();
         attachInstanceListeners();
@@ -1208,10 +1186,10 @@
           });
         });
         
-        // Add another buttons
-        content.querySelectorAll('.add-another-attr').forEach(btn => {
+        // Add attribute buttons
+        content.querySelectorAll('.add-attr-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
-            const attrId = e.target.closest('.add-another-attr').dataset.attrId;
+            const attrId = e.target.closest('.add-attr-btn').dataset.attrId;
             const attr = itemAttrs.find(a => a.id === attrId);
             if (attr) {
               attributeInstances.push({
@@ -1233,7 +1211,9 @@
           <p class="text-muted text-sm" style="margin: 0;">Base price: ${formatCurrency(basePrice)}</p>
         </div>
         <div id="attr-instances"></div>
-        <div id="add-buttons" style="margin-bottom: var(--space-lg);"></div>
+        <div id="add-buttons" style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+          <label class="form-label" style="margin-bottom: var(--space-sm);">Add Attributes:</label>
+        </div>
         <div class="price-preview" style="padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
           <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-sm);">
             <span class="text-muted">Base Price:</span>

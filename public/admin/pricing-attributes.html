@@ -115,12 +115,20 @@
     <main class="app-main">
       <header class="app-header">
         <h2>Pricing Attributes</h2>
-        <button class="btn btn-primary" id="new-attribute-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          New Attribute
-        </button>
+        <div style="display: flex; gap: var(--space-sm);">
+          <button class="btn btn-secondary" id="price-types-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+            </svg>
+            Price Types
+          </button>
+          <button class="btn btn-primary" id="new-attribute-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New Attribute
+          </button>
+        </div>
       </header>
       
       <div class="app-content">
@@ -149,25 +157,159 @@
   <script>
     let attributes = [];
     let catalogUsage = [];
+    let pricingTypes = [];
     
-    const PRICING_TYPES = {
-      sqft: 'per Sq. Ft.',
-      linft: 'per Lin. Ft.',
-      each: 'Each',
-      percentage: '%'
-    };
+    // Default pricing types (used if none in database)
+    const DEFAULT_PRICING_TYPES = [
+      { id: 'sqft', code: 'sqft', name: 'Square Feet', label: 'per Sq. Ft.', is_builtin: true },
+      { id: 'linft', code: 'linft', name: 'Linear Feet', label: 'per Lin. Ft.', is_builtin: true },
+      { id: 'each', code: 'each', name: 'Each', label: 'Each', is_builtin: true },
+      { id: 'percentage', code: 'percentage', name: 'Percentage', label: '%', is_builtin: true }
+    ];
+    
+    function getPricingTypeLabel(code) {
+      const pt = pricingTypes.find(p => p.code === code);
+      return pt ? pt.label : code;
+    }
     
     async function init() {
       try {
+        await loadPricingTypes();
         await loadAttributes();
         await loadCatalogUsage();
         
         $('#new-attribute-btn').addEventListener('click', () => showAttributeModal());
         $('#empty-state-btn').addEventListener('click', () => showAttributeModal());
+        $('#price-types-btn').addEventListener('click', () => showPriceTypesModal());
       } catch (err) {
         console.error('Init error:', err);
         showToast('Failed to initialize', 'error');
       }
+    }
+    
+    async function loadPricingTypes() {
+      const supabase = await app.waitForSupabase();
+      try {
+        const { data, error } = await supabase
+          .from('pricing_types')
+          .select('*')
+          .order('sort_order, name');
+        
+        if (error) throw error;
+        pricingTypes = data && data.length > 0 ? data : DEFAULT_PRICING_TYPES;
+      } catch (err) {
+        // Table might not exist yet, use defaults
+        pricingTypes = DEFAULT_PRICING_TYPES;
+      }
+    }
+    
+    function showPriceTypesModal() {
+      const content = createElement('div');
+      
+      function renderPriceTypes() {
+        content.innerHTML = `
+          <p class="text-muted mb-md">Manage the unit types available for pricing options.</p>
+          <div class="price-types-list" style="margin-bottom: var(--space-lg);">
+            ${pricingTypes.map((pt, idx) => `
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-sm) var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-sm);">
+                <div>
+                  <strong>${escapeHtml(pt.name)}</strong>
+                  <span class="text-muted text-sm" style="margin-left: var(--space-sm);">${escapeHtml(pt.label)}</span>
+                  ${pt.is_builtin ? '<span class="text-muted text-sm" style="margin-left: var(--space-sm);">(built-in)</span>' : ''}
+                </div>
+                ${!pt.is_builtin ? `
+                  <div style="display: flex; gap: var(--space-xs);">
+                    <button class="btn btn-ghost btn-sm edit-pt-btn" data-id="${pt.id}" title="Edit">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="btn btn-ghost btn-sm delete-pt-btn" data-id="${pt.id}" title="Delete">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+          <div style="padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+            <label class="form-label">Add New Price Type</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: var(--space-sm); align-items: end;">
+              <div>
+                <input type="text" class="form-input" id="new-pt-name" placeholder="Name (e.g., Board Feet)">
+              </div>
+              <div>
+                <input type="text" class="form-input" id="new-pt-label" placeholder="Label (e.g., per Bd. Ft.)">
+              </div>
+              <button class="btn btn-primary" id="add-pt-btn">Add</button>
+            </div>
+          </div>
+        `;
+        
+        // Attach listeners
+        content.querySelectorAll('.edit-pt-btn').forEach(btn => {
+          btn.addEventListener('click', () => editPriceType(btn.dataset.id));
+        });
+        content.querySelectorAll('.delete-pt-btn').forEach(btn => {
+          btn.addEventListener('click', () => deletePriceType(btn.dataset.id));
+        });
+        content.querySelector('#add-pt-btn').addEventListener('click', addPriceType);
+      }
+      
+      async function addPriceType() {
+        const name = content.querySelector('#new-pt-name').value.trim();
+        const label = content.querySelector('#new-pt-label').value.trim();
+        
+        if (!name || !label) {
+          showToast('Name and label are required', 'error');
+          return;
+        }
+        
+        // Generate code from name
+        const code = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        
+        try {
+          const supabase = await app.waitForSupabase();
+          const { error } = await supabase.from('pricing_types').insert({
+            code,
+            name,
+            label,
+            is_builtin: false,
+            sort_order: pricingTypes.length
+          });
+          
+          if (error) throw error;
+          
+          showToast('Price type added', 'success');
+          await loadPricingTypes();
+          renderPriceTypes();
+        } catch (err) {
+          showToast('Failed to add price type: ' + err.message, 'error');
+        }
+      }
+      
+      async function deletePriceType(id) {
+        if (!confirm('Delete this price type?')) return;
+        
+        try {
+          const supabase = await app.waitForSupabase();
+          const { error } = await supabase.from('pricing_types').delete().eq('id', id);
+          if (error) throw error;
+          
+          showToast('Price type deleted', 'success');
+          await loadPricingTypes();
+          renderPriceTypes();
+        } catch (err) {
+          showToast('Failed to delete: ' + err.message, 'error');
+        }
+      }
+      
+      renderPriceTypes();
+      
+      const footer = createElement('div', { className: 'btn-group' });
+      const closeBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Close' });
+      footer.appendChild(closeBtn);
+      
+      const modal = createModal({ title: 'Price Types', content, footer, size: 'md' });
+      closeBtn.addEventListener('click', () => closeModal(modal));
     }
     
     async function loadAttributes() {
@@ -211,7 +353,7 @@
       const type = option.pricing_type || 'each';
       if (price === 0 && type === 'each') return 'Base price';
       if (type === 'percentage') return `${price}%`;
-      return `$${price.toFixed(2)} ${PRICING_TYPES[type]}`;
+      return `$${price.toFixed(2)} ${getPricingTypeLabel(type)}`;
     }
     
     function renderAttributes() {
@@ -372,6 +514,11 @@
       const isEdit = !!opt;
       const existingPrice = opt?.unit_price ?? opt?.flat_adjustment ?? 0;
       
+      // Build pricing type options dynamically
+      const pricingTypeOptions = pricingTypes.map(pt => 
+        `<option value="${pt.code}" ${opt?.pricing_type === pt.code || (!opt?.pricing_type && pt.code === 'each') ? 'selected' : ''}>${pt.name} (${pt.label})</option>`
+      ).join('');
+      
       const content = createElement('div');
       content.innerHTML = `
         <form id="option-form">
@@ -390,10 +537,7 @@
             <div class="form-group">
               <label class="form-label">Pricing Type</label>
               <select class="form-select" id="opt-pricing-type">
-                <option value="sqft" ${opt?.pricing_type === 'sqft' ? 'selected' : ''}>Per Sq. Ft.</option>
-                <option value="linft" ${opt?.pricing_type === 'linft' ? 'selected' : ''}>Per Lin. Ft.</option>
-                <option value="each" ${(!opt?.pricing_type || opt?.pricing_type === 'each') ? 'selected' : ''}>Each (flat price)</option>
-                <option value="percentage" ${opt?.pricing_type === 'percentage' ? 'selected' : ''}>Percentage of base</option>
+                ${pricingTypeOptions}
               </select>
             </div>
           </div>

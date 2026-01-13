@@ -339,12 +339,15 @@
       // Add event listeners AFTER modal is created
       cancelBtn.addEventListener('click', () => closeModal(modal));
       submitBtn.addEventListener('click', async () => {
-        if (content.checkValidity()) {
-          await saveItem(content, item?.id);
-          closeModal(modal);
-        } else {
-          content.reportValidity();
+        // Manual validation check
+        const nameInput = content.querySelector('[name="name"]');
+        if (!nameInput.value.trim()) {
+          showToast('Item name is required', 'error');
+          nameInput.focus();
+          return;
         }
+        await saveItem(content, item?.id);
+        closeModal(modal);
       });
     }
     
