@@ -1758,9 +1758,10 @@
           if (error) throw error;
           savedQuote = data;
         } else {
-          // Generate quote number and insert
+          // Generate quote number and access token for new quotes
           const { data: numData } = await supabase.rpc('generate_quote_number');
           quoteData.quote_number = numData;
+          quoteData.access_token = crypto.randomUUID();
           
           const { data, error } = await supabase
             .from('quotes')

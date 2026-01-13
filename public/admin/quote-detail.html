@@ -365,7 +365,32 @@
       
       // Action buttons
       $('#edit-quote-btn').href = `/admin/quote-builder.html?id=${quote.id}`;
-      $('#customer-view-btn').href = `/portal/quote.html?id=${quote.id}&token=${quote.access_token || ''}`;
+      
+      // Customer view button - only show if token exists, otherwise show generate button
+      const customerViewBtn = $('#customer-view-btn');
+      if (quote.access_token) {
+        customerViewBtn.href = `/portal/quote.html?token=${quote.access_token}`;
+        customerViewBtn.textContent = '👁️ Customer View';
+      } else {
+        customerViewBtn.href = '#';
+        customerViewBtn.textContent = '🔗 Generate Link';
+        customerViewBtn.onclick = async (e) => {
+          e.preventDefault();
+          try {
+            const supabase = await app.waitForSupabase();
+            const token = crypto.randomUUID();
+            await supabase.from('quotes').update({ access_token: token }).eq('id', quote.id);
+            quote.access_token = token;
+            customerViewBtn.href = `/portal/quote.html?token=${token}`;
+            customerViewBtn.textContent = '👁️ Customer View';
+            customerViewBtn.onclick = null;
+            customerViewBtn.target = '_blank';
+            showToast('Customer link generated!', 'success');
+          } catch (err) {
+            showToast('Failed to generate link', 'error');
+          }
+        };
+      }
       
       // Customer info
       $('#customer-info').innerHTML = `

@@ -159,7 +159,7 @@
           <td class="table-actions">
             <a href="/admin/quote-detail.html?id=${quote.id}" class="btn btn-ghost btn-sm">View</a>
             <a href="/admin/quote-builder.html?id=${quote.id}" class="btn btn-ghost btn-sm">Edit</a>
-            <a href="/portal/quote.html?token=${quote.access_token}" target="_blank" class="btn btn-ghost btn-sm" title="View as customer">👁️</a>
+            ${quote.access_token ? `<a href="/portal/quote.html?token=${quote.access_token}" target="_blank" class="btn btn-ghost btn-sm" title="View as customer">👁️</a>` : `<button class="btn btn-ghost btn-sm" onclick="generateToken('${quote.id}')" title="Generate customer link">🔗</button>`}
             <button class="btn btn-ghost btn-sm" onclick="duplicateQuote('${quote.id}')">Duplicate</button>
             ${quote.status === 'accepted' ? `<button class="btn btn-ghost btn-sm" onclick="createInvoice('${quote.id}')">→ Invoice</button>` : ''}
           </td>
@@ -401,6 +401,29 @@
         loadQuotes();
       } catch (err) {
         showToast('Failed to approve: ' + err.message, 'error');
+      }
+    };
+    
+    window.generateToken = async (quoteId) => {
+      try {
+        const supabase = await app.waitForSupabase();
+        const token = crypto.randomUUID();
+        
+        const { error } = await supabase
+          .from('quotes')
+          .update({ access_token: token })
+          .eq('id', quoteId);
+        
+        if (error) throw error;
+        
+        // Open the customer view
+        window.open(`/portal/quote.html?token=${token}`, '_blank');
+        
+        // Refresh the list
+        loadQuotes();
+        showToast('Customer link generated', 'success');
+      } catch (err) {
+        showToast('Failed to generate link: ' + err.message, 'error');
       }
     };
     
