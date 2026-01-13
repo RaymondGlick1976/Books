@@ -10,32 +10,79 @@ const CONFIG = {
   SITE_URL: 'https://hcdbooks.netlify.app'
 };
 
+console.log('Utils.js loaded, CONFIG:', CONFIG.SUPABASE_URL);
+
 // =============================================
 // SUPABASE CLIENT
 // =============================================
 
 // Load Supabase from CDN
+console.log('Loading Supabase script...');
 const supabaseScript = document.createElement('script');
 supabaseScript.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 document.head.appendChild(supabaseScript);
 
 let _supabaseClient = null;
+let _supabaseReady = false;
+let _supabaseError = null;
+
+// Set up load handlers immediately
+supabaseScript.onload = () => {
+  console.log('Supabase script loaded successfully');
+  _supabaseReady = true;
+};
+supabaseScript.onerror = (err) => {
+  console.error('Failed to load Supabase script:', err);
+  _supabaseError = err;
+};
 
 function initSupabase() {
+  console.log('initSupabase called, window.supabase:', !!window.supabase, '_supabaseClient:', !!_supabaseClient);
   if (!_supabaseClient && window.supabase) {
     _supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    console.log('Supabase client initialized successfully');
   }
   return _supabaseClient;
 }
 
-// Wait for Supabase to load
-function waitForSupabase() {
-  return new Promise((resolve) => {
+// Wait for Supabase to load with timeout
+function waitForSupabase(timeout = 10000) {
+  console.log('waitForSupabase called, window.supabase:', !!window.supabase);
+  return new Promise((resolve, reject) => {
+    // Already available
     if (window.supabase) {
+      console.log('Supabase already available');
       resolve(initSupabase());
-    } else {
-      supabaseScript.onload = () => resolve(initSupabase());
+      return;
     }
+    
+    // Check for error
+    if (_supabaseError) {
+      console.error('Supabase had error:', _supabaseError);
+      reject(new Error('Supabase script failed to load'));
+      return;
+    }
+    
+    console.log('Waiting for Supabase to load...');
+    const startTime = Date.now();
+    
+    // Poll for supabase to be available
+    const checkInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      if (window.supabase) {
+        clearInterval(checkInterval);
+        console.log('Supabase became available after', elapsed, 'ms');
+        resolve(initSupabase());
+      } else if (_supabaseError) {
+        clearInterval(checkInterval);
+        console.error('Supabase script failed');
+        reject(new Error('Supabase script failed to load'));
+      } else if (elapsed > timeout) {
+        clearInterval(checkInterval);
+        console.error('Timeout waiting for Supabase after', elapsed, 'ms');
+        reject(new Error('Timeout waiting for Supabase to load'));
+      }
+    }, 50);
   });
 }
 
