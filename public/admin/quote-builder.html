@@ -754,19 +754,21 @@
         return item.unit_price;
       }
       
-      // Reverse the calculation: final = (base + flat_adjustments) * multipliers
-      // So: base = final / multipliers - flat_adjustments
-      let totalMultiplier = 1;
-      let totalFlat = 0;
+      // New format: final = base + sum(line_totals)
+      // So: base = final - sum(line_totals)
+      let totalAttributeValue = 0;
       
       item.attribute_selections.forEach(sel => {
-        totalFlat += sel.flat_adjustment || 0;
-        totalMultiplier *= sel.multiplier || 1;
+        // Support both old and new format
+        if (sel.line_total !== undefined) {
+          totalAttributeValue += sel.line_total || 0;
+        } else {
+          // Old format fallback
+          totalAttributeValue += sel.flat_adjustment || 0;
+        }
       });
       
-      if (totalMultiplier === 0) return item.unit_price;
-      
-      return Math.round(((item.unit_price / totalMultiplier) - totalFlat) * 100) / 100;
+      return Math.round((item.unit_price - totalAttributeValue) * 100) / 100;
     }
     
     async function loadQuote(supabase) {
@@ -1000,20 +1002,16 @@
     }
     
     function addLineItemDirect(catalogItem, attributeSelections) {
-      // Calculate price based on base price + attribute adjustments
+      // Calculate price based on base price + sum of attribute line totals
       let basePrice = catalogItem?.default_price || 0;
-      let finalPrice = basePrice;
+      let attributeTotal = 0;
       
-      // Apply attribute adjustments
+      // Sum up all attribute line totals
       attributeSelections.forEach(sel => {
-        finalPrice += sel.flat_adjustment || 0;
+        attributeTotal += sel.line_total || 0;
       });
-      // Apply multipliers after all flat adjustments
-      attributeSelections.forEach(sel => {
-        if (sel.multiplier && sel.multiplier !== 1) {
-          finalPrice *= sel.multiplier;
-        }
-      });
+      
+      let finalPrice = basePrice + attributeTotal;
       
       const item = {
         id: 'new-' + Date.now(),
@@ -1041,75 +1039,219 @@
     function showAttributeConfigModal(catalogItem, itemAttrs) {
       const basePrice = catalogItem?.default_price || 0;
       
+      // Track attribute instances (for multiple of same attribute)
+      let attributeInstances = [];
+      
+      // Initialize with one instance of each attribute
+      itemAttrs.forEach(attr => {
+        const defaultOpt = attr.options?.find(o => o.is_default);
+        attributeInstances.push({
+          attrId: attr.id,
+          attrName: attr.name,
+          attr: attr,
+          optionId: defaultOpt?.id || '',
+          quantity: 1
+        });
+      });
+      
+      const PRICING_LABELS = {
+        sqft: 'Sq. Ft.',
+        linft: 'Lin. Ft.',
+        each: 'Qty',
+        percentage: '%'
+      };
+      
       const content = createElement('div');
+      
+      function renderAttributeSelectors() {
+        const container = content.querySelector('#attr-instances') || content;
+        const instancesHtml = attributeInstances.map((inst, idx) => {
+          const attr = inst.attr;
+          const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+          const pricingType = selectedOpt?.pricing_type || 'each';
+          const unitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
+          const showQty = selectedOpt && pricingType !== 'percentage';
+          const lineTotal = selectedOpt ? calculateAttributeLineTotal(selectedOpt, inst.quantity, basePrice) : 0;
+          
+          return `
+            <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+                <label class="form-label" style="margin: 0;">${attr.name}</label>
+                ${attributeInstances.filter(i => i.attrId === attr.id).length > 1 ? `
+                  <button type="button" class="btn btn-ghost btn-sm remove-instance" data-idx="${idx}" title="Remove">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                ` : ''}
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr ${showQty ? '100px' : ''} 100px; gap: var(--space-sm); align-items: end;">
+                <select class="form-select attr-select" data-idx="${idx}">
+                  <option value="">-- Select --</option>
+                  ${(attr.options || []).sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map(opt => {
+                    const optPrice = parseFloat(opt.unit_price ?? opt.flat_adjustment ?? 0);
+                    const optType = opt.pricing_type || 'each';
+                    let priceLabel = '';
+                    if (optType === 'percentage') {
+                      priceLabel = optPrice ? ` (${optPrice}%)` : '';
+                    } else if (optPrice) {
+                      priceLabel = ` ($${optPrice.toFixed(2)}/${PRICING_LABELS[optType] || 'ea'})`;
+                    }
+                    return `
+                      <option value="${opt.id}" 
+                        data-unit-price="${optPrice}"
+                        data-pricing-type="${optType}"
+                        data-name="${opt.name}"
+                        ${inst.optionId === opt.id ? 'selected' : ''}>
+                        ${opt.name}${priceLabel}
+                      </option>
+                    `;
+                  }).join('')}
+                </select>
+                ${showQty ? `
+                  <div>
+                    <label class="form-label text-sm">${PRICING_LABELS[pricingType] || 'Qty'}</label>
+                    <input type="number" class="form-input attr-qty" data-idx="${idx}" value="${inst.quantity}" min="0" step="0.01">
+                  </div>
+                ` : ''}
+                <div style="text-align: right;">
+                  <label class="form-label text-sm">Total</label>
+                  <div class="attr-line-total" style="font-weight: 600; color: var(--color-primary);">${formatCurrency(lineTotal)}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        // Group by attribute for "Add Another" buttons
+        const uniqueAttrs = [...new Set(itemAttrs.map(a => a.id))];
+        const addButtonsHtml = uniqueAttrs.map(attrId => {
+          const attr = itemAttrs.find(a => a.id === attrId);
+          return `
+            <button type="button" class="btn btn-ghost btn-sm add-another-attr" data-attr-id="${attrId}" style="margin-right: var(--space-sm); margin-bottom: var(--space-sm);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Another ${attr.name}
+            </button>
+          `;
+        }).join('');
+        
+        if (content.querySelector('#attr-instances')) {
+          content.querySelector('#attr-instances').innerHTML = instancesHtml;
+          content.querySelector('#add-buttons').innerHTML = addButtonsHtml;
+        }
+        
+        updateTotalPreview();
+        attachInstanceListeners();
+      }
+      
+      function calculateAttributeLineTotal(option, quantity, basePrice) {
+        const unitPrice = parseFloat(option.unit_price ?? option.flat_adjustment ?? 0);
+        const pricingType = option.pricing_type || 'each';
+        
+        if (pricingType === 'percentage') {
+          return basePrice * (unitPrice / 100);
+        }
+        return unitPrice * quantity;
+      }
+      
+      function updateTotalPreview() {
+        let attributeTotal = 0;
+        
+        attributeInstances.forEach(inst => {
+          const attr = inst.attr;
+          const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+          if (selectedOpt) {
+            attributeTotal += calculateAttributeLineTotal(selectedOpt, inst.quantity, basePrice);
+          }
+        });
+        
+        const total = basePrice + attributeTotal;
+        
+        const previewEl = content.querySelector('#preview-price');
+        const attrTotalEl = content.querySelector('#attr-total');
+        
+        if (previewEl) previewEl.textContent = formatCurrency(total);
+        if (attrTotalEl) attrTotalEl.textContent = formatCurrency(attributeTotal);
+      }
+      
+      function attachInstanceListeners() {
+        // Option selection changes
+        content.querySelectorAll('.attr-select').forEach(sel => {
+          sel.addEventListener('change', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            attributeInstances[idx].optionId = e.target.value;
+            renderAttributeSelectors();
+          });
+        });
+        
+        // Quantity changes
+        content.querySelectorAll('.attr-qty').forEach(inp => {
+          inp.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            attributeInstances[idx].quantity = parseFloat(e.target.value) || 0;
+            updateTotalPreview();
+            // Update line total display
+            const inst = attributeInstances[idx];
+            const attr = inst.attr;
+            const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+            if (selectedOpt) {
+              const lineTotal = calculateAttributeLineTotal(selectedOpt, inst.quantity, basePrice);
+              e.target.closest('.attr-instance').querySelector('.attr-line-total').textContent = formatCurrency(lineTotal);
+            }
+          });
+        });
+        
+        // Remove instance buttons
+        content.querySelectorAll('.remove-instance').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.target.closest('.remove-instance').dataset.idx);
+            attributeInstances.splice(idx, 1);
+            renderAttributeSelectors();
+          });
+        });
+        
+        // Add another buttons
+        content.querySelectorAll('.add-another-attr').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const attrId = e.target.closest('.add-another-attr').dataset.attrId;
+            const attr = itemAttrs.find(a => a.id === attrId);
+            if (attr) {
+              attributeInstances.push({
+                attrId: attr.id,
+                attrName: attr.name,
+                attr: attr,
+                optionId: '',
+                quantity: 1
+              });
+              renderAttributeSelectors();
+            }
+          });
+        });
+      }
+      
       content.innerHTML = `
         <div class="mb-lg">
           <h4 style="margin: 0 0 var(--space-xs);">${catalogItem.name}</h4>
           <p class="text-muted text-sm" style="margin: 0;">Base price: ${formatCurrency(basePrice)}</p>
         </div>
-        <div id="attr-selectors">
-          ${itemAttrs.map((attr, idx) => {
-            const defaultOpt = attr.options?.find(o => o.is_default);
-            return `
-              <div class="form-group">
-                <label class="form-label">${attr.name}</label>
-                <select class="form-select attr-select" data-attr-id="${attr.id}" data-attr-name="${attr.name}">
-                  <option value="">-- Select ${attr.name} --</option>
-                  ${(attr.options || []).sort((a,b) => a.sort_order - b.sort_order).map(opt => `
-                    <option value="${opt.id}" 
-                      data-flat="${opt.flat_adjustment || 0}"
-                      data-mult="${opt.multiplier || 1}"
-                      data-name="${opt.name}"
-                      ${defaultOpt?.id === opt.id ? 'selected' : ''}>
-                      ${opt.name}
-                      ${opt.flat_adjustment ? (opt.flat_adjustment > 0 ? ` (+$${opt.flat_adjustment})` : ` (-$${Math.abs(opt.flat_adjustment)})`) : ''}
-                      ${opt.multiplier && opt.multiplier !== 1 ? ` (×${opt.multiplier})` : ''}
-                    </option>
-                  `).join('')}
-                </select>
-              </div>
-            `;
-          }).join('')}
-        </div>
-        <div class="price-preview" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-top: var(--space-lg);">
-          <div class="flex justify-between items-center">
-            <span class="text-muted">Calculated Price:</span>
+        <div id="attr-instances"></div>
+        <div id="add-buttons" style="margin-bottom: var(--space-lg);"></div>
+        <div class="price-preview" style="padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+          <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-sm);">
+            <span class="text-muted">Base Price:</span>
+            <span>${formatCurrency(basePrice)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-sm);">
+            <span class="text-muted">Attributes Total:</span>
+            <span id="attr-total">${formatCurrency(0)}</span>
+          </div>
+          <hr style="border: none; border-top: 1px solid var(--color-border); margin: var(--space-sm) 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600;">Total Price:</span>
             <span id="preview-price" style="font-size: 1.5rem; font-weight: 600; color: var(--color-primary);">${formatCurrency(basePrice)}</span>
           </div>
         </div>
       `;
       
-      // Update price preview when selections change
-      const updatePreview = () => {
-        const selects = content.querySelectorAll('.attr-select');
-        let price = basePrice;
-        
-        // Apply flat adjustments first
-        selects.forEach(sel => {
-          const opt = sel.selectedOptions[0];
-          if (opt && opt.value) {
-            price += parseFloat(opt.dataset.flat) || 0;
-          }
-        });
-        
-        // Then apply multipliers
-        selects.forEach(sel => {
-          const opt = sel.selectedOptions[0];
-          if (opt && opt.value) {
-            const mult = parseFloat(opt.dataset.mult) || 1;
-            if (mult !== 1) price *= mult;
-          }
-        });
-        
-        content.querySelector('#preview-price').textContent = formatCurrency(price);
-      };
-      
-      content.querySelectorAll('.attr-select').forEach(sel => {
-        sel.addEventListener('change', updatePreview);
-      });
-      
-      // Initial preview with defaults
-      setTimeout(updatePreview, 0);
+      renderAttributeSelectors();
       
       createModal({
         title: 'Configure Item Options',
@@ -1122,20 +1264,23 @@
       });
       
       document.getElementById('add-configured-item').addEventListener('click', () => {
-        // Gather selections
-        const selects = content.querySelectorAll('.attr-select');
+        // Gather all attribute selections with quantities
         const selections = [];
         
-        selects.forEach(sel => {
-          const opt = sel.selectedOptions[0];
-          if (opt && opt.value) {
+        attributeInstances.forEach(inst => {
+          const attr = inst.attr;
+          const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+          if (selectedOpt) {
+            const lineTotal = calculateAttributeLineTotal(selectedOpt, inst.quantity, basePrice);
             selections.push({
-              attribute_id: sel.dataset.attrId,
-              attribute_name: sel.dataset.attrName,
-              option_id: opt.value,
-              option_name: opt.dataset.name,
-              flat_adjustment: parseFloat(opt.dataset.flat) || 0,
-              multiplier: parseFloat(opt.dataset.mult) || 1
+              attribute_id: inst.attrId,
+              attribute_name: inst.attrName,
+              option_id: inst.optionId,
+              option_name: selectedOpt.name,
+              unit_price: parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0),
+              pricing_type: selectedOpt.pricing_type || 'each',
+              quantity: inst.quantity,
+              line_total: lineTotal
             });
           }
         });
@@ -1198,14 +1343,31 @@
         // Show attribute selections if present (admin view only)
         if (item.attributeSelections && item.attributeSelections.length > 0) {
           const attrDisplay = createElement('div', {
-            style: 'margin-top: 6px; font-size: 0.75rem; color: var(--color-primary);'
+            style: 'margin-top: 6px; font-size: 0.75rem; color: var(--color-text-muted);'
           });
-          const attrText = item.attributeSelections.map(sel => 
-            `${sel.attribute_name}: ${sel.option_name}`
-          ).join(' • ');
-          attrDisplay.innerHTML = `⚙ ${attrText}`;
+          
+          const PRICING_LABELS = { sqft: 'sq.ft.', linft: 'lin.ft.', each: '', percentage: '%' };
+          
+          const attrLines = item.attributeSelections.map(sel => {
+            const pricingType = sel.pricing_type || 'each';
+            const qty = sel.quantity || 1;
+            const lineTotal = sel.line_total || 0;
+            
+            if (pricingType === 'percentage') {
+              return `${sel.attribute_name}: ${sel.option_name} (${sel.unit_price}%) = ${formatCurrency(lineTotal)}`;
+            } else if (qty !== 1 || pricingType !== 'each') {
+              const unitLabel = PRICING_LABELS[pricingType] ? ` ${PRICING_LABELS[pricingType]}` : '';
+              return `${sel.attribute_name}: ${sel.option_name} (${qty}${unitLabel} × ${formatCurrency(sel.unit_price)}) = ${formatCurrency(lineTotal)}`;
+            } else {
+              return `${sel.attribute_name}: ${sel.option_name} = ${formatCurrency(lineTotal)}`;
+            }
+          });
+          
+          attrDisplay.innerHTML = `<div style="color: var(--color-primary); margin-bottom: 2px;">⚙ Attributes:</div>` + 
+            attrLines.map(line => `<div style="margin-left: 16px;">${line}</div>`).join('');
+          
           if (item.basePrice) {
-            attrDisplay.innerHTML += ` <span style="color: var(--color-text-muted);">(base: ${formatCurrency(item.basePrice)})</span>`;
+            attrDisplay.innerHTML += `<div style="margin-top: 4px; font-style: italic;">Base: ${formatCurrency(item.basePrice)}</div>`;
           }
           descCell.appendChild(attrDisplay);
         }
