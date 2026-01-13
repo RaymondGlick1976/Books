@@ -8,7 +8,7 @@
   <style>
     .attributes-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
       gap: var(--space-lg);
     }
     
@@ -57,41 +57,35 @@
       align-items: center;
       justify-content: space-between;
       padding: var(--space-sm) 0;
-      border-bottom: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border-light);
     }
     
     .option-item:last-child {
       border-bottom: none;
     }
     
+    .option-info {
+      flex: 1;
+    }
+    
     .option-name {
       font-weight: 500;
     }
     
-    .option-name.is-default {
-      color: var(--color-primary);
-    }
-    
     .option-name.is-default::after {
-      content: ' (default)';
-      font-weight: 400;
-      font-size: 0.75rem;
-      color: var(--color-text-muted);
+      content: ' ✓';
+      color: var(--color-success);
+      font-size: 0.875rem;
     }
     
     .option-pricing {
-      display: flex;
-      gap: var(--space-md);
       font-size: 0.875rem;
       color: var(--color-text-muted);
     }
     
-    .option-pricing .positive {
-      color: var(--color-success);
-    }
-    
-    .option-pricing .multiplier {
-      color: var(--color-primary);
+    .option-actions {
+      display: flex;
+      gap: var(--space-xs);
     }
     
     .add-option-btn {
@@ -102,62 +96,30 @@
       background: transparent;
       color: var(--color-text-muted);
       cursor: pointer;
+      transition: all var(--transition-fast);
       margin-top: var(--space-sm);
-      transition: all 0.2s;
     }
     
     .add-option-btn:hover {
       border-color: var(--color-primary);
       color: var(--color-primary);
-      background: var(--color-bg);
+      background: var(--color-primary-soft);
     }
     
-    .empty-state {
-      text-align: center;
-      padding: var(--space-xxl);
+    .no-options {
       color: var(--color-text-muted);
+      font-style: italic;
+      padding: var(--space-md) 0;
     }
     
-    .empty-state svg {
-      width: 64px;
-      height: 64px;
-      margin-bottom: var(--space-md);
-      opacity: 0.5;
-    }
-    
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-md);
-    }
-    
-    .input-with-prefix {
-      display: flex;
-      align-items: center;
-    }
-    
-    .input-prefix {
-      padding: 0 var(--space-sm);
-      background: var(--color-bg);
-      border: 1px solid var(--color-border);
-      border-right: none;
-      border-radius: var(--radius-md) 0 0 var(--radius-md);
-      color: var(--color-text-muted);
-      height: 38px;
-      display: flex;
-      align-items: center;
-    }
-    
-    .input-with-prefix .form-input {
-      border-radius: 0 var(--radius-md) var(--radius-md) 0;
-    }
-    
-    .usage-count {
+    .pricing-type-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      background: var(--color-bg-soft);
+      border-radius: var(--radius-sm);
       font-size: 0.75rem;
       color: var(--color-text-muted);
-      padding: var(--space-sm) var(--space-lg);
-      background: var(--color-bg);
-      border-top: 1px solid var(--color-border);
+      margin-left: var(--space-xs);
     }
   </style>
 </head>
@@ -166,54 +128,68 @@
     <!-- Sidebar -->
     <nav class="sidebar">
       <div class="sidebar-header">
-        <a href="/admin/index.html" class="sidebar-logo">Homestead</a>
+        <a href="/admin/" class="sidebar-logo">
+          <div class="sidebar-logo-icon"></div>
+        </a>
       </div>
       <ul class="sidebar-nav">
         <li class="sidebar-nav-item">
-          <a href="/admin/index.html" class="sidebar-nav-link">
-            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <a href="/admin/" class="sidebar-nav-link">
+            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             Dashboard
           </a>
         </li>
         <li class="sidebar-nav-item">
           <a href="/admin/pipeline.html" class="sidebar-nav-link">
-            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/></svg>
-            Pipeline
+            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Deals Pipeline
           </a>
         </li>
         <li class="sidebar-nav-item">
           <a href="/admin/customers.html" class="sidebar-nav-link">
-            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
             Customers
           </a>
         </li>
         <li class="sidebar-nav-item">
           <a href="/admin/quotes.html" class="sidebar-nav-link">
-            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             Quotes
           </a>
         </li>
         <li class="sidebar-nav-item">
           <a href="/admin/invoices.html" class="sidebar-nav-link">
-            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             Invoices
           </a>
         </li>
+        
+        <li class="sidebar-nav-section">Lead Capture</li>
+        <li class="sidebar-nav-item">
+          <a href="/admin/booking-forms.html" class="sidebar-nav-link">
+            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Booking Forms
+          </a>
+        </li>
+        
+        <li class="sidebar-nav-section">Catalog</li>
         <li class="sidebar-nav-item">
           <a href="/admin/catalog.html" class="sidebar-nav-link">
             <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-            Catalog
+            Items Catalog
           </a>
         </li>
         <li class="sidebar-nav-item">
           <a href="/admin/pricing-attributes.html" class="sidebar-nav-link active">
-            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
             Pricing Attributes
           </a>
         </li>
+        
+        <li class="sidebar-nav-section">Settings</li>
         <li class="sidebar-nav-item">
           <a href="/admin/settings.html" class="sidebar-nav-link">
-            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            <svg class="sidebar-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
             Settings
           </a>
         </li>
@@ -224,7 +200,7 @@
     <main class="main-content">
       <header class="app-header">
         <h1 class="page-title">Pricing Attributes</h1>
-        <button class="btn btn-primary" onclick="showAttributeModal()">
+        <button class="btn btn-primary" id="new-attribute-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
@@ -234,22 +210,21 @@
       
       <div class="app-content">
         <p class="text-muted mb-lg">
-          Create pricing attributes (like Material Type, Size, Labor Level) with options that adjust pricing. 
-          Then assign these attributes to catalog items for dynamic pricing.
+          Create pricing attributes with options (like Material Type → Cherry, Maple, Oak). 
+          Each option can have a price per unit type (sq. ft., lin. ft., each, or percentage).
         </p>
         
         <div id="attributes-container" class="attributes-grid">
-          <!-- Populated by JS -->
+          <div class="loading-spinner"></div>
         </div>
         
         <div id="empty-state" class="empty-state" style="display: none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+            <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
           </svg>
           <h3>No Pricing Attributes Yet</h3>
-          <p>Create attributes like "Material Type" or "Size" with pricing options.</p>
-          <button class="btn btn-primary mt-md" onclick="showAttributeModal()">Create Your First Attribute</button>
+          <p>Create attributes like "Material Type" with pricing options like Cherry, Maple, Oak.</p>
+          <button class="btn btn-primary mt-md" id="empty-state-btn">Create Your First Attribute</button>
         </div>
       </div>
     </main>
@@ -258,18 +233,32 @@
   <script src="/js/utils.js"></script>
   <script>
     let attributes = [];
-    let catalogItems = [];
+    let catalogUsage = [];
+    
+    const PRICING_TYPES = {
+      sqft: 'per Sq. Ft.',
+      linft: 'per Lin. Ft.',
+      each: 'Each',
+      percentage: '%'
+    };
     
     async function init() {
-      const supabase = await app.waitForSupabase();
-      await loadAttributes();
-      await loadCatalogItems();
+      try {
+        await loadAttributes();
+        await loadCatalogUsage();
+        
+        // Set up event listeners
+        $('#new-attribute-btn').addEventListener('click', () => showAttributeModal());
+        $('#empty-state-btn').addEventListener('click', () => showAttributeModal());
+      } catch (err) {
+        console.error('Init error:', err);
+        showToast('Failed to initialize', 'error');
+      }
     }
     
     async function loadAttributes() {
       const supabase = await app.waitForSupabase();
       
-      // Load attributes with their options
       const { data, error } = await supabase
         .from('pricing_attributes')
         .select('*, options:pricing_attribute_options(*)')
@@ -285,24 +274,42 @@
       
       // Sort options within each attribute
       attributes.forEach(attr => {
-        attr.options = (attr.options || []).sort((a, b) => a.sort_order - b.sort_order);
+        attr.options = (attr.options || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       });
       
       renderAttributes();
     }
     
-    async function loadCatalogItems() {
+    async function loadCatalogUsage() {
       const supabase = await app.waitForSupabase();
       
-      const { data } = await supabase
-        .from('catalog_item_attributes')
-        .select('attribute_id, item_id');
-      
-      catalogItems = data || [];
+      try {
+        const { data } = await supabase
+          .from('catalog_item_attributes')
+          .select('attribute_id, item_id');
+        
+        catalogUsage = data || [];
+      } catch (err) {
+        catalogUsage = [];
+      }
     }
     
     function getUsageCount(attributeId) {
-      return catalogItems.filter(ci => ci.attribute_id === attributeId).length;
+      return catalogUsage.filter(cu => cu.attribute_id === attributeId).length;
+    }
+    
+    function formatPrice(option) {
+      // Check for unit_price first, fall back to flat_adjustment for backwards compatibility
+      const price = parseFloat(option.unit_price ?? option.flat_adjustment ?? 0);
+      const type = option.pricing_type || 'each';
+      
+      if (price === 0 && type === 'each') return 'Base price';
+      
+      if (type === 'percentage') {
+        return `${price}%`;
+      }
+      
+      return `$${price.toFixed(2)} ${PRICING_TYPES[type]}`;
     }
     
     function renderAttributes() {
@@ -319,32 +326,47 @@
       
       container.innerHTML = attributes.map(attr => {
         const usageCount = getUsageCount(attr.id);
-        const optionsHtml = attr.options.map(opt => `
-          <div class="option-item">
-            <span class="option-name ${opt.is_default ? 'is-default' : ''}">${opt.name}</span>
-            <div class="option-pricing">
-              ${opt.flat_adjustment != 0 ? `<span class="${opt.flat_adjustment > 0 ? 'positive' : ''}">${opt.flat_adjustment > 0 ? '+' : ''}$${parseFloat(opt.flat_adjustment).toFixed(2)}</span>` : ''}
-              ${opt.multiplier != 1 ? `<span class="multiplier">×${parseFloat(opt.multiplier).toFixed(2)}</span>` : ''}
-              ${opt.flat_adjustment == 0 && opt.multiplier == 1 ? '<span>Base price</span>' : ''}
-            </div>
-          </div>
-        `).join('');
+        
+        const optionsHtml = attr.options.length > 0 
+          ? attr.options.map(opt => `
+              <div class="option-item">
+                <div class="option-info">
+                  <span class="option-name ${opt.is_default ? 'is-default' : ''}">${escapeHtml(opt.name)}</span>
+                  <span class="pricing-type-badge">${formatPrice(opt)}</span>
+                </div>
+                <div class="option-actions">
+                  <button class="btn btn-ghost btn-sm" onclick="showOptionModal('${attr.id}', '${opt.id}')" title="Edit">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button class="btn btn-ghost btn-sm" onclick="deleteOption('${opt.id}')" title="Delete">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            `).join('')
+          : '<div class="no-options">No options yet. Add options below.</div>';
         
         return `
           <div class="attribute-card ${attr.is_active ? '' : 'inactive'}">
             <div class="attribute-header">
               <div>
-                <div class="attribute-title">${attr.name}</div>
-                ${attr.description ? `<div class="attribute-description">${attr.description}</div>` : ''}
+                <div class="attribute-title">${escapeHtml(attr.name)}</div>
+                ${attr.description ? `<div class="attribute-description">${escapeHtml(attr.description)}</div>` : ''}
+                ${usageCount > 0 ? `<div class="attribute-description">Used in ${usageCount} catalog item(s)</div>` : ''}
               </div>
               <div class="attribute-actions">
-                <button class="btn btn-ghost btn-sm" onclick="showAttributeModal('${attr.id}')" title="Edit">
+                <button class="btn btn-ghost btn-sm" onclick="showAttributeModal('${attr.id}')" title="Edit Attribute">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
                     <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
                   </svg>
                 </button>
-                <button class="btn btn-ghost btn-sm" onclick="deleteAttribute('${attr.id}')" title="Delete">
+                <button class="btn btn-ghost btn-sm" onclick="deleteAttribute('${attr.id}')" title="Delete Attribute">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
                   </svg>
@@ -352,11 +374,10 @@
               </div>
             </div>
             <div class="options-list">
-              ${optionsHtml || '<p class="text-muted text-sm">No options yet</p>'}
-              <button class="add-option-btn" onclick="showOptionModal('${attr.id}')">+ Add Option</button>
-            </div>
-            <div class="usage-count">
-              Used in ${usageCount} catalog item${usageCount !== 1 ? 's' : ''}
+              ${optionsHtml}
+              <button class="add-option-btn" onclick="showOptionModal('${attr.id}')">
+                + Add Option
+              </button>
             </div>
           </div>
         `;
@@ -375,8 +396,8 @@
             <input type="text" class="form-input" id="attr-name" value="${attr?.name || ''}" placeholder="e.g., Material Type" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Description</label>
-            <input type="text" class="form-input" id="attr-description" value="${attr?.description || ''}" placeholder="Optional description">
+            <label class="form-label">Description <span class="form-label-optional">(optional)</span></label>
+            <input type="text" class="form-input" id="attr-description" value="${attr?.description || ''}" placeholder="Brief description of this attribute">
           </div>
           <div class="form-group">
             <label class="form-check">
@@ -387,19 +408,33 @@
         </form>
       `;
       
-      createModal({
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', {
+        type: 'button',
+        className: 'btn btn-secondary',
+        textContent: 'Cancel'
+      });
+      const saveBtn = createElement('button', {
+        type: 'button',
+        className: 'btn btn-primary',
+        textContent: isEdit ? 'Save Changes' : 'Create Attribute'
+      });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+      
+      const modal = createModal({
         title: isEdit ? 'Edit Attribute' : 'New Attribute',
         content,
-        footer: `
-          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-primary" onclick="saveAttribute('${attributeId || ''}')">${isEdit ? 'Save Changes' : 'Create Attribute'}</button>
-        `
+        footer
       });
+      
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      saveBtn.addEventListener('click', () => saveAttribute(attributeId, modal));
       
       $('#attr-name').focus();
     }
     
-    async function saveAttribute(attributeId) {
+    async function saveAttribute(attributeId, modal) {
       const name = $('#attr-name').value.trim();
       const description = $('#attr-description').value.trim();
       const isActive = $('#attr-active').checked;
@@ -409,58 +444,56 @@
         return;
       }
       
-      const supabase = await app.waitForSupabase();
-      
-      const data = {
-        name,
-        description: description || null,
-        is_active: isActive
-      };
-      
-      let error;
-      if (attributeId) {
-        ({ error } = await supabase.from('pricing_attributes').update(data).eq('id', attributeId));
-      } else {
-        ({ error } = await supabase.from('pricing_attributes').insert(data));
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        const data = {
+          name,
+          description: description || null,
+          is_active: isActive
+        };
+        
+        let error;
+        if (attributeId) {
+          ({ error } = await supabase.from('pricing_attributes').update(data).eq('id', attributeId));
+        } else {
+          ({ error } = await supabase.from('pricing_attributes').insert(data));
+        }
+        
+        if (error) throw error;
+        
+        closeModal(modal);
+        showToast(attributeId ? 'Attribute updated' : 'Attribute created', 'success');
+        await loadAttributes();
+      } catch (err) {
+        console.error('Error saving attribute:', err);
+        showToast('Failed to save attribute: ' + err.message, 'error');
       }
-      
-      if (error) {
-        console.error('Error saving attribute:', error);
-        showToast('Failed to save attribute', 'error');
-        return;
-      }
-      
-      closeModal();
-      showToast(attributeId ? 'Attribute updated' : 'Attribute created', 'success');
-      await loadAttributes();
     }
     
     async function deleteAttribute(attributeId) {
       const usageCount = getUsageCount(attributeId);
       
-      if (usageCount > 0) {
-        if (!confirm(`This attribute is used in ${usageCount} catalog item(s). Deleting it will remove it from those items. Continue?`)) {
-          return;
-        }
-      } else {
-        if (!confirm('Delete this attribute and all its options?')) {
-          return;
-        }
-      }
+      const message = usageCount > 0 
+        ? `This attribute is used in ${usageCount} catalog item(s). Deleting it will remove it from those items. Continue?`
+        : 'Delete this attribute and all its options?';
       
-      const supabase = await app.waitForSupabase();
+      if (!confirm(message)) return;
       
-      const { error } = await supabase.from('pricing_attributes').delete().eq('id', attributeId);
-      
-      if (error) {
-        console.error('Error deleting attribute:', error);
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        const { error } = await supabase.from('pricing_attributes').delete().eq('id', attributeId);
+        
+        if (error) throw error;
+        
+        showToast('Attribute deleted', 'success');
+        await loadAttributes();
+        await loadCatalogUsage();
+      } catch (err) {
+        console.error('Error deleting attribute:', err);
         showToast('Failed to delete attribute', 'error');
-        return;
       }
-      
-      showToast('Attribute deleted', 'success');
-      await loadAttributes();
-      await loadCatalogItems();
     }
     
     function showOptionModal(attributeId, optionId = null) {
@@ -468,57 +501,76 @@
       const opt = optionId ? attr?.options.find(o => o.id === optionId) : null;
       const isEdit = !!opt;
       
+      // Get existing price - check unit_price first, fall back to flat_adjustment
+      const existingPrice = opt?.unit_price ?? opt?.flat_adjustment ?? 0;
+      
       const content = createElement('div');
       content.innerHTML = `
         <form id="option-form">
           <div class="form-group">
             <label class="form-label">Option Name *</label>
-            <input type="text" class="form-input" id="opt-name" value="${opt?.name || ''}" placeholder="e.g., Oak" required>
+            <input type="text" class="form-input" id="opt-name" value="${opt?.name || ''}" placeholder="e.g., Cherry, Maple, Oak" required>
           </div>
+          
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Flat Price Adjustment</label>
+              <label class="form-label">Price</label>
               <div class="input-with-prefix">
                 <span class="input-prefix">$</span>
-                <input type="number" class="form-input" id="opt-flat" value="${opt?.flat_adjustment || 0}" step="0.01">
+                <input type="number" class="form-input" id="opt-price" value="${existingPrice}" step="0.01" min="0">
               </div>
-              <small class="text-muted">Added to base price (use negative for discount)</small>
             </div>
             <div class="form-group">
-              <label class="form-label">Multiplier</label>
-              <div class="input-with-prefix">
-                <span class="input-prefix">×</span>
-                <input type="number" class="form-input" id="opt-multiplier" value="${opt?.multiplier || 1}" step="0.01" min="0.01">
-              </div>
-              <small class="text-muted">Applied after flat adjustment (1 = no change)</small>
+              <label class="form-label">Pricing Type</label>
+              <select class="form-select" id="opt-pricing-type">
+                <option value="sqft" ${opt?.pricing_type === 'sqft' ? 'selected' : ''}>Per Sq. Ft.</option>
+                <option value="linft" ${opt?.pricing_type === 'linft' ? 'selected' : ''}>Per Lin. Ft.</option>
+                <option value="each" ${(!opt?.pricing_type || opt?.pricing_type === 'each') ? 'selected' : ''}>Each (flat price)</option>
+                <option value="percentage" ${opt?.pricing_type === 'percentage' ? 'selected' : ''}>Percentage of base</option>
+              </select>
             </div>
           </div>
+          
           <div class="form-group">
             <label class="form-check">
               <input type="checkbox" id="opt-default" ${opt?.is_default ? 'checked' : ''}>
               <span>Set as default option</span>
             </label>
+            <small class="text-muted">The default option will be pre-selected when adding to quotes</small>
           </div>
         </form>
       `;
       
-      createModal({
-        title: isEdit ? 'Edit Option' : `Add Option to "${attr?.name}"`,
-        content,
-        footer: `
-          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-          ${isEdit ? `<button class="btn btn-danger" onclick="deleteOption('${attributeId}', '${optionId}')" style="margin-right: auto;">Delete</button>` : ''}
-          <button class="btn btn-primary" onclick="saveOption('${attributeId}', '${optionId || ''}')">${isEdit ? 'Save Changes' : 'Add Option'}</button>
-        `
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', {
+        type: 'button',
+        className: 'btn btn-secondary',
+        textContent: 'Cancel'
       });
+      const saveBtn = createElement('button', {
+        type: 'button',
+        className: 'btn btn-primary',
+        textContent: isEdit ? 'Save Option' : 'Add Option'
+      });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+      
+      const modal = createModal({
+        title: isEdit ? 'Edit Option' : `Add Option to "${attr.name}"`,
+        content,
+        footer
+      });
+      
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      saveBtn.addEventListener('click', () => saveOption(attributeId, optionId, modal));
       
       $('#opt-name').focus();
     }
     
-    async function saveOption(attributeId, optionId) {
+    async function saveOption(attributeId, optionId, modal) {
       const name = $('#opt-name').value.trim();
-      const flatAdjustment = parseFloat($('#opt-flat').value) || 0;
-      const multiplier = parseFloat($('#opt-multiplier').value) || 1;
+      const unitPrice = parseFloat($('#opt-price').value) || 0;
+      const pricingType = $('#opt-pricing-type').value;
       const isDefault = $('#opt-default').checked;
       
       if (!name) {
@@ -526,65 +578,71 @@
         return;
       }
       
-      const supabase = await app.waitForSupabase();
-      
-      // If setting as default, unset other defaults first
-      if (isDefault) {
-        await supabase
-          .from('pricing_attribute_options')
-          .update({ is_default: false })
-          .eq('attribute_id', attributeId);
-      }
-      
-      const data = {
-        attribute_id: attributeId,
-        name,
-        flat_adjustment: flatAdjustment,
-        multiplier,
-        is_default: isDefault
-      };
-      
-      let error;
-      if (optionId) {
-        ({ error } = await supabase.from('pricing_attribute_options').update(data).eq('id', optionId));
-      } else {
-        // Get max sort order
-        const attr = attributes.find(a => a.id === attributeId);
-        const maxSort = Math.max(0, ...attr.options.map(o => o.sort_order));
-        data.sort_order = maxSort + 1;
+      try {
+        const supabase = await app.waitForSupabase();
         
-        ({ error } = await supabase.from('pricing_attribute_options').insert(data));
+        // If setting as default, clear other defaults first
+        if (isDefault) {
+          await supabase
+            .from('pricing_attribute_options')
+            .update({ is_default: false })
+            .eq('attribute_id', attributeId);
+        }
+        
+        const data = {
+          attribute_id: attributeId,
+          name,
+          unit_price: unitPrice,
+          pricing_type: pricingType,
+          is_default: isDefault
+        };
+        
+        let error;
+        if (optionId) {
+          ({ error } = await supabase.from('pricing_attribute_options').update(data).eq('id', optionId));
+        } else {
+          // Get next sort order
+          const attr = attributes.find(a => a.id === attributeId);
+          data.sort_order = (attr?.options?.length || 0);
+          ({ error } = await supabase.from('pricing_attribute_options').insert(data));
+        }
+        
+        if (error) throw error;
+        
+        closeModal(modal);
+        showToast(optionId ? 'Option updated' : 'Option added', 'success');
+        await loadAttributes();
+      } catch (err) {
+        console.error('Error saving option:', err);
+        showToast('Failed to save option: ' + err.message, 'error');
       }
-      
-      if (error) {
-        console.error('Error saving option:', error);
-        showToast('Failed to save option', 'error');
-        return;
-      }
-      
-      closeModal();
-      showToast(optionId ? 'Option updated' : 'Option added', 'success');
-      await loadAttributes();
     }
     
-    async function deleteOption(attributeId, optionId) {
+    async function deleteOption(optionId) {
       if (!confirm('Delete this option?')) return;
       
-      const supabase = await app.waitForSupabase();
-      
-      const { error } = await supabase.from('pricing_attribute_options').delete().eq('id', optionId);
-      
-      if (error) {
-        console.error('Error deleting option:', error);
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        const { error } = await supabase.from('pricing_attribute_options').delete().eq('id', optionId);
+        
+        if (error) throw error;
+        
+        showToast('Option deleted', 'success');
+        await loadAttributes();
+      } catch (err) {
+        console.error('Error deleting option:', err);
         showToast('Failed to delete option', 'error');
-        return;
       }
-      
-      closeModal();
-      showToast('Option deleted', 'success');
-      await loadAttributes();
     }
     
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Initialize
     init();
   </script>
 </body>
