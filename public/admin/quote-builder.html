@@ -1055,9 +1055,10 @@
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           const pricingType = selectedOpt?.pricing_type || 'each';
-          const unitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
+          const defaultUnitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
+          const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
           const showQty = selectedOpt && pricingType !== 'percentage';
-          const lineTotal = selectedOpt ? calculateAttributeLineTotal(selectedOpt, inst.quantity, basePrice) : 0;
+          const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, basePrice) : 0;
           
           return `
             <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
@@ -1067,33 +1068,41 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr ${showQty ? '100px' : ''} 100px; gap: var(--space-sm); align-items: end;">
-                <select class="form-select attr-select" data-idx="${idx}">
-                  <option value="">-- Select --</option>
-                  ${(attr.options || []).sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map(opt => {
-                    const optPrice = parseFloat(opt.unit_price ?? opt.flat_adjustment ?? 0);
-                    const optType = opt.pricing_type || 'each';
-                    let priceLabel = '';
-                    if (optType === 'percentage') {
-                      priceLabel = optPrice ? ` (${optPrice}%)` : '';
-                    } else if (optPrice) {
-                      priceLabel = ` ($${optPrice.toFixed(2)}/${PRICING_LABELS[optType] || 'ea'})`;
-                    }
-                    return `
-                      <option value="${opt.id}" 
-                        data-unit-price="${optPrice}"
-                        data-pricing-type="${optType}"
-                        data-name="${opt.name}"
-                        ${inst.optionId === opt.id ? 'selected' : ''}>
-                        ${opt.name}${priceLabel}
-                      </option>
-                    `;
-                  }).join('')}
-                </select>
+              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${showQty ? '80px' : ''} 90px; gap: var(--space-sm); align-items: end;">
+                <div>
+                  <select class="form-select attr-select" data-idx="${idx}">
+                    <option value="">-- Select --</option>
+                    ${(attr.options || []).sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map(opt => {
+                      const optPrice = parseFloat(opt.unit_price ?? opt.flat_adjustment ?? 0);
+                      const optType = opt.pricing_type || 'each';
+                      let priceLabel = '';
+                      if (optType === 'percentage') {
+                        priceLabel = optPrice ? ` (${optPrice}%)` : '';
+                      } else if (optPrice) {
+                        priceLabel = ` ($${optPrice.toFixed(2)})`;
+                      }
+                      return `
+                        <option value="${opt.id}" 
+                          data-unit-price="${optPrice}"
+                          data-pricing-type="${optType}"
+                          data-name="${opt.name}"
+                          ${inst.optionId === opt.id ? 'selected' : ''}>
+                          ${opt.name}${priceLabel}
+                        </option>
+                      `;
+                    }).join('')}
+                  </select>
+                </div>
+                ${selectedOpt ? `
+                  <div>
+                    <label class="form-label text-sm">${pricingType === 'percentage' ? '%' : '$/unit'}</label>
+                    <input type="number" class="form-input attr-unit-price" data-idx="${idx}" value="${effectiveUnitPrice}" min="0" step="0.01" style="font-size: 0.875rem;">
+                  </div>
+                ` : ''}
                 ${showQty ? `
                   <div>
                     <label class="form-label text-sm">${PRICING_LABELS[pricingType] || 'Qty'}</label>
-                    <input type="number" class="form-input attr-qty" data-idx="${idx}" value="${inst.quantity}" min="0" step="0.01">
+                    <input type="number" class="form-input attr-qty" data-idx="${idx}" value="${inst.quantity}" min="0" step="0.01" style="font-size: 0.875rem;">
                   </div>
                 ` : ''}
                 <div style="text-align: right;">
@@ -1137,7 +1146,10 @@
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           if (selectedOpt) {
-            attributeTotal += calculateAttributeLineTotal(selectedOpt, inst.quantity, basePrice);
+            const pricingType = selectedOpt.pricing_type || 'each';
+            const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
+            const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
+            attributeTotal += calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, basePrice);
           }
         });
         
@@ -1156,7 +1168,28 @@
           sel.addEventListener('change', (e) => {
             const idx = parseInt(e.target.dataset.idx);
             attributeInstances[idx].optionId = e.target.value;
+            attributeInstances[idx].unitPriceOverride = null; // Reset override when option changes
             renderAttributeSelectors();
+          });
+        });
+        
+        // Unit price changes
+        content.querySelectorAll('.attr-unit-price').forEach(inp => {
+          inp.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            const newPrice = parseFloat(e.target.value) || 0;
+            attributeInstances[idx].unitPriceOverride = newPrice;
+            
+            // Update line total display
+            const inst = attributeInstances[idx];
+            const attr = inst.attr;
+            const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+            if (selectedOpt) {
+              const pricingType = selectedOpt.pricing_type || 'each';
+              const lineTotal = calculateAttributeLineTotalWithPrice(newPrice, pricingType, inst.quantity, basePrice);
+              e.target.closest('.attr-instance').querySelector('.attr-line-total').textContent = formatCurrency(lineTotal);
+            }
+            updateTotalPreview();
           });
         });
         
@@ -1165,15 +1198,19 @@
           inp.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.idx);
             attributeInstances[idx].quantity = parseFloat(e.target.value) || 0;
-            updateTotalPreview();
+            
             // Update line total display
             const inst = attributeInstances[idx];
             const attr = inst.attr;
             const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
             if (selectedOpt) {
-              const lineTotal = calculateAttributeLineTotal(selectedOpt, inst.quantity, basePrice);
+              const pricingType = selectedOpt.pricing_type || 'each';
+              const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
+              const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
+              const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, basePrice);
               e.target.closest('.attr-instance').querySelector('.attr-line-total').textContent = formatCurrency(lineTotal);
             }
+            updateTotalPreview();
           });
         });
         
@@ -1197,7 +1234,8 @@
                 attrName: attr.name,
                 attr: attr,
                 optionId: '',
-                quantity: 1
+                quantity: 1,
+                unitPriceOverride: null // Will hold custom price if user changes it
               });
               renderAttributeSelectors();
             }
@@ -1233,17 +1271,22 @@
       
       renderAttributeSelectors();
       
-      createModal({
+      // Create footer with proper DOM elements
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+      const addBtn = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: 'Add to Quote' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(addBtn);
+      
+      const modal = createModal({
         title: 'Configure Item Options',
         content,
-        footer: `
-          <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-primary" id="add-configured-item">Add to Quote</button>
-        `,
+        footer,
         size: 'md'
       });
       
-      document.getElementById('add-configured-item').addEventListener('click', () => {
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      addBtn.addEventListener('click', () => {
         // Gather all attribute selections with quantities
         const selections = [];
         
@@ -1251,13 +1294,15 @@
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           if (selectedOpt) {
-            const lineTotal = calculateAttributeLineTotal(selectedOpt, inst.quantity, basePrice);
+            // Use override price if set, otherwise use option's default price
+            const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
+            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, basePrice);
             selections.push({
               attribute_id: inst.attrId,
               attribute_name: inst.attrName,
               option_id: inst.optionId,
               option_name: selectedOpt.name,
-              unit_price: parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0),
+              unit_price: effectiveUnitPrice,
               pricing_type: selectedOpt.pricing_type || 'each',
               quantity: inst.quantity,
               line_total: lineTotal
@@ -1265,9 +1310,17 @@
           }
         });
         
-        closeModal();
+        closeModal(modal);
         addLineItemDirect(catalogItem, selections);
       });
+    }
+    
+    // Helper to calculate with a specific unit price
+    function calculateAttributeLineTotalWithPrice(unitPrice, pricingType, quantity, basePrice) {
+      if (pricingType === 'percentage') {
+        return basePrice * (unitPrice / 100);
+      }
+      return unitPrice * quantity;
     }
     
     function renderLineItems() {
