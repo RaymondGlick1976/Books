@@ -660,17 +660,11 @@
     console.log('Parsed quoteId:', quoteId);
     
     async function init() {
-      console.log('Quote Builder starting init...');
-      
-      // Always set up event listeners first, even before data loads
+      // Always set up event listeners first
       setupEventListeners();
-      console.log('Event listeners set up');
       
       try {
         const supabase = await app.waitForSupabase();
-        console.log('Supabase ready');
-        
-        console.log('Quote Builder init, quoteId:', quoteId);
         
         // Load customers
         try {
@@ -679,11 +673,8 @@
             .select('id, name, email')
             .order('name');
           
-          if (custError) {
-            console.error('Customer load error:', custError);
-          } else {
+          if (!custError) {
             customers = customerData || [];
-            console.log('Loaded', customers.length, 'customers');
             
             const customerSelect = $('#customer-select');
             customers.forEach(c => {
@@ -694,7 +685,7 @@
             });
           }
         } catch (custErr) {
-          console.error('Customer fetch exception:', custErr);
+          console.error('Customer fetch error:', custErr);
         }
         
         // Load catalog items
@@ -705,14 +696,11 @@
             .eq('is_active', true)
             .order('category, name');
           
-          if (catError) {
-            console.error('Catalog load error:', catError);
-          } else {
+          if (!catError) {
             catalogItems = catalogData || [];
-            console.log('Loaded', catalogItems.length, 'catalog items');
           }
         } catch (catErr) {
-          console.error('Catalog fetch exception:', catErr);
+          console.error('Catalog fetch error:', catErr);
         }
         
         // Load pricing attributes with their options (gracefully handle if tables don't exist)
@@ -742,7 +730,7 @@
             }
           });
         } catch (attrErr) {
-          console.log('Pricing attributes not available (migration may not be run yet):', attrErr.message);
+          // Pricing attributes tables may not exist yet
           pricingAttributes = [];
           catalogItemAttributes = {};
         }
@@ -750,12 +738,10 @@
         
         // If editing, load quote
         if (quoteId) {
-          console.log('Loading existing quote:', quoteId);
           await loadQuote(supabase);
         }
         
         updateSummary();
-        console.log('Quote Builder init complete');
       } catch (err) {
         console.error('Init error:', err);
         showToast('Failed to initialize: ' + err.message, 'error');

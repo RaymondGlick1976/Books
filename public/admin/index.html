@@ -244,30 +244,20 @@
     // For now, using Supabase directly with anon key
     // In production, you'd want admin-specific auth
     async function loadDashboard() {
-      console.log('Dashboard: Starting load...');
       try {
         const supabase = await app.waitForSupabase();
-        console.log('Dashboard: Supabase ready');
         
         // Load stats
-        console.log('Dashboard: Loading stats...');
         await loadStats(supabase);
-        console.log('Dashboard: Stats loaded');
         
         // Load recent activity
-        console.log('Dashboard: Loading recent activity...');
         await loadRecentActivity(supabase);
-        console.log('Dashboard: Recent activity loaded');
         
         // Load action items
-        console.log('Dashboard: Loading action items...');
         await loadActionItems(supabase);
-        console.log('Dashboard: Action items loaded');
         
         // Load recent quotes
-        console.log('Dashboard: Loading recent quotes...');
         await loadRecentQuotes(supabase);
-        console.log('Dashboard: All done!');
         
       } catch (err) {
         console.error('Dashboard load error:', err);
@@ -276,69 +266,55 @@
     }
     
     async function loadStats(supabase) {
-      console.log('Stats: Loading active jobs...');
       // Active jobs count (not completed or lost)
-      const { count: activeJobsCount, error: jobsError } = await supabase
+      const { count: activeJobsCount } = await supabase
         .from('jobs')
         .select('*', { count: 'exact', head: true })
         .not('stage', 'in', '("completed","job-lost")');
       
-      console.log('Stats: Active jobs result:', activeJobsCount, 'error:', jobsError);
       $('#stat-active-deals').textContent = activeJobsCount || 0;
       
-      console.log('Stats: Loading pending quotes...');
       // Pending quotes count
-      const { count: pendingCount, error: quotesError } = await supabase
+      const { count: pendingCount } = await supabase
         .from('quotes')
         .select('*', { count: 'exact', head: true })
         .in('status', ['sent', 'viewed']);
       
-      console.log('Stats: Pending quotes result:', pendingCount, 'error:', quotesError);
       $('#stat-pending-quotes').textContent = pendingCount || 0;
       
       // Outstanding balance
-      console.log('Stats: Loading invoices...');
-      const { data: invoices, error: invError } = await supabase
+      const { data: invoices } = await supabase
         .from('invoices')
         .select('amount_due')
         .in('status', ['sent', 'viewed', 'partial', 'overdue']);
       
-      console.log('Stats: Invoices result:', invoices?.length, 'error:', invError);
       const outstanding = invoices?.reduce((sum, inv) => sum + parseFloat(inv.amount_due || 0), 0) || 0;
       $('#stat-outstanding').textContent = formatCurrency(outstanding);
       
       // Payments in last 30 days
-      console.log('Stats: Loading payments...');
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const { data: payments, error: payError } = await supabase
+      const { data: payments } = await supabase
         .from('payments')
         .select('amount')
         .eq('status', 'succeeded')
         .gte('payment_date', thirtyDaysAgo);
       
-      console.log('Stats: Payments result:', payments?.length, 'error:', payError);
       const paymentTotal = payments?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
       $('#stat-payments').textContent = formatCurrency(paymentTotal);
       
       // Load pipeline summary
-      console.log('Stats: Loading pipeline summary...');
       await loadPipelineSummary(supabase);
-      console.log('Stats: Pipeline summary loaded');
     }
     
     async function loadPipelineSummary(supabase) {
       const container = $('#pipeline-summary');
-      console.log('Pipeline: Starting...');
       
       try {
         // Get stages
-        console.log('Pipeline: Fetching stages...');
-        const { data: stages, error: stagesError } = await supabase
+        const { data: stages } = await supabase
           .from('job_stages')
           .select('*')
           .order('sort_order');
-        
-        console.log('Pipeline: Stages result:', stages?.length, 'error:', stagesError);
         
         // Get job counts per stage
         const { data: jobs } = await supabase
@@ -493,15 +469,12 @@
     
     async function loadRecentQuotes(supabase) {
       const tbody = $('#quotes-tbody');
-      console.log('RecentQuotes: Fetching quotes...');
       
-      const { data: quotes, error: quotesError } = await supabase
+      const { data: quotes } = await supabase
         .from('quotes')
         .select('*, customers(name)')
         .order('created_at', { ascending: false })
         .limit(10);
-      
-      console.log('RecentQuotes: Result:', quotes?.length, 'error:', quotesError);
       
       clearElement(tbody);
       
