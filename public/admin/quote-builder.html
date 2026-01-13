@@ -650,6 +650,8 @@
     let quoteId = null;
     let pricingAttributes = [];
     let catalogItemAttributes = {}; // Map: item_id -> [attributes with options]
+    let leadSources = [];
+    let appUsers = [];
     
     const TAX_RATE = 0.0625;
     
@@ -733,6 +735,30 @@
           // Pricing attributes tables may not exist yet
           pricingAttributes = [];
           catalogItemAttributes = {};
+        }
+        
+        // Load lead sources for customer form
+        try {
+          const { data: leadData } = await supabase
+            .from('lead_sources')
+            .select('id, name')
+            .eq('is_active', true)
+            .order('sort_order, name');
+          leadSources = leadData || [];
+        } catch (e) {
+          leadSources = [];
+        }
+        
+        // Load app users for salesperson/project manager dropdowns
+        try {
+          const { data: userData } = await supabase
+            .from('app_users')
+            .select('id, name, role')
+            .eq('is_active', true)
+            .order('name');
+          appUsers = userData || [];
+        } catch (e) {
+          appUsers = [];
         }
         
         
@@ -1585,22 +1611,83 @@
     
     function showNewCustomerModal() {
       const content = createElement('form', { id: 'new-customer-form' });
+      
+      // Build lead source options
+      const leadSourceOptions = leadSources.map(ls => 
+        `<option value="${ls.id}">${ls.name}</option>`
+      ).join('');
+      
+      // Build user options for salesperson
+      const userOptions = appUsers.map(u => 
+        `<option value="${u.id}">${u.name}${u.role ? ` (${u.role})` : ''}</option>`
+      ).join('');
+      
       content.innerHTML = `
-        <div class="form-group">
-          <label class="form-label">Name *</label>
-          <input type="text" name="name" class="form-input" required>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+          <div class="form-group">
+            <label class="form-label">First Name *</label>
+            <input type="text" name="first_name" class="form-input" placeholder="Enter first name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name *</label>
+            <input type="text" name="last_name" class="form-input" placeholder="Enter last name" required>
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Email *</label>
-          <input type="email" name="email" class="form-input" required>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+          <div class="form-group">
+            <label class="form-label">Email *</label>
+            <input type="email" name="email" class="form-input" placeholder="Enter email" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="tel" name="phone" class="form-input" placeholder="Enter phone number">
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Phone</label>
-          <input type="tel" name="phone" class="form-input">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+          <div class="form-group">
+            <label class="form-label">Lead Source</label>
+            <select name="lead_source_id" class="form-select">
+              <option value="">Select a lead source...</option>
+              ${leadSourceOptions}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Salesperson</label>
+            <select name="assigned_to" class="form-select">
+              <option value="">Select salesperson...</option>
+              ${userOptions}
+            </select>
+          </div>
         </div>
+        
+        <hr style="margin: var(--space-lg) 0; border: none; border-top: 1px solid var(--color-border);">
+        <h4 style="margin-bottom: var(--space-md); font-size: 0.9rem; color: var(--color-text-muted);">📍 Job Address</h4>
+        
         <div class="form-group">
-          <label class="form-label">Address</label>
-          <textarea name="address" class="form-textarea" rows="2"></textarea>
+          <label class="form-label">Street</label>
+          <input type="text" name="street" class="form-input" placeholder="Enter street address">
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: var(--space-md);">
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" name="city" class="form-input" placeholder="Enter city">
+          </div>
+          <div class="form-group">
+            <label class="form-label">State</label>
+            <input type="text" name="state" class="form-input" placeholder="State" value="MA">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Zip Code</label>
+            <input type="text" name="zip" class="form-input" placeholder="Zip">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Notes <span class="form-label-optional">(optional)</span></label>
+          <textarea name="notes" class="form-textarea" rows="2" placeholder="Any additional notes..."></textarea>
         </div>
       `;
       
@@ -1621,7 +1708,8 @@
       const modal = createModal({
         title: 'Add New Customer',
         content,
-        footer
+        footer,
+        size: 'lg'
       });
       
       // Add event listeners AFTER modal is created
@@ -1632,16 +1720,27 @@
           return;
         }
         const formData = new FormData(content);
+        const firstName = formData.get('first_name').trim();
+        const lastName = formData.get('last_name').trim();
+        const fullName = `${firstName} ${lastName}`.trim();
         
         try {
           const supabase = await app.waitForSupabase();
           const { data: customer, error } = await supabase
             .from('customers')
             .insert({
-              name: formData.get('name'),
+              name: fullName,
+              first_name: firstName,
+              last_name: lastName,
               email: formData.get('email').toLowerCase(),
-              phone: formData.get('phone'),
-              address: formData.get('address')
+              phone: formData.get('phone') || null,
+              lead_source_id: formData.get('lead_source_id') || null,
+              assigned_to: formData.get('assigned_to') || null,
+              address: formData.get('street') || null,
+              city: formData.get('city') || null,
+              state: formData.get('state') || null,
+              zip: formData.get('zip') || null,
+              notes: formData.get('notes') || null
             })
             .select()
             .single();
