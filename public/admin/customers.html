@@ -294,23 +294,39 @@
         `<option value="${ls.name}" ${customer?.lead_source === ls.name ? 'selected' : ''}>${ls.name}</option>`
       ).join('');
       
+      // Parse existing name into first/last for editing
+      let firstName = customer?.first_name || '';
+      let lastName = customer?.last_name || '';
+      if (!firstName && customer?.name) {
+        // Fallback: split the name field
+        const parts = customer.name.split(' ');
+        firstName = parts[0] || '';
+        lastName = parts.slice(1).join(' ') || '';
+      }
+      
       const content = createElement('form', { id: 'customer-form' });
       content.innerHTML = `
         <div class="grid grid-cols-2 gap-lg">
           <div class="form-group">
-            <label class="form-label">Name *</label>
-            <input type="text" name="name" class="form-input" value="${customer?.name || ''}" required>
+            <label class="form-label">First Name *</label>
+            <input type="text" name="first_name" class="form-input" value="${firstName}" placeholder="Enter first name" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Email *</label>
-            <input type="email" name="email" class="form-input" value="${customer?.email || ''}" required>
+            <label class="form-label">Last Name *</label>
+            <input type="text" name="last_name" class="form-input" value="${lastName}" placeholder="Enter last name" required>
           </div>
         </div>
         <div class="grid grid-cols-2 gap-lg">
           <div class="form-group">
-            <label class="form-label">Phone</label>
-            <input type="tel" name="phone" class="form-input" value="${customer?.phone || ''}">
+            <label class="form-label">Email *</label>
+            <input type="email" name="email" class="form-input" value="${customer?.email || ''}" placeholder="Enter email" required>
           </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="tel" name="phone" class="form-input" value="${customer?.phone || ''}" placeholder="Enter phone number">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-lg">
           <div class="form-group">
             <label class="form-label">Lead Source</label>
             <select name="lead_source" class="form-select">
@@ -318,19 +334,19 @@
               ${leadSourceOptions}
             </select>
           </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Company</label>
-          <input type="text" name="company" class="form-input" value="${customer?.company || ''}">
+          <div class="form-group">
+            <label class="form-label">Company</label>
+            <input type="text" name="company" class="form-input" value="${customer?.company || ''}" placeholder="Company name (optional)">
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Address</label>
-          <input type="text" name="address" class="form-input" value="${customer?.address || ''}">
+          <input type="text" name="address" class="form-input" value="${customer?.address || ''}" placeholder="Street address">
         </div>
         <div class="grid grid-cols-3 gap-lg">
           <div class="form-group">
             <label class="form-label">City</label>
-            <input type="text" name="city" class="form-input" value="${customer?.city || ''}">
+            <input type="text" name="city" class="form-input" value="${customer?.city || ''}" placeholder="City">
           </div>
           <div class="form-group">
             <label class="form-label">State</label>
@@ -338,12 +354,12 @@
           </div>
           <div class="form-group">
             <label class="form-label">ZIP</label>
-            <input type="text" name="zip" class="form-input" value="${customer?.zip || ''}">
+            <input type="text" name="zip" class="form-input" value="${customer?.zip || ''}" placeholder="Zip code">
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">Notes</label>
-          <textarea name="notes" class="form-textarea" rows="2">${customer?.notes || ''}</textarea>
+          <textarea name="notes" class="form-textarea" rows="2" placeholder="Any additional notes...">${customer?.notes || ''}</textarea>
         </div>
       `;
       
@@ -407,8 +423,14 @@
       try {
         const supabase = await app.waitForSupabase();
         
+        const firstName = formData.get('first_name').trim();
+        const lastName = formData.get('last_name').trim();
+        const fullName = `${firstName} ${lastName}`.trim();
+        
         const data = {
-          name: formData.get('name'),
+          name: fullName,
+          first_name: firstName,
+          last_name: lastName,
           email: formData.get('email').toLowerCase(),
           phone: formData.get('phone') || null,
           company: formData.get('company') || null,
