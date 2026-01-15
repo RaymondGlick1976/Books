@@ -29,11 +29,12 @@
     .drop-zone.drag-over { border-color: var(--color-primary); background: rgba(99, 102, 241, 0.05); }
     
     /* Dropdown */
-    .dropdown { position: relative; display: inline-block; z-index: 1000; }
+    .dropdown { position: relative; display: inline-block; }
     .dropdown-btn { display: flex; align-items: center; gap: var(--space-xs); }
     .dropdown-btn svg.chevron { width: 14px; height: 14px; transition: transform 0.2s; }
     .dropdown.open .dropdown-btn svg.chevron { transform: rotate(180deg); }
-    .dropdown-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: white; border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 200px; z-index: 1001; display: none; }
+    .dropdown-menu { background: white; border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 200px; z-index: 9999; display: none; }
+    .dropdown.open .dropdown-menu { display: block; }
     .dropdown.open .dropdown-menu { display: block; }
     .dropdown-item { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); cursor: pointer; font-size: 0.875rem; color: var(--color-text); transition: background 0.15s; }
     .dropdown-item:hover { background: var(--color-bg-soft); }
@@ -124,7 +125,7 @@
     </aside>
     
     <main class="app-main">
-      <header class="app-header" style="flex-wrap: wrap; position: relative; z-index: 1000;">
+      <header class="app-header" style="flex-wrap: wrap;">
         <div class="pipeline-header" style="flex: 1; min-width: 0;">
           <div class="pipeline-actions">
             <div class="view-toggle">
@@ -156,7 +157,7 @@
         </div>
       </header>
       
-      <div class="app-content" style="padding: var(--space-md); overflow: hidden;">
+      <div class="app-content" style="padding: var(--space-md);">
         <div id="pipeline-view" style="overflow-x: auto; max-width: 100%;"><div class="pipeline-container" id="pipeline-container"></div></div>
         <div id="calendar-view" style="display:none;">
           <div class="calendar-container">
@@ -317,7 +318,21 @@
       $('#calendar-legend').innerHTML = items.map(i => `<div class="calendar-legend-item"><span class="calendar-legend-dot" style="background:${i.color};"></span><span>${i.label}</span></div>`).join('');
     }
     
-    function toggleDropdown(id) { $('#' + id).classList.toggle('open'); }
+    function toggleDropdown(id) { 
+      const dropdown = $('#' + id);
+      const isOpening = !dropdown.classList.contains('open');
+      dropdown.classList.toggle('open'); 
+      
+      if (isOpening) {
+        const btn = dropdown.querySelector('.dropdown-btn');
+        const menu = dropdown.querySelector('.dropdown-menu');
+        const rect = btn.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = (rect.bottom + 4) + 'px';
+        menu.style.left = rect.left + 'px';
+        menu.style.right = 'auto';
+      }
+    }
     function setupDropdownClose() { document.addEventListener('click', e => { if (!e.target.closest('.dropdown')) $$('.dropdown.open').forEach(d => d.classList.remove('open')); }); }
     
     function renderPipeline() {
