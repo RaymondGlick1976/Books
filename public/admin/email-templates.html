@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Templates | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .template-card {
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-md);
+    }
+    .template-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-md);
+    }
+    .template-card-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin: 0;
+    }
+    .template-card-meta {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      margin-top: 4px;
+    }
+    .template-card-subject {
+      background: var(--color-bg-soft);
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      margin-bottom: var(--space-md);
+    }
+    .template-card-subject strong {
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+    .template-card-body {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      white-space: pre-wrap;
+      max-height: 150px;
+      overflow: hidden;
+      position: relative;
+    }
+    .template-card-body::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 50px;
+      background: linear-gradient(transparent, white);
+    }
+    .template-type-tabs {
+      display: flex;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+    }
+    .template-type-tab {
+      padding: var(--space-sm) var(--space-lg);
+      background: var(--color-bg-soft);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .template-type-tab.active {
+      background: var(--color-primary);
+      color: white;
+      border-color: var(--color-primary);
+    }
+    .variable-tag {
+      display: inline-block;
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-family: monospace;
+      cursor: pointer;
+      margin: 2px;
+    }
+    .variable-tag:hover {
+      background: var(--color-primary);
+      color: white;
+    }
+    .variables-help {
+      background: var(--color-bg-soft);
+      padding: var(--space-md);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-lg);
+    }
+    .variables-help h4 {
+      margin: 0 0 var(--space-sm);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+    if (!user) window.location.href = '/admin/login.html';
+  </script>
+  
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <a href="/admin/index.html"><img src="/images/logo.gif" alt="Homestead Cabinet Design"></a>
+      </div>
+      <nav class="sidebar-nav-container">
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Deals Pipeline</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+        </ul>
+        <div class="sidebar-section-title">Marketing</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/booking-forms.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Booking Forms</a></li>
+        </ul>
+        <div class="sidebar-section-title">Catalog</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/catalog.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Items Catalog</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pricing-attributes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Pricing Attributes</a></li>
+        </ul>
+        <div class="sidebar-section-title">Settings</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/email-templates.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Templates</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/settings.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a></li>
+        </ul>
+      </nav>
+    </aside>
+    
+    <main class="app-main">
+      <header class="app-header">
+        <div>
+          <h2 style="margin: 0;">Email Templates</h2>
+          <p class="text-muted" style="margin: 0; font-size: 0.875rem;">Manage email templates for deals and appointments</p>
+        </div>
+        <div class="flex gap-md">
+          <button class="btn btn-primary" onclick="showTemplateModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New Template
+          </button>
+        </div>
+      </header>
+      
+      <div class="app-content">
+        <!-- Variables Help -->
+        <div class="variables-help">
+          <h4>📝 Available Variables (click to copy)</h4>
+          <p class="text-sm text-muted mb-sm">Use these in your templates - they'll be replaced with actual values when sending:</p>
+          <div>
+            <span class="variable-tag" onclick="copyVariable('{{first_name}}')">{{first_name}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{customer_name}}')">{{customer_name}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{customer_email}}')">{{customer_email}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{deal_name}}')">{{deal_name}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{company_name}}')">{{company_name}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{shop_date}}')">{{shop_date}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{installation_date}}')">{{installation_date}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{appointment_type}}')">{{appointment_type}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{appointment_date}}')">{{appointment_date}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{appointment_time}}')">{{appointment_time}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{appointment_location}}')">{{appointment_location}}</span>
+          </div>
+        </div>
+        
+        <!-- Type Tabs -->
+        <div class="template-type-tabs">
+          <button class="template-type-tab active" data-type="deal_stage" onclick="filterByType('deal_stage')">📋 Deal Stage Templates</button>
+          <button class="template-type-tab" data-type="appointment" onclick="filterByType('appointment')">📅 Appointment Templates</button>
+        </div>
+        
+        <!-- Templates List -->
+        <div id="templates-container">
+          <div class="text-center p-xl text-muted">Loading templates...</div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <script src="/js/utils.js"></script>
+  <script>
+    let templates = [];
+    let stages = [];
+    let currentType = 'deal_stage';
+    
+    async function init() {
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Load stages
+        const { data: stagesData } = await supabase
+          .from('job_stages')
+          .select('*')
+          .order('sort_order');
+        stages = stagesData || [];
+        
+        // Load templates
+        await loadTemplates();
+      } catch (err) {
+        console.error('Init error:', err);
+        showToast('Failed to initialize', 'error');
+      }
+    }
+    
+    async function loadTemplates() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase
+          .from('email_templates')
+          .select('*')
+          .order('created_at');
+        
+        if (error) throw error;
+        templates = data || [];
+        renderTemplates();
+      } catch (err) {
+        console.error('Load error:', err);
+        showToast('Failed to load templates', 'error');
+      }
+    }
+    
+    function filterByType(type) {
+      currentType = type;
+      $$('.template-type-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.type === type);
+      });
+      renderTemplates();
+    }
+    
+    function renderTemplates() {
+      const container = $('#templates-container');
+      const filtered = templates.filter(t => t.template_type === currentType);
+      
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center p-xl text-muted">
+            <p>No ${currentType === 'deal_stage' ? 'deal stage' : 'appointment'} templates yet.</p>
+            <button class="btn btn-primary mt-md" onclick="showTemplateModal()">Create Your First Template</button>
+          </div>
+        `;
+        return;
+      }
+      
+      container.innerHTML = filtered.map(template => {
+        const stage = stages.find(s => s.stage_id === template.stage_id);
+        const stageBadge = stage 
+          ? `<span class="badge" style="background: ${stage.color}; color: white;">${stage.label}</span>`
+          : template.template_type === 'appointment' 
+            ? '<span class="badge badge-info">All Appointments</span>'
+            : '';
+        
+        return `
+          <div class="template-card">
+            <div class="template-card-header">
+              <div>
+                <h3 class="template-card-title">${template.name}</h3>
+                <div class="template-card-meta">${stageBadge}</div>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-secondary btn-sm" onclick="showTemplateModal('${template.id}')">Edit</button>
+                <button class="btn btn-ghost btn-sm" onclick="deleteTemplate('${template.id}')">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="template-card-subject">
+              <strong>Subject:</strong> ${template.subject}
+            </div>
+            <div class="template-card-body">${template.body}</div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function showTemplateModal(id = null) {
+      const template = id ? templates.find(t => t.id === id) : null;
+      const isEdit = !!template;
+      
+      const stageOptions = stages.map(s => 
+        `<option value="${s.stage_id}" ${template?.stage_id === s.stage_id ? 'selected' : ''}>${s.label}</option>`
+      ).join('');
+      
+      const content = createElement('form', { id: 'template-form' });
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Template Name *</label>
+          <input type="text" id="template-name" class="form-input" value="${template?.name || ''}" required placeholder="e.g., Quote Sent Follow-up">
+        </div>
+        
+        <div class="grid grid-cols-2 gap-lg">
+          <div class="form-group">
+            <label class="form-label">Template Type *</label>
+            <select id="template-type" class="form-select" onchange="toggleStageSelect()">
+              <option value="deal_stage" ${template?.template_type === 'deal_stage' || !template ? 'selected' : ''}>Deal Stage</option>
+              <option value="appointment" ${template?.template_type === 'appointment' ? 'selected' : ''}>Appointment</option>
+            </select>
+          </div>
+          <div class="form-group" id="stage-select-group">
+            <label class="form-label">For Stage</label>
+            <select id="template-stage" class="form-select">
+              <option value="">-- Select Stage --</option>
+              ${stageOptions}
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Email Subject *</label>
+          <input type="text" id="template-subject" class="form-input" value="${template?.subject || ''}" required placeholder="e.g., Your quote is ready - {{deal_name}}">
+          <p class="form-help">Use variables like {{first_name}}, {{deal_name}}, {{appointment_type}}</p>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Email Body *</label>
+          <textarea id="template-body" class="form-textarea" rows="12" required placeholder="Hi {{first_name}},&#10;&#10;Your message here...">${template?.body || ''}</textarea>
+          <p class="form-help">Plain text email. Variables will be replaced when sending.</p>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: isEdit ? 'Save Changes' : 'Create Template' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+      
+      const modal = createModal({
+        title: isEdit ? 'Edit Template' : 'New Email Template',
+        content,
+        footer,
+        size: 'lg'
+      });
+      
+      // Toggle stage select visibility
+      window.toggleStageSelect = () => {
+        const type = $('#template-type').value;
+        $('#stage-select-group').style.display = type === 'deal_stage' ? 'block' : 'none';
+      };
+      toggleStageSelect();
+      
+      cancelBtn.onclick = () => closeModal(modal);
+      saveBtn.onclick = async () => {
+        if (!content.checkValidity()) {
+          content.reportValidity();
+          return;
+        }
+        
+        const data = {
+          name: $('#template-name').value,
+          template_type: $('#template-type').value,
+          stage_id: $('#template-type').value === 'deal_stage' ? ($('#template-stage').value || null) : null,
+          subject: $('#template-subject').value,
+          body: $('#template-body').value,
+          updated_at: new Date().toISOString()
+        };
+        
+        try {
+          const supabase = await app.waitForSupabase();
+          
+          if (isEdit) {
+            await supabase.from('email_templates').update(data).eq('id', id);
+            showToast('Template updated', 'success');
+          } else {
+            await supabase.from('email_templates').insert(data);
+            showToast('Template created', 'success');
+          }
+          
+          closeModal(modal);
+          await loadTemplates();
+        } catch (err) {
+          console.error('Save error:', err);
+          showToast('Failed to save template: ' + err.message, 'error');
+        }
+      };
+    }
+    
+    async function deleteTemplate(id) {
+      if (!await confirm('Delete this template? This cannot be undone.', { danger: true })) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('email_templates').delete().eq('id', id);
+        showToast('Template deleted', 'success');
+        await loadTemplates();
+      } catch (err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+      }
+    }
+    
+    function copyVariable(variable) {
+      navigator.clipboard.writeText(variable);
+      showToast('Copied: ' + variable, 'success');
+    }
+    
+    init();
+  </script>
+</body>
+</html>

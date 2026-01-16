@@ -78,6 +78,18 @@
     .form-section-title { font-weight: 600; font-size: 0.9rem; color: var(--color-text); margin-bottom: var(--space-md); display: flex; align-items: center; justify-content: space-between; }
     .event-row, .item-row { display: flex; gap: var(--space-sm); align-items: center; padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-border-light); }
     .event-row:last-child, .item-row:last-child { border-bottom: none; }
+    
+    /* Searchable Select */
+    .search-select { position: relative; }
+    .search-select-input { width: 100%; cursor: text; }
+    .search-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 250px; overflow-y: auto; z-index: 9999; display: none; }
+    .search-select.open .search-select-dropdown { display: block; }
+    .search-select-option { padding: var(--space-sm) var(--space-md); cursor: pointer; font-size: 0.875rem; }
+    .search-select-option:hover, .search-select-option.highlighted { background: var(--color-bg-soft); }
+    .search-select-option.selected { background: var(--color-primary); color: white; }
+    .search-select-empty { padding: var(--space-md); color: var(--color-text-muted); font-size: 0.875rem; text-align: center; }
+    .search-select-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--color-text-muted); padding: 4px; display: none; }
+    .search-select.has-value .search-select-clear { display: block; }
   </style>
 </head>
 <body>
@@ -117,6 +129,9 @@
         </div>
         <div class="sidebar-section">
           <div class="sidebar-section-title">Settings</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/email-templates.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Templates</a></li>
+          </ul>
           <ul class="sidebar-nav">
             <li class="sidebar-nav-item"><a href="/admin/settings.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a></li>
           </ul>
@@ -194,7 +209,15 @@
           <input type="hidden" id="deal-id">
           <div class="grid grid-cols-2 gap-lg">
             <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Deal Name *</label><input type="text" id="deal-name" class="form-input" required placeholder="e.g., Smith Kitchen Reface"></div>
-            <div class="form-group"><label class="form-label">Customer</label><select id="deal-customer" class="form-input"><option value="">Select customer...</option></select></div>
+            <div class="form-group">
+              <label class="form-label">Customer</label>
+              <div class="search-select" id="customer-search-select">
+                <input type="text" id="deal-customer-search" class="form-input search-select-input" placeholder="Type to search customers..." autocomplete="off">
+                <input type="hidden" id="deal-customer">
+                <button type="button" class="search-select-clear" onclick="clearCustomerSelect()">&times;</button>
+                <div class="search-select-dropdown" id="customer-dropdown"></div>
+              </div>
+            </div>
             <div class="form-group"><label class="form-label">Stage</label><select id="deal-stage" class="form-input"></select></div>
             <div class="form-group"><label class="form-label">Estimated Value</label><input type="number" id="deal-value" class="form-input" step="0.01" placeholder="0.00"></div>
             <div class="form-group"><label class="form-label">Link to Quote</label><select id="deal-quote" class="form-input"><option value="">None</option></select></div>
@@ -210,10 +233,18 @@
           <div class="form-section"><div class="form-group"><label class="form-label">Notes</label><textarea id="deal-notes" class="form-input" rows="3"></textarea></div></div>
         </form>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="closeDealModal()">Cancel</button>
-        <button type="button" class="btn btn-danger" id="delete-deal-btn" style="display:none;" onclick="deleteDeal()">Delete</button>
-        <button type="button" class="btn btn-primary" onclick="saveDeal()">Save Deal</button>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <div>
+          <button type="button" class="btn btn-secondary" id="email-deal-btn" style="display:none;" onclick="openDealEmailModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Send Email
+          </button>
+        </div>
+        <div class="btn-group">
+          <button type="button" class="btn btn-secondary" onclick="closeDealModal()">Cancel</button>
+          <button type="button" class="btn btn-danger" id="delete-deal-btn" style="display:none;" onclick="deleteDeal()">Delete</button>
+          <button type="button" class="btn btn-primary" onclick="saveDeal()">Save Deal</button>
+        </div>
       </div>
     </div>
   </div>
@@ -240,10 +271,18 @@
           <div class="form-group"><label class="form-label">Notes</label><textarea id="appt-notes" class="form-input" rows="2"></textarea></div>
         </form>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="closeApptModal()">Cancel</button>
-        <button type="button" class="btn btn-danger" id="delete-appt-btn" style="display:none;" onclick="deleteAppt()">Delete</button>
-        <button type="button" class="btn btn-primary" onclick="saveAppt()">Save Appointment</button>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <div>
+          <button type="button" class="btn btn-secondary" id="email-appt-btn" style="display:none;" onclick="openApptEmailModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Send Reminder
+          </button>
+        </div>
+        <div class="btn-group">
+          <button type="button" class="btn btn-secondary" onclick="closeApptModal()">Cancel</button>
+          <button type="button" class="btn btn-danger" id="delete-appt-btn" style="display:none;" onclick="deleteAppt()">Delete</button>
+          <button type="button" class="btn btn-primary" onclick="saveAppt()">Save Appointment</button>
+        </div>
       </div>
     </div>
   </div>
@@ -273,7 +312,7 @@
   
   <script src="/js/utils.js"></script>
   <script>
-    let deals = [], stages = [], customers = [], quotes = [], appointments = [], appointmentTypes = [], eventTypes = [], dealEvents = [];
+    let deals = [], stages = [], customers = [], quotes = [], appointments = [], appointmentTypes = [], eventTypes = [], dealEvents = [], emailTemplates = [];
     let currentDealEvents = [], currentDealItems = [], draggedDeal = null;
     
     async function init() { await loadData(); renderPipeline(); setupViewToggle(); setupDropdownClose(); }
@@ -281,18 +320,20 @@
     async function loadData() {
       try {
         const supabase = await app.waitForSupabase();
-        const [stagesRes, dealsRes, customersRes, quotesRes, apptTypesRes, apptsRes, eventTypesRes, dealEventsRes] = await Promise.all([
+        const [stagesRes, dealsRes, customersRes, quotesRes, apptTypesRes, apptsRes, eventTypesRes, dealEventsRes, templatesRes] = await Promise.all([
           supabase.from('job_stages').select('*').order('sort_order'),
-          supabase.from('jobs').select('*, customers(name, email, phone)').order('created_at', { ascending: false }),
-          supabase.from('customers').select('id, name, email').order('name'),
+          supabase.from('jobs').select('*, customers(name, email, phone, first_name)').order('created_at', { ascending: false }),
+          supabase.from('customers').select('id, name, first_name, email').order('name'),
           supabase.from('quotes').select('id, quote_number, title, customer_id, total').in('status', ['sent', 'viewed', 'draft']).order('created_at', { ascending: false }),
           supabase.from('appointment_types').select('*').eq('is_active', true).order('sort_order'),
-          supabase.from('appointments').select('*, appointment_types(*), customers(name)').order('appointment_date'),
+          supabase.from('appointments').select('*, appointment_types(*), customers(name, email, first_name)').order('appointment_date'),
           supabase.from('job_event_types').select('*').eq('is_active', true).order('sort_order'),
-          supabase.from('job_events').select('*, job_event_types(*)').order('event_date')
+          supabase.from('job_events').select('*, job_event_types(*)').order('event_date'),
+          supabase.from('email_templates').select('*').eq('is_active', true)
         ]);
         stages = stagesRes.data || []; deals = dealsRes.data || []; customers = customersRes.data || []; quotes = quotesRes.data || [];
         appointmentTypes = apptTypesRes.data || []; appointments = apptsRes.data || []; eventTypes = eventTypesRes.data || []; dealEvents = dealEventsRes.data || [];
+        emailTemplates = templatesRes.data || [];
         const totalDeals = deals.length, totalValue = deals.reduce((s, d) => s + (parseFloat(d.estimated_value) || 0), 0);
         $('#pipeline-summary').textContent = `${totalDeals} deals • ${formatCurrency(totalValue)} total value`;
         populateDropdowns(); renderApptTypeMenu(); renderCalendarLegend();
@@ -300,13 +341,115 @@
     }
     
     function populateDropdowns() {
-      const custOpts = '<option value="">Select customer...</option>' + customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-      $('#deal-customer').innerHTML = custOpts;
+      // Customer search is handled separately
       $('#appt-customer').innerHTML = '<option value="">No customer selected</option>' + customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
       $('#deal-stage').innerHTML = stages.map(s => `<option value="${s.stage_id}">${s.label}</option>`).join('');
       $('#deal-quote').innerHTML = '<option value="">None</option>' + quotes.map(q => `<option value="${q.id}">${q.quote_number} - ${q.title}</option>`).join('');
       $('#appt-type').innerHTML = appointmentTypes.map(t => `<option value="${t.id}">${t.icon} ${t.name}</option>`).join('');
       $('#appt-deal').innerHTML = '<option value="">No deal linked</option>' + deals.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      setupCustomerSearch();
+    }
+    
+    function setupCustomerSearch() {
+      const container = $('#customer-search-select');
+      const input = $('#deal-customer-search');
+      const dropdown = $('#customer-dropdown');
+      const hiddenInput = $('#deal-customer');
+      let highlightedIndex = -1;
+      
+      function renderOptions(filter = '') {
+        const filterLower = filter.toLowerCase();
+        const filtered = filter ? customers.filter(c => 
+          c.name.toLowerCase().includes(filterLower) || 
+          (c.email && c.email.toLowerCase().includes(filterLower))
+        ) : customers;
+        
+        if (filtered.length === 0) {
+          dropdown.innerHTML = '<div class="search-select-empty">No customers found</div>';
+        } else {
+          dropdown.innerHTML = filtered.slice(0, 50).map((c, idx) => 
+            `<div class="search-select-option" data-id="${c.id}" data-name="${c.name}" data-index="${idx}">${c.name}${c.email ? ` <span style="color:var(--color-text-muted);font-size:0.75rem;">(${c.email})</span>` : ''}</div>`
+          ).join('');
+        }
+        highlightedIndex = -1;
+      }
+      
+      function selectCustomer(id, name) {
+        hiddenInput.value = id;
+        input.value = name;
+        container.classList.add('has-value');
+        container.classList.remove('open');
+      }
+      
+      function updateHighlight() {
+        const options = dropdown.querySelectorAll('.search-select-option');
+        options.forEach((opt, idx) => {
+          opt.classList.toggle('highlighted', idx === highlightedIndex);
+        });
+        if (highlightedIndex >= 0 && options[highlightedIndex]) {
+          options[highlightedIndex].scrollIntoView({ block: 'nearest' });
+        }
+      }
+      
+      input.addEventListener('focus', () => {
+        renderOptions(input.value);
+        container.classList.add('open');
+      });
+      
+      input.addEventListener('input', () => {
+        renderOptions(input.value);
+        container.classList.add('open');
+        // Clear selection if user types something different
+        if (hiddenInput.value) {
+          const selected = customers.find(c => c.id === hiddenInput.value);
+          if (selected && input.value !== selected.name) {
+            hiddenInput.value = '';
+            container.classList.remove('has-value');
+          }
+        }
+      });
+      
+      input.addEventListener('keydown', (e) => {
+        const options = dropdown.querySelectorAll('.search-select-option');
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          highlightedIndex = Math.min(highlightedIndex + 1, options.length - 1);
+          updateHighlight();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          highlightedIndex = Math.max(highlightedIndex - 1, 0);
+          updateHighlight();
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (highlightedIndex >= 0 && options[highlightedIndex]) {
+            const opt = options[highlightedIndex];
+            selectCustomer(opt.dataset.id, opt.dataset.name);
+          }
+        } else if (e.key === 'Escape') {
+          container.classList.remove('open');
+        }
+      });
+      
+      dropdown.addEventListener('click', (e) => {
+        const option = e.target.closest('.search-select-option');
+        if (option) {
+          selectCustomer(option.dataset.id, option.dataset.name);
+        }
+      });
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+          container.classList.remove('open');
+        }
+      });
+    }
+    
+    function clearCustomerSelect() {
+      $('#deal-customer').value = '';
+      $('#deal-customer-search').value = '';
+      $('#customer-search-select').classList.remove('has-value');
+      $('#deal-customer-search').focus();
     }
     
     function renderApptTypeMenu() {
@@ -370,15 +513,37 @@
       catch (err) { console.error(err); showToast('Failed to move deal', 'error'); }
     }
     
+    let currentDeal = null; // Track the current deal for email
+    
     function openDealModal(deal = null) {
-      currentDealEvents = []; currentDealItems = [];
+      currentDealEvents = []; currentDealItems = []; currentDeal = deal;
       if (deal) {
         $('#deal-modal-title').textContent = 'Edit Deal'; $('#delete-deal-btn').style.display = 'block'; $('#deal-id').value = deal.id;
-        $('#deal-name').value = deal.name || ''; $('#deal-customer').value = deal.customer_id || ''; $('#deal-stage').value = deal.stage || stages[0]?.stage_id;
+        $('#deal-name').value = deal.name || ''; 
+        // Set customer search field
+        $('#deal-customer').value = deal.customer_id || '';
+        const customer = customers.find(c => c.id === deal.customer_id);
+        $('#deal-customer-search').value = customer?.name || '';
+        if (customer) {
+          $('#customer-search-select').classList.add('has-value');
+        } else {
+          $('#customer-search-select').classList.remove('has-value');
+        }
+        $('#deal-stage').value = deal.stage || stages[0]?.stage_id;
         $('#deal-value').value = deal.estimated_value || ''; $('#deal-quote').value = deal.quote_id || ''; $('#deal-notes').value = deal.notes || '';
         currentDealItems = deal.job_items || [];
         currentDealEvents = dealEvents.filter(e => e.job_id === deal.id).map(e => ({ id: e.id, event_type_id: e.event_type_id, event_date: e.event_date, notes: e.notes || '', isExisting: true }));
-      } else { $('#deal-modal-title').textContent = 'New Deal'; $('#delete-deal-btn').style.display = 'none'; $('#deal-form').reset(); $('#deal-id').value = ''; $('#deal-stage').value = stages[0]?.stage_id || ''; }
+        // Show email button if deal has customer with email
+        const hasEmail = deal.customers?.email;
+        $('#email-deal-btn').style.display = hasEmail ? 'block' : 'none';
+      } else { 
+        $('#deal-modal-title').textContent = 'New Deal'; $('#delete-deal-btn').style.display = 'none'; $('#deal-form').reset(); $('#deal-id').value = ''; $('#deal-stage').value = stages[0]?.stage_id || ''; 
+        // Clear customer search
+        $('#deal-customer').value = '';
+        $('#deal-customer-search').value = '';
+        $('#customer-search-select').classList.remove('has-value');
+        $('#email-deal-btn').style.display = 'none';
+      }
       renderDealEvents(); renderDealItems(); $('#deal-modal').classList.add('active');
     }
     
@@ -435,8 +600,32 @@
     
     function openApptModal(typeId = null, appt = null) {
       $$('.dropdown.open').forEach(d => d.classList.remove('open'));
-      if (appt) { $('#appt-modal-title').textContent = 'Edit Appointment'; $('#delete-appt-btn').style.display = 'block'; $('#appt-id').value = appt.id; $('#appt-type').value = appt.appointment_type_id || ''; $('#appt-title').value = appt.title || ''; $('#appt-date').value = appt.appointment_date || ''; $('#appt-time').value = appt.appointment_time || ''; $('#appt-customer').value = appt.customer_id || ''; $('#appt-deal').value = appt.deal_id || ''; $('#appt-location').value = appt.location || ''; $('#appt-notes').value = appt.notes || ''; }
-      else { $('#appt-modal-title').textContent = 'New Appointment'; $('#delete-appt-btn').style.display = 'none'; $('#appt-form').reset(); $('#appt-id').value = ''; if (typeId) $('#appt-type').value = typeId; $('#appt-date').value = new Date().toISOString().split('T')[0]; }
+      currentAppt = appt;
+      if (appt) { 
+        $('#appt-modal-title').textContent = 'Edit Appointment'; 
+        $('#delete-appt-btn').style.display = 'block'; 
+        $('#appt-id').value = appt.id; 
+        $('#appt-type').value = appt.appointment_type_id || ''; 
+        $('#appt-title').value = appt.title || ''; 
+        $('#appt-date').value = appt.appointment_date || ''; 
+        $('#appt-time').value = appt.appointment_time || ''; 
+        $('#appt-customer').value = appt.customer_id || ''; 
+        $('#appt-deal').value = appt.deal_id || ''; 
+        $('#appt-location').value = appt.location || ''; 
+        $('#appt-notes').value = appt.notes || ''; 
+        // Show email button if appointment has customer with email
+        const hasEmail = appt.customers?.email;
+        $('#email-appt-btn').style.display = hasEmail ? 'block' : 'none';
+      }
+      else { 
+        $('#appt-modal-title').textContent = 'New Appointment'; 
+        $('#delete-appt-btn').style.display = 'none'; 
+        $('#email-appt-btn').style.display = 'none';
+        $('#appt-form').reset(); 
+        $('#appt-id').value = ''; 
+        if (typeId) $('#appt-type').value = typeId; 
+        $('#appt-date').value = new Date().toISOString().split('T')[0]; 
+      }
       $('#appt-modal').classList.add('active');
     }
     
@@ -538,6 +727,208 @@
         const nextEvent = thisEvents.sort((a,b) => new Date(a.event_date) - new Date(b.event_date))[0];
         return `<tr><td><strong>${d.name}</strong>${d.job_number ? `<br><span class="text-muted text-sm">${d.job_number}</span>` : ''}</td><td>${d.customers?.name || '—'}</td><td><span class="badge" style="background:${stage?.color || '#666'};color:white;">${stage?.label || d.stage}</span></td><td>${nextEvent ? formatDate(nextEvent.event_date) : '—'}</td><td>${d.estimated_value ? formatCurrency(d.estimated_value) : '—'}</td><td><button class="btn btn-sm btn-secondary" onclick="openDealModal(deals.find(x => x.id === '${d.id}'))">Edit</button></td></tr>`;
       }).join('');
+    }
+    
+    // ==========================================
+    // EMAIL FUNCTIONALITY
+    // ==========================================
+    
+    function replaceEmailVariables(text, data) {
+      return text
+        .replace(/\{\{first_name\}\}/g, data.firstName || data.customerName?.split(' ')[0] || 'there')
+        .replace(/\{\{customer_name\}\}/g, data.customerName || '')
+        .replace(/\{\{customer_email\}\}/g, data.customerEmail || '')
+        .replace(/\{\{deal_name\}\}/g, data.dealName || '')
+        .replace(/\{\{company_name\}\}/g, 'Homestead Cabinet Design')
+        .replace(/\{\{appointment_type\}\}/g, data.appointmentType || '')
+        .replace(/\{\{appointment_date\}\}/g, data.appointmentDate ? formatDate(data.appointmentDate) : '')
+        .replace(/\{\{appointment_time\}\}/g, data.appointmentTime || '')
+        .replace(/\{\{appointment_location\}\}/g, data.appointmentLocation || '')
+        .replace(/\{\{location\}\}/g, data.appointmentLocation || '')
+        .replace(/\{\{installation_date\}\}/g, data.installationDate ? formatDate(data.installationDate) : '')
+        .replace(/\{\{shop_date\}\}/g, data.shopDate ? formatDate(data.shopDate) : '')
+        .replace(/\{\{#if [^}]+\}\}[\s\S]*?\{\{\/if\}\}/g, (match) => {
+          // Simple conditional handling - check if variable has value
+          const varMatch = match.match(/\{\{#if ([^}]+)\}\}/);
+          if (varMatch) {
+            const varName = varMatch[1].trim();
+            const value = data[varName] || data[varName.replace(/_([a-z])/g, (g) => g[1].toUpperCase())];
+            if (value) {
+              return match.replace(/\{\{#if [^}]+\}\}/g, '').replace(/\{\{\/if\}\}/g, '');
+            }
+          }
+          return '';
+        });
+    }
+    
+    function openDealEmailModal() {
+      if (!currentDeal) return;
+      
+      const stage = $('#deal-stage').value;
+      const template = emailTemplates.find(t => t.template_type === 'deal_stage' && t.stage_id === stage);
+      
+      if (!template) {
+        showToast('No email template found for this stage. Create one in Email Templates settings.', 'error');
+        return;
+      }
+      
+      const customer = currentDeal.customers;
+      if (!customer?.email) {
+        showToast('Customer does not have an email address', 'error');
+        return;
+      }
+      
+      // Get deal events for dates
+      const events = dealEvents.filter(e => e.job_id === currentDeal.id);
+      const installEvent = events.find(e => {
+        const eventType = eventTypes.find(t => t.id === e.event_type_id);
+        return eventType?.name?.toLowerCase().includes('install');
+      });
+      const shopEvent = events.find(e => {
+        const eventType = eventTypes.find(t => t.id === e.event_type_id);
+        return eventType?.name?.toLowerCase().includes('shop');
+      });
+      
+      const data = {
+        firstName: customer.first_name || customer.name?.split(' ')[0] || '',
+        customerName: customer.name,
+        customerEmail: customer.email,
+        dealName: currentDeal.name,
+        installationDate: installEvent?.event_date,
+        shopDate: shopEvent?.event_date
+      };
+      
+      const subject = replaceEmailVariables(template.subject, data);
+      const body = replaceEmailVariables(template.body, data);
+      
+      showEmailPreviewModal({
+        to: customer.email,
+        subject,
+        body,
+        templateId: template.id,
+        customerId: currentDeal.customer_id,
+        dealId: currentDeal.id
+      });
+    }
+    
+    let currentAppt = null;
+    
+    function openApptEmailModal() {
+      if (!currentAppt) return;
+      
+      const template = emailTemplates.find(t => t.template_type === 'appointment');
+      
+      if (!template) {
+        showToast('No appointment email template found. Create one in Email Templates settings.', 'error');
+        return;
+      }
+      
+      const customer = currentAppt.customers;
+      if (!customer?.email) {
+        showToast('No customer email for this appointment', 'error');
+        return;
+      }
+      
+      const apptType = appointmentTypes.find(t => t.id === currentAppt.appointment_type_id);
+      
+      const data = {
+        firstName: customer.first_name || customer.name?.split(' ')[0] || '',
+        customerName: customer.name,
+        customerEmail: customer.email,
+        appointmentType: apptType ? `${apptType.icon} ${apptType.name}` : 'Appointment',
+        appointmentDate: currentAppt.appointment_date,
+        appointmentTime: currentAppt.appointment_time,
+        appointmentLocation: currentAppt.location || ''
+      };
+      
+      const subject = replaceEmailVariables(template.subject, data);
+      const body = replaceEmailVariables(template.body, data);
+      
+      showEmailPreviewModal({
+        to: customer.email,
+        subject,
+        body,
+        templateId: template.id,
+        customerId: currentAppt.customer_id,
+        appointmentId: currentAppt.id
+      });
+    }
+    
+    function showEmailPreviewModal(emailData) {
+      const content = createElement('form', { id: 'email-preview-form' });
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">To</label>
+          <input type="email" id="email-to" class="form-input" value="${emailData.to}" readonly style="background: var(--color-bg-soft);">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject</label>
+          <input type="text" id="email-subject" class="form-input" value="${emailData.subject.replace(/"/g, '&quot;')}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Message</label>
+          <textarea id="email-body" class="form-textarea" rows="15" required>${emailData.body}</textarea>
+          <p class="form-help">Edit the message as needed before sending.</p>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+      const sendBtn = createElement('button', { type: 'button', className: 'btn btn-primary', innerHTML: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Email' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(sendBtn);
+      
+      const modal = createModal({
+        title: '📧 Send Email',
+        content,
+        footer,
+        size: 'lg'
+      });
+      
+      cancelBtn.onclick = () => closeModal(modal);
+      sendBtn.onclick = async () => {
+        const to = $('#email-to').value;
+        const subject = $('#email-subject').value;
+        const body = $('#email-body').value;
+        
+        if (!subject || !body) {
+          showToast('Subject and message are required', 'error');
+          return;
+        }
+        
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<span class="loading-spinner" style="width:16px;height:16px;margin-right:6px;"></span> Sending...';
+        
+        try {
+          const response = await fetch('/.netlify/functions/send-template-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to_email: to,
+              subject,
+              body,
+              template_id: emailData.templateId,
+              customer_id: emailData.customerId,
+              deal_id: emailData.dealId,
+              appointment_id: emailData.appointmentId
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to send email');
+          }
+          
+          showToast('Email sent successfully!', 'success');
+          closeModal(modal);
+        } catch (err) {
+          console.error('Email error:', err);
+          showToast('Failed to send email: ' + err.message, 'error');
+          sendBtn.disabled = false;
+          sendBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Email';
+        }
+      };
     }
     
     init();
