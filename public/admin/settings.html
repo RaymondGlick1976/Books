@@ -262,6 +262,27 @@
           </div>
         </div>
         
+        <!-- Deal Item Types -->
+        <div class="card mb-xl">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 class="card-title">Deal Item Types</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addDealItemType()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Item Type
+            </button>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              Define the types of items that can be added to deals (e.g., "Cabinet Doors", "Hardware", "Installation").
+            </p>
+            <div id="deal-item-types-list">
+              <div class="loading-spinner"></div>
+            </div>
+          </div>
+        </div>
+        
         <!-- User Management -->
         <div class="card mb-xl">
           <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -1408,6 +1429,74 @@
       }
     };
     
+    // Deal Item Types Management (stored in settings table)
+    let dealItemTypes = [];
+    
+    function renderDealItemTypes() {
+      const container = $('#deal-item-types-list');
+      
+      if (dealItemTypes.length === 0) {
+        container.innerHTML = '<p class="text-muted">No deal item types defined. Click "Add Item Type" to create one.</p>';
+        return;
+      }
+      
+      container.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+          ${dealItemTypes.map((item, idx) => `
+            <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+              <span style="flex: 1; font-weight: 500;">${item}</span>
+              <button class="btn btn-ghost btn-sm" onclick="editDealItemType(${idx})">Edit</button>
+              <button class="btn btn-ghost btn-sm text-danger" onclick="deleteDealItemType(${idx})">×</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
+    async function saveDealItemTypes() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase
+          .from('settings')
+          .upsert({ key: 'deal_item_types', value: dealItemTypes }, { onConflict: 'key' });
+        
+        if (error) throw error;
+      } catch (err) {
+        console.error('Failed to save deal item types:', err);
+        showToast('Failed to save: ' + err.message, 'error');
+      }
+    }
+    
+    window.addDealItemType = async () => {
+      const name = prompt('Enter deal item type name (e.g., "Cabinet Doors", "Hardware"):');
+      if (!name?.trim()) return;
+      
+      dealItemTypes.push(name.trim());
+      renderDealItemTypes();
+      await saveDealItemTypes();
+      showToast('Deal item type added', 'success');
+    };
+    
+    window.editDealItemType = async (idx) => {
+      const current = dealItemTypes[idx];
+      const newName = prompt('Edit deal item type name:', current);
+      if (!newName?.trim() || newName === current) return;
+      
+      dealItemTypes[idx] = newName.trim();
+      renderDealItemTypes();
+      await saveDealItemTypes();
+      showToast('Deal item type updated', 'success');
+    };
+    
+    window.deleteDealItemType = async (idx) => {
+      if (!confirm('Delete this deal item type?')) return;
+      
+      dealItemTypes.splice(idx, 1);
+      renderDealItemTypes();
+      await saveDealItemTypes();
+      showToast('Deal item type deleted', 'success');
+    };
+    
     // Initialize - load all data in parallel
     async function initSettings() {
       const supabase = await app.waitForSupabase();
@@ -1424,6 +1513,11 @@
       // Process settings
       if (settingsRes.data) {
         settingsRes.data.forEach(s => {
+          // Handle deal_item_types specially
+          if (s.key === 'deal_item_types') {
+            dealItemTypes = Array.isArray(s.value) ? s.value : [];
+            return;
+          }
           const input = document.getElementById(s.key);
           if (input) {
             if (input.type === 'checkbox') input.checked = s.value === 'true';
@@ -1431,6 +1525,9 @@
           }
         });
       }
+      
+      // Render deal item types
+      renderDealItemTypes();
       
       // Process lead sources
       leadSources = leadSourcesRes.data || [];

@@ -312,7 +312,7 @@
   
   <script src="/js/utils.js"></script>
   <script>
-    let deals = [], stages = [], customers = [], quotes = [], appointments = [], appointmentTypes = [], eventTypes = [], dealEvents = [], emailTemplates = [];
+    let deals = [], stages = [], customers = [], quotes = [], appointments = [], appointmentTypes = [], eventTypes = [], dealEvents = [], emailTemplates = [], dealItemTypes = [];
     let currentDealEvents = [], currentDealItems = [], draggedDeal = null;
     
     async function init() { await loadData(); renderPipeline(); setupViewToggle(); setupDropdownClose(); }
@@ -320,7 +320,7 @@
     async function loadData() {
       try {
         const supabase = await app.waitForSupabase();
-        const [stagesRes, dealsRes, customersRes, quotesRes, apptTypesRes, apptsRes, eventTypesRes, dealEventsRes, templatesRes] = await Promise.all([
+        const [stagesRes, dealsRes, customersRes, quotesRes, apptTypesRes, apptsRes, eventTypesRes, dealEventsRes, templatesRes, settingsRes] = await Promise.all([
           supabase.from('job_stages').select('*').order('sort_order'),
           supabase.from('jobs').select('*, customers(name, email, phone, first_name)').order('created_at', { ascending: false }),
           supabase.from('customers').select('id, name, first_name, email').order('name'),
@@ -329,11 +329,13 @@
           supabase.from('appointments').select('*, appointment_types(*), customers(name, email, first_name)').order('appointment_date'),
           supabase.from('job_event_types').select('*').eq('is_active', true).order('sort_order'),
           supabase.from('job_events').select('*, job_event_types(*)').order('event_date'),
-          supabase.from('email_templates').select('*').eq('is_active', true)
+          supabase.from('email_templates').select('*').eq('is_active', true),
+          supabase.from('settings').select('*').eq('key', 'deal_item_types').single()
         ]);
         stages = stagesRes.data || []; deals = dealsRes.data || []; customers = customersRes.data || []; quotes = quotesRes.data || [];
         appointmentTypes = apptTypesRes.data || []; appointments = apptsRes.data || []; eventTypes = eventTypesRes.data || []; dealEvents = dealEventsRes.data || [];
         emailTemplates = templatesRes.data || [];
+        dealItemTypes = (settingsRes.data?.value && Array.isArray(settingsRes.data.value)) ? settingsRes.data.value : [];
         const totalDeals = deals.length, totalValue = deals.reduce((s, d) => s + (parseFloat(d.estimated_value) || 0), 0);
         $('#pipeline-summary').textContent = `${totalDeals} deals • ${formatCurrency(totalValue)} total value`;
         populateDropdowns(); renderApptTypeMenu(); renderCalendarLegend();
@@ -594,7 +596,19 @@
     function renderDealItems() {
       const container = $('#deal-items-container');
       if (currentDealItems.length === 0) { container.innerHTML = '<p class="text-muted text-sm">No items added.</p>'; return; }
-      container.innerHTML = currentDealItems.map(i => `<div class="item-row"><input type="text" class="form-input" style="flex:2;" placeholder="Item name" value="${i.name || ''}" onchange="updateDealItem('${i.id}','name',this.value)"><input type="number" class="form-input" style="width:80px;" placeholder="Qty" value="${i.quantity || ''}" onchange="updateDealItem('${i.id}','quantity',this.value)"><button type="button" class="btn btn-sm" style="color:var(--color-danger);" onclick="removeDealItem('${i.id}')">×</button></div>`).join('');
+      
+      const options = dealItemTypes.length > 0 
+        ? '<option value="">Select item...</option>' + dealItemTypes.map(t => `<option value="${t}">${t}</option>`).join('')
+        : '<option value="">No item types - add in Settings</option>';
+      
+      container.innerHTML = currentDealItems.map(i => {
+        const selectedOptions = options.replace(`value="${i.name}"`, `value="${i.name}" selected`);
+        return `<div class="item-row">
+          <select class="form-select" style="flex:2;" onchange="updateDealItem('${i.id}','name',this.value)">${selectedOptions}</select>
+          <input type="number" class="form-input" style="width:80px;" placeholder="Qty" value="${i.quantity || ''}" onchange="updateDealItem('${i.id}','quantity',this.value)">
+          <button type="button" class="btn btn-sm" style="color:var(--color-danger);" onclick="removeDealItem('${i.id}')">×</button>
+        </div>`;
+      }).join('');
     }
     function updateDealItem(id, field, value) { const i = currentDealItems.find(x => x.id === id); if (i) i[field] = value; }
     
