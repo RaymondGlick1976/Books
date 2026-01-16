@@ -219,7 +219,7 @@
   
   <!-- Deal Modal -->
   <div id="deal-modal" class="modal-overlay">
-    <div class="modal modal-lg">
+    <div class="modal" style="max-width: 600px;">
       <div class="modal-header">
         <h3 class="modal-title" id="deal-modal-title">New Deal</h3>
         <button class="modal-close" onclick="closeDealModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -853,7 +853,7 @@
     function updateDealItem(id, field, value) { const i = currentDealItems.find(x => x.id === id); if (i) i[field] = value; }
     
     // Deal Finishes
-    function addDealFinish() { currentDealFinishes.push({ id: crypto.randomUUID(), name: '' }); renderDealFinishes(); }
+    function addDealFinish() { currentDealFinishes.push({ id: crypto.randomUUID(), name: '', color: '', sheen: '', vendor: '' }); renderDealFinishes(); }
     function removeDealFinish(id) { currentDealFinishes = currentDealFinishes.filter(f => f.id !== id); renderDealFinishes(); }
     function renderDealFinishes() {
       const container = $('#deal-finishes-container');
@@ -865,9 +865,16 @@
       
       container.innerHTML = currentDealFinishes.map(f => {
         const selectedOptions = options.replace(`value="${f.name}"`, `value="${f.name}" selected`);
-        return `<div class="item-row">
-          <select class="form-select" style="flex:1;" onchange="updateDealFinish('${f.id}','name',this.value)">${selectedOptions}</select>
-          <button type="button" class="btn btn-sm" style="color:var(--color-danger);" onclick="removeDealFinish('${f.id}')">×</button>
+        return `<div class="finish-card" style="background: var(--color-bg-soft); border-radius: var(--radius-md); padding: var(--space-sm); margin-bottom: var(--space-sm);">
+          <div class="item-row" style="margin-bottom: var(--space-sm);">
+            <select class="form-select" style="flex:1;" onchange="updateDealFinish('${f.id}','name',this.value)">${selectedOptions}</select>
+            <button type="button" class="btn btn-sm" style="color:var(--color-danger);" onclick="removeDealFinish('${f.id}')">×</button>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-xs);">
+            <input type="text" class="form-input" placeholder="Color name" value="${f.color || ''}" onchange="updateDealFinish('${f.id}','color',this.value)" style="font-size: 0.8rem;">
+            <input type="text" class="form-input" placeholder="Sheen" value="${f.sheen || ''}" onchange="updateDealFinish('${f.id}','sheen',this.value)" style="font-size: 0.8rem;">
+            <input type="text" class="form-input" placeholder="Vendor" value="${f.vendor || ''}" onchange="updateDealFinish('${f.id}','vendor',this.value)" style="font-size: 0.8rem;">
+          </div>
         </div>`;
       }).join('');
     }
