@@ -304,6 +304,27 @@
           </div>
         </div>
         
+        <!-- Finish Types -->
+        <div class="card mb-xl">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 class="card-title">Finish Types</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addFinishType()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Finish
+            </button>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              Define finish options that can be added to deals (e.g., "Natural Oak", "White Paint", "Walnut Stain").
+            </p>
+            <div id="finish-types-list">
+              <div class="loading-spinner"></div>
+            </div>
+          </div>
+        </div>
+        
         <!-- User Management -->
         <div class="card mb-xl">
           <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -799,9 +820,13 @@
       }
       
       container.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
-          ${leadSources.map(ls => `
-            <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+        <div id="lead-sources-sortable" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+          ${leadSources.map((ls, idx) => `
+            <div class="sortable-item" draggable="true" data-id="${ls.id}" data-idx="${idx}"
+                 ondragstart="handleLeadSourceDragStart(event)" ondragover="handleLeadSourceDragOver(event)" 
+                 ondrop="handleLeadSourceDrop(event)" ondragend="handleLeadSourceDragEnd(event)"
+                 style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md); cursor: grab;">
+              <span style="color: var(--color-text-muted); cursor: grab;">⋮⋮</span>
               <span style="flex: 1; font-weight: 500;">${ls.name}</span>
               <label style="display: flex; align-items: center; gap: var(--space-xs); font-size: 0.75rem; color: var(--color-text-muted);">
                 <input type="checkbox" ${ls.is_active ? 'checked' : ''} onchange="toggleLeadSource('${ls.id}', this.checked)">
@@ -814,6 +839,57 @@
         </div>
       `;
     }
+    
+    let draggedLeadSourceId = null;
+    
+    window.handleLeadSourceDragStart = (e) => {
+      draggedLeadSourceId = e.target.closest('.sortable-item').dataset.id;
+      e.target.closest('.sortable-item').style.opacity = '0.5';
+    };
+    
+    window.handleLeadSourceDragOver = (e) => {
+      e.preventDefault();
+      const item = e.target.closest('.sortable-item');
+      if (item) item.style.borderTop = '2px solid var(--color-primary)';
+    };
+    
+    window.handleLeadSourceDragEnd = (e) => {
+      e.target.closest('.sortable-item').style.opacity = '1';
+      document.querySelectorAll('#lead-sources-sortable .sortable-item').forEach(el => el.style.borderTop = '');
+      draggedLeadSourceId = null;
+    };
+    
+    window.handleLeadSourceDrop = async (e) => {
+      e.preventDefault();
+      const targetItem = e.target.closest('.sortable-item');
+      if (!targetItem || !draggedLeadSourceId) return;
+      
+      const targetId = targetItem.dataset.id;
+      if (targetId === draggedLeadSourceId) return;
+      
+      const draggedIdx = leadSources.findIndex(t => t.id === draggedLeadSourceId);
+      const targetIdx = leadSources.findIndex(t => t.id === targetId);
+      
+      if (draggedIdx === -1 || targetIdx === -1) return;
+      
+      // Reorder array
+      const [dragged] = leadSources.splice(draggedIdx, 1);
+      leadSources.splice(targetIdx, 0, dragged);
+      
+      // Update sort_order in database
+      try {
+        const supabase = await app.waitForSupabase();
+        const updates = leadSources.map((t, i) => 
+          supabase.from('lead_sources').update({ sort_order: i }).eq('id', t.id)
+        );
+        await Promise.all(updates);
+        renderLeadSources();
+      } catch (err) {
+        console.error('Reorder failed:', err);
+        showToast('Failed to reorder', 'error');
+        loadLeadSources();
+      }
+    };
     
     window.addLeadSource = async () => {
       const name = prompt('Enter lead source name:');
@@ -923,9 +999,13 @@
       }
       
       container.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
-          ${appointmentTypes.map(at => `
-            <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+        <div id="appt-types-sortable" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+          ${appointmentTypes.map((at, idx) => `
+            <div class="sortable-item" draggable="true" data-id="${at.id}" data-idx="${idx}"
+                 ondragstart="handleApptTypeDragStart(event)" ondragover="handleApptTypeDragOver(event)" 
+                 ondrop="handleApptTypeDrop(event)" ondragend="handleApptTypeDragEnd(event)"
+                 style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md); cursor: grab;">
+              <span style="color: var(--color-text-muted); cursor: grab;">⋮⋮</span>
               <span style="font-size: 1.25rem;">${at.icon || '📅'}</span>
               <span style="flex: 1; font-weight: 500;">${at.name}</span>
               <span style="width: 20px; height: 20px; border-radius: 4px; background: ${at.color || '#6366f1'};"></span>
@@ -940,6 +1020,57 @@
         </div>
       `;
     }
+    
+    let draggedApptTypeId = null;
+    
+    window.handleApptTypeDragStart = (e) => {
+      draggedApptTypeId = e.target.closest('.sortable-item').dataset.id;
+      e.target.closest('.sortable-item').style.opacity = '0.5';
+    };
+    
+    window.handleApptTypeDragOver = (e) => {
+      e.preventDefault();
+      const item = e.target.closest('.sortable-item');
+      if (item) item.style.borderTop = '2px solid var(--color-primary)';
+    };
+    
+    window.handleApptTypeDragEnd = (e) => {
+      e.target.closest('.sortable-item').style.opacity = '1';
+      document.querySelectorAll('#appt-types-sortable .sortable-item').forEach(el => el.style.borderTop = '');
+      draggedApptTypeId = null;
+    };
+    
+    window.handleApptTypeDrop = async (e) => {
+      e.preventDefault();
+      const targetItem = e.target.closest('.sortable-item');
+      if (!targetItem || !draggedApptTypeId) return;
+      
+      const targetId = targetItem.dataset.id;
+      if (targetId === draggedApptTypeId) return;
+      
+      const draggedIdx = appointmentTypes.findIndex(t => t.id === draggedApptTypeId);
+      const targetIdx = appointmentTypes.findIndex(t => t.id === targetId);
+      
+      if (draggedIdx === -1 || targetIdx === -1) return;
+      
+      // Reorder array
+      const [dragged] = appointmentTypes.splice(draggedIdx, 1);
+      appointmentTypes.splice(targetIdx, 0, dragged);
+      
+      // Update sort_order in database
+      try {
+        const supabase = await app.waitForSupabase();
+        const updates = appointmentTypes.map((t, i) => 
+          supabase.from('appointment_types').update({ sort_order: i }).eq('id', t.id)
+        );
+        await Promise.all(updates);
+        renderAppointmentTypes();
+      } catch (err) {
+        console.error('Reorder failed:', err);
+        showToast('Failed to reorder', 'error');
+        loadAppointmentTypes();
+      }
+    };
     
     window.addAppointmentType = () => showAppointmentTypeModal();
     
@@ -1079,9 +1210,13 @@
       }
       
       container.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
-          ${eventTypes.map(et => `
-            <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+        <div id="event-types-sortable" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+          ${eventTypes.map((et, idx) => `
+            <div class="sortable-item" draggable="true" data-id="${et.id}" data-idx="${idx}"
+                 ondragstart="handleEventTypeDragStart(event)" ondragover="handleEventTypeDragOver(event)" 
+                 ondrop="handleEventTypeDrop(event)" ondragend="handleEventTypeDragEnd(event)"
+                 style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md); cursor: grab;">
+              <span style="color: var(--color-text-muted); cursor: grab;">⋮⋮</span>
               <span style="font-size: 1.25rem;">${et.icon || '📅'}</span>
               <span style="flex: 1; font-weight: 500;">${et.name}</span>
               <span style="width: 20px; height: 20px; border-radius: 4px; background: ${et.color || '#6366f1'};"></span>
@@ -1096,6 +1231,57 @@
         </div>
       `;
     }
+    
+    let draggedEventTypeId = null;
+    
+    window.handleEventTypeDragStart = (e) => {
+      draggedEventTypeId = e.target.closest('.sortable-item').dataset.id;
+      e.target.closest('.sortable-item').style.opacity = '0.5';
+    };
+    
+    window.handleEventTypeDragOver = (e) => {
+      e.preventDefault();
+      const item = e.target.closest('.sortable-item');
+      if (item) item.style.borderTop = '2px solid var(--color-primary)';
+    };
+    
+    window.handleEventTypeDragEnd = (e) => {
+      e.target.closest('.sortable-item').style.opacity = '1';
+      document.querySelectorAll('#event-types-sortable .sortable-item').forEach(el => el.style.borderTop = '');
+      draggedEventTypeId = null;
+    };
+    
+    window.handleEventTypeDrop = async (e) => {
+      e.preventDefault();
+      const targetItem = e.target.closest('.sortable-item');
+      if (!targetItem || !draggedEventTypeId) return;
+      
+      const targetId = targetItem.dataset.id;
+      if (targetId === draggedEventTypeId) return;
+      
+      const draggedIdx = eventTypes.findIndex(t => t.id === draggedEventTypeId);
+      const targetIdx = eventTypes.findIndex(t => t.id === targetId);
+      
+      if (draggedIdx === -1 || targetIdx === -1) return;
+      
+      // Reorder array
+      const [dragged] = eventTypes.splice(draggedIdx, 1);
+      eventTypes.splice(targetIdx, 0, dragged);
+      
+      // Update sort_order in database
+      try {
+        const supabase = await app.waitForSupabase();
+        const updates = eventTypes.map((t, i) => 
+          supabase.from('job_event_types').update({ sort_order: i }).eq('id', t.id)
+        );
+        await Promise.all(updates);
+        renderEventTypes();
+      } catch (err) {
+        console.error('Reorder failed:', err);
+        showToast('Failed to reorder', 'error');
+        loadEventTypes();
+      }
+    };
     
     window.addEventType = () => showEventTypeModal();
     
@@ -1618,9 +1804,13 @@
       }
       
       container.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+        <div id="deal-items-sortable" style="display: flex; flex-direction: column; gap: var(--space-sm);">
           ${dealItemTypes.map((item, idx) => `
-            <div style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+            <div class="sortable-item" draggable="true" data-idx="${idx}"
+                 ondragstart="handleDealItemDragStart(event)" ondragover="handleDealItemDragOver(event)" 
+                 ondrop="handleDealItemDrop(event)" ondragend="handleDealItemDragEnd(event)"
+                 style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md); cursor: grab;">
+              <span style="color: var(--color-text-muted); cursor: grab;">⋮⋮</span>
               <span style="flex: 1; font-weight: 500;">${item}</span>
               <button class="btn btn-ghost btn-sm" onclick="editDealItemType(${idx})">Edit</button>
               <button class="btn btn-ghost btn-sm text-danger" onclick="deleteDealItemType(${idx})">×</button>
@@ -1629,6 +1819,42 @@
         </div>
       `;
     }
+    
+    let draggedDealItemIdx = null;
+    
+    window.handleDealItemDragStart = (e) => {
+      draggedDealItemIdx = parseInt(e.target.closest('.sortable-item').dataset.idx);
+      e.target.closest('.sortable-item').style.opacity = '0.5';
+    };
+    
+    window.handleDealItemDragOver = (e) => {
+      e.preventDefault();
+      const item = e.target.closest('.sortable-item');
+      if (item) item.style.borderTop = '2px solid var(--color-primary)';
+    };
+    
+    window.handleDealItemDragEnd = (e) => {
+      e.target.closest('.sortable-item').style.opacity = '1';
+      document.querySelectorAll('#deal-items-sortable .sortable-item').forEach(el => el.style.borderTop = '');
+      draggedDealItemIdx = null;
+    };
+    
+    window.handleDealItemDrop = async (e) => {
+      e.preventDefault();
+      const targetItem = e.target.closest('.sortable-item');
+      if (!targetItem || draggedDealItemIdx === null) return;
+      
+      const targetIdx = parseInt(targetItem.dataset.idx);
+      if (targetIdx === draggedDealItemIdx) return;
+      
+      // Reorder array
+      const [dragged] = dealItemTypes.splice(draggedDealItemIdx, 1);
+      dealItemTypes.splice(targetIdx, 0, dragged);
+      
+      // Save and re-render
+      renderDealItemTypes();
+      await saveDealItemTypes();
+    };
     
     async function saveDealItemTypes() {
       try {
@@ -1674,6 +1900,114 @@
       showToast('Deal item type deleted', 'success');
     };
     
+    // Finish Types Management (stored in settings table)
+    let finishTypes = [];
+    
+    function renderFinishTypes() {
+      const container = $('#finish-types-list');
+      
+      if (finishTypes.length === 0) {
+        container.innerHTML = '<p class="text-muted">No finish types defined. Click "Add Finish" to create one.</p>';
+        return;
+      }
+      
+      container.innerHTML = `
+        <div id="finish-types-sortable" style="display: flex; flex-direction: column; gap: var(--space-sm);">
+          ${finishTypes.map((item, idx) => `
+            <div class="sortable-item" draggable="true" data-idx="${idx}"
+                 ondragstart="handleFinishTypeDragStart(event)" ondragover="handleFinishTypeDragOver(event)" 
+                 ondrop="handleFinishTypeDrop(event)" ondragend="handleFinishTypeDragEnd(event)"
+                 style="display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md); cursor: grab;">
+              <span style="color: var(--color-text-muted); cursor: grab;">⋮⋮</span>
+              <span style="flex: 1; font-weight: 500;">${item}</span>
+              <button class="btn btn-ghost btn-sm" onclick="editFinishType(${idx})">Edit</button>
+              <button class="btn btn-ghost btn-sm text-danger" onclick="deleteFinishType(${idx})">×</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
+    let draggedFinishTypeIdx = null;
+    
+    window.handleFinishTypeDragStart = (e) => {
+      draggedFinishTypeIdx = parseInt(e.target.closest('.sortable-item').dataset.idx);
+      e.target.closest('.sortable-item').style.opacity = '0.5';
+    };
+    
+    window.handleFinishTypeDragOver = (e) => {
+      e.preventDefault();
+      const item = e.target.closest('.sortable-item');
+      if (item) item.style.borderTop = '2px solid var(--color-primary)';
+    };
+    
+    window.handleFinishTypeDragEnd = (e) => {
+      e.target.closest('.sortable-item').style.opacity = '1';
+      document.querySelectorAll('#finish-types-sortable .sortable-item').forEach(el => el.style.borderTop = '');
+      draggedFinishTypeIdx = null;
+    };
+    
+    window.handleFinishTypeDrop = async (e) => {
+      e.preventDefault();
+      const targetItem = e.target.closest('.sortable-item');
+      if (!targetItem || draggedFinishTypeIdx === null) return;
+      
+      const targetIdx = parseInt(targetItem.dataset.idx);
+      if (targetIdx === draggedFinishTypeIdx) return;
+      
+      // Reorder array
+      const [dragged] = finishTypes.splice(draggedFinishTypeIdx, 1);
+      finishTypes.splice(targetIdx, 0, dragged);
+      
+      // Save and re-render
+      renderFinishTypes();
+      await saveFinishTypes();
+    };
+    
+    async function saveFinishTypes() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase
+          .from('settings')
+          .upsert({ key: 'finish_types', value: finishTypes }, { onConflict: 'key' });
+        
+        if (error) throw error;
+      } catch (err) {
+        console.error('Failed to save finish types:', err);
+        showToast('Failed to save: ' + err.message, 'error');
+      }
+    }
+    
+    window.addFinishType = async () => {
+      const name = prompt('Enter finish type name (e.g., "Natural Oak", "White Paint"):');
+      if (!name?.trim()) return;
+      
+      finishTypes.push(name.trim());
+      renderFinishTypes();
+      await saveFinishTypes();
+      showToast('Finish type added', 'success');
+    };
+    
+    window.editFinishType = async (idx) => {
+      const current = finishTypes[idx];
+      const newName = prompt('Edit finish type name:', current);
+      if (!newName?.trim() || newName === current) return;
+      
+      finishTypes[idx] = newName.trim();
+      renderFinishTypes();
+      await saveFinishTypes();
+      showToast('Finish type updated', 'success');
+    };
+    
+    window.deleteFinishType = async (idx) => {
+      if (!confirm('Delete this finish type?')) return;
+      
+      finishTypes.splice(idx, 1);
+      renderFinishTypes();
+      await saveFinishTypes();
+      showToast('Finish type deleted', 'success');
+    };
+    
     // Initialize - load all data in parallel
     async function initSettings() {
       const supabase = await app.waitForSupabase();
@@ -1696,6 +2030,11 @@
             dealItemTypes = Array.isArray(s.value) ? s.value : [];
             return;
           }
+          // Handle finish_types specially
+          if (s.key === 'finish_types') {
+            finishTypes = Array.isArray(s.value) ? s.value : [];
+            return;
+          }
           const input = document.getElementById(s.key);
           if (input) {
             if (input.type === 'checkbox') input.checked = s.value === 'true';
@@ -1706,6 +2045,9 @@
       
       // Render deal item types
       renderDealItemTypes();
+      
+      // Render finish types
+      renderFinishTypes();
       
       // Process lead sources
       leadSources = leadSourcesRes.data || [];

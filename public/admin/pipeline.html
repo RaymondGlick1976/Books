@@ -28,6 +28,8 @@
     .empty-column { text-align: center; padding: var(--space-xl); color: var(--color-text-muted); font-size: 0.8125rem; }
     .drop-zone { min-height: 100px; border: 2px dashed transparent; border-radius: var(--radius-md); transition: all 0.2s; }
     .drop-zone.drag-over { border-color: var(--color-primary); background: rgba(99, 102, 241, 0.05); }
+    .deal-card.dragging { opacity: 0.5; }
+    .touch-ghost { position: fixed; pointer-events: none; z-index: 9999; opacity: 0.9; transform: rotate(3deg); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
     
     /* Dropdown */
     .dropdown { position: relative; display: inline-block; }
@@ -245,6 +247,10 @@
             <div id="deal-events-container"><p class="text-muted text-sm">No dates scheduled.</p></div>
           </div>
           <div class="form-section">
+            <div class="form-section-title"><span>🎨 Finishes</span><button type="button" class="btn btn-secondary btn-sm" onclick="addDealFinish()">+ Add Finish</button></div>
+            <div id="deal-finishes-container"><p class="text-muted text-sm">No finishes added.</p></div>
+          </div>
+          <div class="form-section">
             <div class="form-section-title"><span>📦 Deal Items</span><button type="button" class="btn btn-secondary btn-sm" onclick="addDealItem()">+ Add Item</button></div>
             <div id="deal-items-container"><p class="text-muted text-sm">No items added.</p></div>
           </div>
@@ -330,8 +336,8 @@
   
   <script src="/js/utils.js"></script>
   <script>
-    let deals = [], stages = [], customers = [], quotes = [], appointments = [], appointmentTypes = [], eventTypes = [], dealEvents = [], emailTemplates = [], dealItemTypes = [];
-    let currentDealEvents = [], currentDealItems = [], draggedDeal = null;
+    let deals = [], stages = [], customers = [], quotes = [], appointments = [], appointmentTypes = [], eventTypes = [], dealEvents = [], emailTemplates = [], dealItemTypes = [], finishTypes = [];
+    let currentDealEvents = [], currentDealItems = [], currentDealFinishes = [], draggedDeal = null;
     let selectedStages = new Set(); // For stage filtering
     
     async function init() { await loadData(); renderPipeline(); setupViewToggle(); setupDropdownClose(); }
@@ -349,7 +355,7 @@
           supabase.from('job_event_types').select('*').eq('is_active', true).order('sort_order'),
           supabase.from('job_events').select('*, job_event_types(*)').order('event_date'),
           supabase.from('email_templates').select('*').eq('is_active', true),
-          supabase.from('settings').select('*').eq('key', 'deal_item_types').single()
+          supabase.from('settings').select('*').in('key', ['deal_item_types', 'finish_types'])
         ]);
         stages = stagesRes.data || []; deals = dealsRes.data || []; customers = customersRes.data || []; quotes = quotesRes.data || [];
         appointmentTypes = apptTypesRes.data || []; appointments = apptsRes.data || []; dealEvents = dealEventsRes.data || [];
@@ -361,7 +367,13 @@
           return true;
         });
         emailTemplates = templatesRes.data || [];
-        dealItemTypes = (settingsRes.data?.value && Array.isArray(settingsRes.data.value)) ? settingsRes.data.value : [];
+        
+        // Process settings
+        const settingsData = settingsRes.data || [];
+        const dealItemTypesSetting = settingsData.find(s => s.key === 'deal_item_types');
+        const finishTypesSetting = settingsData.find(s => s.key === 'finish_types');
+        dealItemTypes = (dealItemTypesSetting?.value && Array.isArray(dealItemTypesSetting.value)) ? dealItemTypesSetting.value : [];
+        finishTypes = (finishTypesSetting?.value && Array.isArray(finishTypesSetting.value)) ? finishTypesSetting.value : [];
         
         // Initialize selected stages to all stages if empty
         if (selectedStages.size === 0) {
@@ -615,9 +627,113 @@
       }
       if (deal.estimated_value) html += `<div class="deal-card-value">${formatCurrency(deal.estimated_value)}</div>`;
       card.innerHTML = html;
+      
+      // Desktop drag events
       card.addEventListener('dragstart', () => { draggedDeal = deal; card.classList.add('dragging'); });
       card.addEventListener('dragend', () => { draggedDeal = null; card.classList.remove('dragging'); });
-      card.addEventListener('click', () => openDealModal(deal));
+      
+      // Touch events for iPad/mobile
+      let touchStartX, touchStartY, touchGhost = null, longPressTimer = null, isDragging = false;
+      
+      card.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        
+        // Long press to start drag (300ms)
+        longPressTimer = setTimeout(() => {
+          isDragging = true;
+          draggedDeal = deal;
+          card.classList.add('dragging');
+          
+          // Create ghost element
+          touchGhost = card.cloneNode(true);
+          touchGhost.classList.add('touch-ghost');
+          touchGhost.style.width = card.offsetWidth + 'px';
+          touchGhost.style.left = (touchStartX - card.offsetWidth / 2) + 'px';
+          touchGhost.style.top = (touchStartY - 20) + 'px';
+          document.body.appendChild(touchGhost);
+          
+          // Vibrate if supported
+          if (navigator.vibrate) navigator.vibrate(50);
+        }, 300);
+      }, { passive: true });
+      
+      card.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        const moveX = Math.abs(touch.clientX - touchStartX);
+        const moveY = Math.abs(touch.clientY - touchStartY);
+        
+        // Cancel long press if moved too much before it triggered
+        if (!isDragging && (moveX > 10 || moveY > 10)) {
+          clearTimeout(longPressTimer);
+        }
+        
+        if (isDragging && touchGhost) {
+          e.preventDefault();
+          touchGhost.style.left = (touch.clientX - touchGhost.offsetWidth / 2) + 'px';
+          touchGhost.style.top = (touch.clientY - 20) + 'px';
+          
+          // Highlight drop zone under finger
+          const dropZones = document.querySelectorAll('.drop-zone');
+          dropZones.forEach(zone => zone.classList.remove('drag-over'));
+          
+          const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+          const dropZone = elemBelow?.closest('.drop-zone');
+          if (dropZone) dropZone.classList.add('drag-over');
+        }
+      }, { passive: false });
+      
+      card.addEventListener('touchend', async (e) => {
+        clearTimeout(longPressTimer);
+        
+        if (isDragging) {
+          const touch = e.changedTouches[0];
+          const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+          const dropZone = elemBelow?.closest('.drop-zone');
+          const column = dropZone?.closest('.pipeline-column');
+          
+          if (column && draggedDeal) {
+            const newStage = column.dataset.stage;
+            if (newStage && newStage !== draggedDeal.stage) {
+              await updateDealStage(draggedDeal.id, newStage);
+            }
+          }
+          
+          // Cleanup
+          document.querySelectorAll('.drop-zone').forEach(zone => zone.classList.remove('drag-over'));
+          if (touchGhost) {
+            touchGhost.remove();
+            touchGhost = null;
+          }
+          card.classList.remove('dragging');
+          draggedDeal = null;
+          isDragging = false;
+        } else {
+          // It was a tap, not a drag - open the modal
+          openDealModal(deal);
+        }
+      });
+      
+      card.addEventListener('touchcancel', () => {
+        clearTimeout(longPressTimer);
+        if (touchGhost) {
+          touchGhost.remove();
+          touchGhost = null;
+        }
+        card.classList.remove('dragging');
+        draggedDeal = null;
+        isDragging = false;
+        document.querySelectorAll('.drop-zone').forEach(zone => zone.classList.remove('drag-over'));
+      });
+      
+      // Desktop click (only if not using touch)
+      card.addEventListener('click', (e) => {
+        // Only handle click if it wasn't a touch event
+        if (e.pointerType !== 'touch') {
+          openDealModal(deal);
+        }
+      });
+      
       return card;
     }
     
@@ -629,7 +745,7 @@
     let currentDeal = null; // Track the current deal for email
     
     function openDealModal(deal = null) {
-      currentDealEvents = []; currentDealItems = []; currentDeal = deal;
+      currentDealEvents = []; currentDealItems = []; currentDealFinishes = []; currentDeal = deal;
       if (deal) {
         $('#deal-modal-title').textContent = 'Edit Deal'; $('#delete-deal-btn').style.display = 'block'; $('#deal-id').value = deal.id;
         $('#deal-name').value = deal.name || ''; 
@@ -645,6 +761,7 @@
         $('#deal-stage').value = deal.stage || stages[0]?.stage_id;
         $('#deal-value').value = deal.estimated_value || ''; $('#deal-quote').value = deal.quote_id || ''; $('#deal-notes').value = deal.notes || '';
         currentDealItems = deal.job_items || [];
+        currentDealFinishes = deal.job_finishes || [];
         currentDealEvents = dealEvents.filter(e => e.job_id === deal.id).map(e => ({ id: e.id, event_type_id: e.event_type_id, event_date: e.event_date, event_end_date: e.event_end_date || '', notes: e.notes || '', isExisting: true }));
         // Show email button if deal has customer with email
         const hasEmail = deal.customers?.email;
@@ -657,14 +774,14 @@
         $('#customer-search-select').classList.remove('has-value');
         $('#email-deal-btn').style.display = 'none';
       }
-      renderDealEvents(); renderDealItems(); $('#deal-modal').classList.add('active');
+      renderDealEvents(); renderDealItems(); renderDealFinishes(); $('#deal-modal').classList.add('active');
     }
     
     function closeDealModal() { $('#deal-modal').classList.remove('active'); }
     
     async function saveDeal() {
       const id = $('#deal-id').value;
-      const data = { name: $('#deal-name').value, customer_id: $('#deal-customer').value || null, stage: $('#deal-stage').value, estimated_value: parseFloat($('#deal-value').value) || null, quote_id: $('#deal-quote').value || null, notes: $('#deal-notes').value, job_items: currentDealItems, updated_at: new Date().toISOString() };
+      const data = { name: $('#deal-name').value, customer_id: $('#deal-customer').value || null, stage: $('#deal-stage').value, estimated_value: parseFloat($('#deal-value').value) || null, quote_id: $('#deal-quote').value || null, notes: $('#deal-notes').value, job_items: currentDealItems, job_finishes: currentDealFinishes, updated_at: new Date().toISOString() };
       if (!data.name) { showToast('Deal name is required', 'error'); return; }
       try {
         const supabase = await app.waitForSupabase(); let dealId = id;
@@ -734,6 +851,27 @@
       }).join('');
     }
     function updateDealItem(id, field, value) { const i = currentDealItems.find(x => x.id === id); if (i) i[field] = value; }
+    
+    // Deal Finishes
+    function addDealFinish() { currentDealFinishes.push({ id: crypto.randomUUID(), name: '' }); renderDealFinishes(); }
+    function removeDealFinish(id) { currentDealFinishes = currentDealFinishes.filter(f => f.id !== id); renderDealFinishes(); }
+    function renderDealFinishes() {
+      const container = $('#deal-finishes-container');
+      if (currentDealFinishes.length === 0) { container.innerHTML = '<p class="text-muted text-sm">No finishes added.</p>'; return; }
+      
+      const options = finishTypes.length > 0 
+        ? '<option value="">Select finish...</option>' + finishTypes.map(t => `<option value="${t}">${t}</option>`).join('')
+        : '<option value="">No finish types - add in Settings</option>';
+      
+      container.innerHTML = currentDealFinishes.map(f => {
+        const selectedOptions = options.replace(`value="${f.name}"`, `value="${f.name}" selected`);
+        return `<div class="item-row">
+          <select class="form-select" style="flex:1;" onchange="updateDealFinish('${f.id}','name',this.value)">${selectedOptions}</select>
+          <button type="button" class="btn btn-sm" style="color:var(--color-danger);" onclick="removeDealFinish('${f.id}')">×</button>
+        </div>`;
+      }).join('');
+    }
+    function updateDealFinish(id, field, value) { const f = currentDealFinishes.find(x => x.id === id); if (f) f[field] = value; }
     
     function openApptModal(typeId = null, appt = null) {
       $$('.dropdown.open').forEach(d => d.classList.remove('open'));

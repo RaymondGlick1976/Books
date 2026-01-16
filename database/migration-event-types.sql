@@ -52,3 +52,6 @@ CREATE POLICY "Allow all access to job_events" ON job_events FOR ALL USING (true
 
 -- Add event_end_date column for date ranges
 ALTER TABLE job_events ADD COLUMN IF NOT EXISTS event_end_date DATE;
+
+-- Add job_finishes column to jobs table (v84)
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_finishes JSONB DEFAULT '[]';
