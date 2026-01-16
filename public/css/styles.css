@@ -152,6 +152,7 @@ a:hover {
   top: 0;
   left: 0;
   bottom: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   z-index: 100;
 }
@@ -197,6 +198,21 @@ a:hover {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+  overflow: hidden;
+}
+
+.sidebar-logo a {
+  display: block;
+  max-width: 100%;
+}
+
+.sidebar-logo img {
+  display: block;
+  max-width: 180px;
+  max-height: 50px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .sidebar-logo svg {
