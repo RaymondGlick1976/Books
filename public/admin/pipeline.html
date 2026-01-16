@@ -333,7 +333,14 @@
           supabase.from('settings').select('*').eq('key', 'deal_item_types').single()
         ]);
         stages = stagesRes.data || []; deals = dealsRes.data || []; customers = customersRes.data || []; quotes = quotesRes.data || [];
-        appointmentTypes = apptTypesRes.data || []; appointments = apptsRes.data || []; eventTypes = eventTypesRes.data || []; dealEvents = dealEventsRes.data || [];
+        appointmentTypes = apptTypesRes.data || []; appointments = apptsRes.data || []; dealEvents = dealEventsRes.data || [];
+        // Deduplicate event types by name (in case of duplicate entries)
+        const seenEventTypes = new Set();
+        eventTypes = (eventTypesRes.data || []).filter(t => {
+          if (seenEventTypes.has(t.name)) return false;
+          seenEventTypes.add(t.name);
+          return true;
+        });
         emailTemplates = templatesRes.data || [];
         dealItemTypes = (settingsRes.data?.value && Array.isArray(settingsRes.data.value)) ? settingsRes.data.value : [];
         const totalDeals = deals.length, totalValue = deals.reduce((s, d) => s + (parseFloat(d.estimated_value) || 0), 0);
@@ -501,7 +508,19 @@
       const customer = deal.customers, thisEvents = dealEvents.filter(e => e.job_id === deal.id).slice(0, 2);
       let html = `<div class="deal-card-title">${deal.name || 'Untitled'}</div>`;
       if (customer) html += `<div class="deal-card-customer">${customer.name}</div>`;
-      if (thisEvents.length > 0) { html += '<div class="deal-card-dates">'; thisEvents.forEach(e => { const et = e.job_event_types || eventTypes.find(t => t.id === e.event_type_id); if (et) html += `<div class="deal-card-date">${et.icon} ${formatDate(e.event_date)}</div>`; }); html += '</div>'; }
+      if (thisEvents.length > 0) { 
+        html += '<div class="deal-card-dates">'; 
+        thisEvents.forEach(e => { 
+          const et = e.job_event_types || eventTypes.find(t => t.id === e.event_type_id); 
+          if (et) {
+            const dateDisplay = e.event_end_date && e.event_end_date !== e.event_date 
+              ? `${formatDate(e.event_date)} - ${formatDate(e.event_end_date)}`
+              : formatDate(e.event_date);
+            html += `<div class="deal-card-date">${et.icon} ${dateDisplay}</div>`; 
+          }
+        }); 
+        html += '</div>'; 
+      }
       if (deal.estimated_value) html += `<div class="deal-card-value">${formatCurrency(deal.estimated_value)}</div>`;
       card.innerHTML = html;
       card.addEventListener('dragstart', () => { draggedDeal = deal; card.classList.add('dragging'); });
@@ -534,7 +553,7 @@
         $('#deal-stage').value = deal.stage || stages[0]?.stage_id;
         $('#deal-value').value = deal.estimated_value || ''; $('#deal-quote').value = deal.quote_id || ''; $('#deal-notes').value = deal.notes || '';
         currentDealItems = deal.job_items || [];
-        currentDealEvents = dealEvents.filter(e => e.job_id === deal.id).map(e => ({ id: e.id, event_type_id: e.event_type_id, event_date: e.event_date, notes: e.notes || '', isExisting: true }));
+        currentDealEvents = dealEvents.filter(e => e.job_id === deal.id).map(e => ({ id: e.id, event_type_id: e.event_type_id, event_date: e.event_date, event_end_date: e.event_end_date || '', notes: e.notes || '', isExisting: true }));
         // Show email button if deal has customer with email
         const hasEmail = deal.customers?.email;
         $('#email-deal-btn').style.display = hasEmail ? 'block' : 'none';
@@ -570,7 +589,7 @@
       if (toDelete.length) await supabase.from('job_events').delete().in('id', toDelete);
       for (const event of currentDealEvents) {
         if (!event.event_type_id || !event.event_date) continue;
-        const eventData = { job_id: dealId, event_type_id: event.event_type_id, event_date: event.event_date, notes: event.notes || null };
+        const eventData = { job_id: dealId, event_type_id: event.event_type_id, event_date: event.event_date, event_end_date: event.event_end_date || null, notes: event.notes || null };
         if (event.isExisting) await supabase.from('job_events').update(eventData).eq('id', event.id);
         else await supabase.from('job_events').insert([eventData]);
       }
@@ -582,12 +601,24 @@
       catch (err) { showToast('Failed to delete', 'error'); }
     }
     
-    function addDealEvent() { currentDealEvents.push({ id: crypto.randomUUID(), event_type_id: eventTypes[0]?.id || '', event_date: '', notes: '', isExisting: false }); renderDealEvents(); }
+    function addDealEvent() { currentDealEvents.push({ id: crypto.randomUUID(), event_type_id: eventTypes[0]?.id || '', event_date: '', event_end_date: '', notes: '', isExisting: false }); renderDealEvents(); }
     function removeDealEvent(id) { currentDealEvents = currentDealEvents.filter(e => e.id !== id); renderDealEvents(); }
     function renderDealEvents() {
       const container = $('#deal-events-container');
       if (currentDealEvents.length === 0) { container.innerHTML = '<p class="text-muted text-sm">No dates scheduled.</p>'; return; }
-      container.innerHTML = currentDealEvents.map(e => `<div class="event-row"><select class="form-input" style="flex:1;" onchange="updateDealEvent('${e.id}','event_type_id',this.value)">${eventTypes.map(t => `<option value="${t.id}" ${t.id === e.event_type_id ? 'selected' : ''}>${t.icon} ${t.name}</option>`).join('')}</select><input type="date" class="form-input" style="width:140px;" value="${e.event_date || ''}" onchange="updateDealEvent('${e.id}','event_date',this.value)"><button type="button" class="btn btn-sm" style="color:var(--color-danger);" onclick="removeDealEvent('${e.id}')">×</button></div>`).join('');
+      container.innerHTML = currentDealEvents.map(e => `
+        <div class="event-row" style="flex-wrap:wrap;">
+          <select class="form-select" style="flex:1;min-width:120px;" onchange="updateDealEvent('${e.id}','event_type_id',this.value)">
+            ${eventTypes.map(t => `<option value="${t.id}" ${t.id === e.event_type_id ? 'selected' : ''}>${t.icon} ${t.name}</option>`).join('')}
+          </select>
+          <div style="display:flex;align-items:center;gap:var(--space-xs);">
+            <input type="date" class="form-input" style="width:130px;" value="${e.event_date || ''}" onchange="updateDealEvent('${e.id}','event_date',this.value)" title="Start date">
+            <span class="text-muted">to</span>
+            <input type="date" class="form-input" style="width:130px;" value="${e.event_end_date || ''}" onchange="updateDealEvent('${e.id}','event_end_date',this.value)" title="End date (optional)">
+          </div>
+          <button type="button" class="btn btn-sm" style="color:var(--color-danger);" onclick="removeDealEvent('${e.id}')">×</button>
+        </div>
+      `).join('');
     }
     function updateDealEvent(id, field, value) { const e = currentDealEvents.find(x => x.id === id); if (e) e[field] = value; }
     
@@ -661,18 +692,129 @@
     
     function openStageSettings() { renderStageList(); $('#stage-modal').classList.add('active'); }
     function closeStageSettings() { $('#stage-modal').classList.remove('active'); $('#add-stage-form').style.display = 'none'; }
+    
+    let draggedStageId = null;
+    
     function renderStageList() {
-      $('#stage-list').innerHTML = stages.map((s, i) => `<div class="flex items-center gap-md mb-sm" style="padding:var(--space-sm);background:var(--color-bg-soft);border-radius:var(--radius-md);"><span class="stage-dot" style="background:${s.color}"></span><span style="flex:1;font-weight:500;">${s.label}</span><button class="btn btn-sm" onclick="moveStage('${s.id}','up')" ${i===0?'disabled':''}>↑</button><button class="btn btn-sm" onclick="moveStage('${s.id}','down')" ${i===stages.length-1?'disabled':''}>↓</button><button class="btn btn-sm" style="color:var(--color-danger);" onclick="deleteStage('${s.id}')">×</button></div>`).join('');
+      const container = $('#stage-list');
+      container.innerHTML = stages.map((s, i) => `
+        <div class="stage-item" draggable="true" data-id="${s.id}" data-index="${i}"
+             ondragstart="handleStageDragStart(event)" ondragover="handleStageDragOver(event)" 
+             ondrop="handleStageDrop(event)" ondragend="handleStageDragEnd(event)"
+             style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-sm) var(--space-md);background:var(--color-bg-soft);border-radius:var(--radius-md);margin-bottom:var(--space-sm);cursor:grab;">
+          <span class="drag-handle" style="color:var(--color-text-muted);cursor:grab;">⋮⋮</span>
+          <input type="color" value="${s.color}" onchange="updateStageColor('${s.id}', this.value)" 
+                 style="width:28px;height:28px;border:none;border-radius:var(--radius-sm);cursor:pointer;padding:0;">
+          <input type="text" class="form-input" value="${s.label}" 
+                 onchange="updateStageName('${s.id}', this.value)" 
+                 style="flex:1;font-weight:500;background:transparent;border:1px solid transparent;"
+                 onfocus="this.style.borderColor='var(--color-primary)';this.style.background='white'"
+                 onblur="this.style.borderColor='transparent';this.style.background='transparent'">
+          <button class="btn btn-ghost btn-sm" style="color:var(--color-danger);" onclick="deleteStage('${s.id}')" title="Delete stage">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </button>
+        </div>
+      `).join('');
     }
+    
+    function handleStageDragStart(e) {
+      draggedStageId = e.target.closest('.stage-item').dataset.id;
+      e.target.closest('.stage-item').style.opacity = '0.5';
+      e.dataTransfer.effectAllowed = 'move';
+    }
+    
+    function handleStageDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const item = e.target.closest('.stage-item');
+      if (item) {
+        item.style.borderTop = '2px solid var(--color-primary)';
+      }
+    }
+    
+    function handleStageDragEnd(e) {
+      e.target.closest('.stage-item')?.style && (e.target.closest('.stage-item').style.opacity = '1');
+      $$('.stage-item').forEach(el => el.style.borderTop = '');
+      draggedStageId = null;
+    }
+    
+    async function handleStageDrop(e) {
+      e.preventDefault();
+      const targetItem = e.target.closest('.stage-item');
+      if (!targetItem || !draggedStageId) return;
+      
+      const targetId = targetItem.dataset.id;
+      if (targetId === draggedStageId) return;
+      
+      const draggedIdx = stages.findIndex(s => s.id === draggedStageId);
+      const targetIdx = stages.findIndex(s => s.id === targetId);
+      
+      if (draggedIdx === -1 || targetIdx === -1) return;
+      
+      // Reorder stages array
+      const [draggedStage] = stages.splice(draggedIdx, 1);
+      stages.splice(targetIdx, 0, draggedStage);
+      
+      // Update sort_order for all stages
+      try {
+        const supabase = await app.waitForSupabase();
+        const updates = stages.map((s, i) => 
+          supabase.from('job_stages').update({ sort_order: i }).eq('id', s.id)
+        );
+        await Promise.all(updates);
+        await loadData();
+        renderStageList();
+        renderPipeline();
+      } catch (err) {
+        console.error('Reorder failed:', err);
+        showToast('Failed to reorder stages', 'error');
+        await loadData();
+        renderStageList();
+      }
+    }
+    
+    async function updateStageName(id, newName) {
+      if (!newName.trim()) {
+        showToast('Stage name cannot be empty', 'error');
+        renderStageList();
+        return;
+      }
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('job_stages').update({ label: newName.trim() }).eq('id', id);
+        await loadData();
+        renderPipeline();
+        showToast('Stage renamed', 'success');
+      } catch (err) {
+        showToast('Failed to rename: ' + err.message, 'error');
+      }
+    }
+    
+    async function updateStageColor(id, newColor) {
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('job_stages').update({ color: newColor }).eq('id', id);
+        await loadData();
+        renderPipeline();
+      } catch (err) {
+        showToast('Failed to update color', 'error');
+      }
+    }
+    
     async function saveNewStage() {
       const label = $('#new-stage-label').value.trim(), color = $('#new-stage-color').value; if (!label) return;
-      try { const supabase = await app.waitForSupabase(); await supabase.from('job_stages').insert([{ stage_id: label.toLowerCase().replace(/\s+/g, '-'), label, color, sort_order: Math.max(...stages.map(s => s.sort_order), -1) + 1 }]); await loadData(); renderStageList(); renderPipeline(); $('#add-stage-form').style.display = 'none'; showToast('Stage added', 'success'); }
+      try { const supabase = await app.waitForSupabase(); await supabase.from('job_stages').insert([{ stage_id: label.toLowerCase().replace(/\s+/g, '-'), label, color, sort_order: Math.max(...stages.map(s => s.sort_order), -1) + 1 }]); await loadData(); renderStageList(); renderPipeline(); $('#add-stage-form').style.display = 'none'; $('#new-stage-label').value = ''; showToast('Stage added', 'success'); }
       catch (err) { showToast('Failed to add stage', 'error'); }
     }
-    async function deleteStage(id) { if (!confirm('Delete this stage?')) return; try { const supabase = await app.waitForSupabase(); await supabase.from('job_stages').delete().eq('id', id); await loadData(); renderStageList(); renderPipeline(); } catch (err) { showToast('Failed to delete', 'error'); } }
-    async function moveStage(id, dir) {
-      const idx = stages.findIndex(s => s.id === id), newIdx = dir === 'up' ? idx - 1 : idx + 1; if (newIdx < 0 || newIdx >= stages.length) return;
-      try { const supabase = await app.waitForSupabase(); const s1 = stages[idx], s2 = stages[newIdx]; await supabase.from('job_stages').update({ sort_order: s2.sort_order }).eq('id', s1.id); await supabase.from('job_stages').update({ sort_order: s1.sort_order }).eq('id', s2.id); await loadData(); renderStageList(); renderPipeline(); } catch (err) { console.error(err); }
+    async function deleteStage(id) { 
+      const stage = stages.find(s => s.id === id);
+      const dealsInStage = deals.filter(d => d.stage_id === stage?.stage_id).length;
+      if (dealsInStage > 0) {
+        if (!confirm(`This stage has ${dealsInStage} deal(s). Delete anyway? The deals will need to be moved to another stage.`)) return;
+      } else {
+        if (!confirm('Delete this stage?')) return;
+      }
+      try { const supabase = await app.waitForSupabase(); await supabase.from('job_stages').delete().eq('id', id); await loadData(); renderStageList(); renderPipeline(); showToast('Stage deleted', 'success'); } catch (err) { showToast('Failed to delete', 'error'); } 
     }
     
     function setupViewToggle() {
@@ -717,7 +859,43 @@
     function buildEventsLookup() {
       const events = {};
       appointments.forEach(appt => { const dateStr = appt.appointment_date, type = appt.appointment_types || appointmentTypes.find(t => t.id === appt.appointment_type_id); if (!events[dateStr]) events[dateStr] = []; events[dateStr].push({ type: 'appointment', data: appt, color: type?.color || '#6366f1', icon: type?.icon || '📅', label: appt.title }); });
-      dealEvents.forEach(event => { const dateStr = event.event_date, deal = deals.find(d => d.id === event.job_id), type = event.job_event_types || eventTypes.find(t => t.id === event.event_type_id); if (!deal || !type) return; if (!events[dateStr]) events[dateStr] = []; events[dateStr].push({ type: 'deal_event', data: { event, deal }, color: type?.color || '#6366f1', icon: type?.icon || '📅', label: deal.name }); });
+      
+      // Deal events - support date ranges and show customer last name + stage
+      dealEvents.forEach(event => { 
+        const deal = deals.find(d => d.id === event.job_id);
+        const type = event.job_event_types || eventTypes.find(t => t.id === event.event_type_id); 
+        if (!deal || !type) return;
+        
+        // Get customer last name and stage
+        const customerName = deal.customers?.name || '';
+        const lastName = customerName.split(' ').pop() || customerName;
+        const stage = stages.find(s => s.stage_id === deal.stage);
+        const label = `${lastName} - ${stage?.label || deal.stage}`;
+        
+        // Get start and end dates
+        const startDate = event.event_date;
+        const endDate = event.event_end_date || startDate;
+        
+        // Add event to each day in the range
+        let currentDate = new Date(startDate);
+        const lastDate = new Date(endDate);
+        
+        while (currentDate <= lastDate) {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          if (!events[dateStr]) events[dateStr] = [];
+          events[dateStr].push({ 
+            type: 'deal_event', 
+            data: { event, deal }, 
+            color: type?.color || '#6366f1', 
+            icon: type?.icon || '📅', 
+            label: label,
+            isRange: startDate !== endDate,
+            isStart: dateStr === startDate,
+            isEnd: dateStr === endDate
+          });
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      });
       return events;
     }
     
@@ -727,7 +905,10 @@
       let html = dayEvents.slice(0, maxVisible).map(e => {
         const bgColor = hexToRgba(e.color, 0.2);
         const onclick = e.type === 'appointment' ? `openApptModal(null, appointments.find(a => a.id === '${e.data.id}'))` : `openDealModal(deals.find(d => d.id === '${e.data.deal.id}'))`;
-        return `<div class="calendar-event" style="background:${bgColor};color:${e.color};border-left:3px solid ${e.color};" onclick="${onclick}">${e.icon} ${e.label}</div>`;
+        // For range events, show icon on start, just label on middle/end
+        const showIcon = !e.isRange || e.isStart;
+        const displayLabel = showIcon ? `${e.icon} ${e.label}` : e.label;
+        return `<div class="calendar-event" style="background:${bgColor};color:${e.color};border-left:3px solid ${e.color};" onclick="${onclick}">${displayLabel}</div>`;
       }).join('');
       if (dayEvents.length > maxVisible) html += `<div class="calendar-more">+${dayEvents.length - maxVisible} more</div>`;
       return html;

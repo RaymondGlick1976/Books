@@ -49,3 +49,6 @@ DROP POLICY IF EXISTS "Allow all access to job_events" ON job_events;
 CREATE POLICY "Allow all access to job_events" ON job_events FOR ALL USING (true) WITH CHECK (true);
 
 -- Done! You can now customize event types and add events to jobs.
+
+-- Add event_end_date column for date ranges
+ALTER TABLE job_events ADD COLUMN IF NOT EXISTS event_end_date DATE;
