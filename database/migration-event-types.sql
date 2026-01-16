@@ -55,3 +55,7 @@ ALTER TABLE job_events ADD COLUMN IF NOT EXISTS event_end_date DATE;
 
 -- Add job_finishes column to jobs table (v84)
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_finishes JSONB DEFAULT '[]';
+
+-- Add event_name and event_color columns to job_events table (v87)
+ALTER TABLE job_events ADD COLUMN IF NOT EXISTS event_name TEXT;
+ALTER TABLE job_events ADD COLUMN IF NOT EXISTS event_color VARCHAR(20);

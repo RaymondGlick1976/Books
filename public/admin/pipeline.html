@@ -627,10 +627,12 @@
         thisEvents.forEach(e => { 
           const et = e.job_event_types || eventTypes.find(t => t.id === e.event_type_id); 
           if (et) {
+            const eventColor = e.event_color || et.color || '#6366f1';
+            const eventLabel = e.event_name || et.name;
             const dateDisplay = e.event_end_date && e.event_end_date !== e.event_date 
               ? `${formatDate(e.event_date)} - ${formatDate(e.event_end_date)}`
               : formatDate(e.event_date);
-            html += `<div class="deal-card-date"><span class="deal-card-date-label">${et.icon} ${et.name}</span>${dateDisplay}</div>`; 
+            html += `<div class="deal-card-date" style="border-left: 3px solid ${eventColor}; padding-left: 6px;"><span class="deal-card-date-label" style="color: ${eventColor};">${et.icon} ${eventLabel}</span>${dateDisplay}</div>`; 
           }
         }); 
         html += '</div>'; 
@@ -772,7 +774,7 @@
         $('#deal-value').value = deal.estimated_value || ''; $('#deal-quote').value = deal.quote_id || ''; $('#deal-notes').value = deal.notes || '';
         currentDealItems = deal.job_items || [];
         currentDealFinishes = deal.job_finishes || [];
-        currentDealEvents = dealEvents.filter(e => e.job_id === deal.id).map(e => ({ id: e.id, event_type_id: e.event_type_id, event_date: e.event_date, event_end_date: e.event_end_date || '', notes: e.notes || '', isExisting: true }));
+        currentDealEvents = dealEvents.filter(e => e.job_id === deal.id).map(e => ({ id: e.id, event_type_id: e.event_type_id, event_date: e.event_date, event_end_date: e.event_end_date || '', event_name: e.event_name || '', event_color: e.event_color || '', notes: e.notes || '', isExisting: true }));
         // Show email button if deal has customer with email, always show print for existing deals
         const hasEmail = deal.customers?.email;
         $('#email-deal-btn').style.display = hasEmail ? 'block' : 'none';
@@ -876,9 +878,11 @@
           const dateStr = e.event_end_date && e.event_end_date !== e.event_date 
             ? `${formatDate(e.event_date)} - ${formatDate(e.event_end_date)}`
             : formatDate(e.event_date);
+          const eventColor = e.event_color || e.eventType?.color || '#6366f1';
+          const eventLabel = e.event_name ? `<span style="color:#666;font-weight:normal;"> (${e.event_name})</span>` : '';
           html += `
-    <div class="event-item">
-      <span class="event-type">${e.eventType?.icon || '📅'} ${e.eventType?.name || 'Event'}</span>
+    <div class="event-item" style="border-left: 3px solid ${eventColor}; padding-left: 8px;">
+      <span class="event-type">${e.eventType?.icon || '📅'} ${e.eventType?.name || 'Event'}${eventLabel}</span>
       <span class="event-date"> — ${dateStr}</span>
     </div>`;
         });
@@ -1027,7 +1031,7 @@
       if (toDelete.length) await supabase.from('job_events').delete().in('id', toDelete);
       for (const event of currentDealEvents) {
         if (!event.event_type_id || !event.event_date) continue;
-        const eventData = { job_id: dealId, event_type_id: event.event_type_id, event_date: event.event_date, event_end_date: event.event_end_date || null, notes: event.notes || null };
+        const eventData = { job_id: dealId, event_type_id: event.event_type_id, event_date: event.event_date, event_end_date: event.event_end_date || null, event_name: event.event_name || null, event_color: event.event_color || null, notes: event.notes || null };
         if (event.isExisting) await supabase.from('job_events').update(eventData).eq('id', event.id);
         else await supabase.from('job_events').insert([eventData]);
       }
@@ -1039,26 +1043,70 @@
       catch (err) { showToast('Failed to delete', 'error'); }
     }
     
-    function addDealEvent() { currentDealEvents.push({ id: crypto.randomUUID(), event_type_id: eventTypes[0]?.id || '', event_date: '', event_end_date: '', notes: '', isExisting: false }); renderDealEvents(); }
+    function addDealEvent() { 
+      const defaultType = eventTypes[0];
+      currentDealEvents.push({ 
+        id: crypto.randomUUID(), 
+        event_type_id: defaultType?.id || '', 
+        event_date: '', 
+        event_end_date: '', 
+        event_name: '',
+        event_color: defaultType?.color || '#6366f1',
+        notes: '', 
+        isExisting: false 
+      }); 
+      renderDealEvents(); 
+    }
     function removeDealEvent(id) { currentDealEvents = currentDealEvents.filter(e => e.id !== id); renderDealEvents(); }
     function renderDealEvents() {
       const container = $('#deal-events-container');
       if (currentDealEvents.length === 0) { container.innerHTML = '<p class="text-muted text-sm">No dates scheduled.</p>'; return; }
-      container.innerHTML = currentDealEvents.map(e => `
-        <div class="event-row" style="flex-wrap:wrap;">
-          <select class="form-select" style="flex:1;min-width:120px;" onchange="updateDealEvent('${e.id}','event_type_id',this.value)">
-            ${eventTypes.map(t => `<option value="${t.id}" ${t.id === e.event_type_id ? 'selected' : ''}>${t.icon} ${t.name}</option>`).join('')}
-          </select>
-          <div style="display:flex;align-items:center;gap:var(--space-xs);">
-            <input type="date" class="form-input" style="width:130px;" value="${e.event_date || ''}" onchange="updateDealEvent('${e.id}','event_date',this.value)" title="Start date">
-            <span class="text-muted">to</span>
-            <input type="date" class="form-input" style="width:130px;" value="${e.event_end_date || ''}" onchange="updateDealEvent('${e.id}','event_end_date',this.value)" title="End date (optional)">
+      
+      const defaultColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+      
+      container.innerHTML = currentDealEvents.map(e => {
+        const selectedType = eventTypes.find(t => t.id === e.event_type_id);
+        const currentColor = e.event_color || selectedType?.color || '#6366f1';
+        
+        return `
+        <div class="event-card" style="background: var(--color-bg-soft); border-radius: var(--radius-md); padding: var(--space-sm); margin-bottom: var(--space-sm); border-left: 4px solid ${currentColor};">
+          <div class="event-row" style="flex-wrap:wrap; border-bottom: none; padding: 0;">
+            <select class="form-select" style="flex:1;min-width:120px;" onchange="updateDealEventType('${e.id}',this.value)">
+              ${eventTypes.map(t => `<option value="${t.id}" ${t.id === e.event_type_id ? 'selected' : ''}>${t.icon} ${t.name}</option>`).join('')}
+            </select>
+            <div style="display:flex;align-items:center;gap:var(--space-xs);">
+              <input type="date" class="form-input" style="width:125px;" value="${e.event_date || ''}" onchange="updateDealEvent('${e.id}','event_date',this.value)" title="Start date">
+              <span class="text-muted">to</span>
+              <input type="date" class="form-input" style="width:125px;" value="${e.event_end_date || ''}" onchange="updateDealEvent('${e.id}','event_end_date',this.value)" title="End date (optional)">
+            </div>
+            <button type="button" class="btn btn-sm" style="color:var(--color-danger);" onclick="removeDealEvent('${e.id}')">×</button>
           </div>
-          <button type="button" class="btn btn-sm" style="color:var(--color-danger);" onclick="removeDealEvent('${e.id}')">×</button>
-        </div>
-      `).join('');
+          <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-xs);align-items:center;">
+            <input type="text" class="form-input" style="flex:1;font-size:0.85rem;" placeholder="Event label (optional)" value="${e.event_name || ''}" onchange="updateDealEvent('${e.id}','event_name',this.value)">
+            <div style="display:flex;gap:2px;align-items:center;">
+              ${defaultColors.map(c => `
+                <button type="button" onclick="updateDealEventColor('${e.id}','${c}')" 
+                  style="width:20px;height:20px;border-radius:50%;border:2px solid ${c === currentColor ? '#333' : 'transparent'};background:${c};cursor:pointer;padding:0;"
+                  title="Select color"></button>
+              `).join('')}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
     }
     function updateDealEvent(id, field, value) { const e = currentDealEvents.find(x => x.id === id); if (e) e[field] = value; }
+    function updateDealEventType(id, typeId) {
+      const e = currentDealEvents.find(x => x.id === id);
+      if (e) {
+        e.event_type_id = typeId;
+        const type = eventTypes.find(t => t.id === typeId);
+        if (type && !e.event_color) e.event_color = type.color;
+      }
+    }
+    function updateDealEventColor(id, color) {
+      const e = currentDealEvents.find(x => x.id === id);
+      if (e) { e.event_color = color; renderDealEvents(); }
+    }
     
     function addDealItem() { currentDealItems.push({ id: crypto.randomUUID(), name: '', quantity: '' }); renderDealItems(); }
     function removeDealItem(id) { currentDealItems = currentDealItems.filter(i => i.id !== id); renderDealItems(); }
@@ -1339,10 +1387,13 @@
         // Skip if deal is filtered out
         if (!filteredDealIds.has(deal.id)) return;
         
-        // Get customer last name and event type name
+        // Get customer last name and event type name - use custom event_name if set
         const customerName = deal.customers?.name || '';
         const lastName = customerName.split(' ').pop() || customerName;
-        const label = `${lastName} - ${type.name}`;
+        const label = event.event_name || `${lastName} - ${type.name}`;
+        
+        // Use custom event_color if set, otherwise use type color
+        const eventColor = event.event_color || type?.color || '#6366f1';
         
         // Get start and end dates
         const startDate = event.event_date;
@@ -1358,7 +1409,7 @@
           events[dateStr].push({ 
             type: 'deal_event', 
             data: { event, deal }, 
-            color: type?.color || '#6366f1', 
+            color: eventColor, 
             icon: type?.icon || '📅', 
             label: label,
             isRange: startDate !== endDate,
