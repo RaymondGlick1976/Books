@@ -219,7 +219,7 @@
   
   <!-- Deal Modal -->
   <div id="deal-modal" class="modal-overlay">
-    <div class="modal" style="max-width: 600px;">
+    <div class="modal" style="max-width: 700px;">
       <div class="modal-header">
         <h3 class="modal-title" id="deal-modal-title">New Deal</h3>
         <button class="modal-close" onclick="closeDealModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -258,7 +258,11 @@
         </form>
       </div>
       <div class="modal-footer" style="justify-content: space-between;">
-        <div>
+        <div style="display: flex; gap: var(--space-sm);">
+          <button type="button" class="btn btn-secondary" id="print-deal-btn" style="display:none;" onclick="printDeal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print
+          </button>
           <button type="button" class="btn btn-secondary" id="email-deal-btn" style="display:none;" onclick="openDealEmailModal()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             Send Email
@@ -763,9 +767,10 @@
         currentDealItems = deal.job_items || [];
         currentDealFinishes = deal.job_finishes || [];
         currentDealEvents = dealEvents.filter(e => e.job_id === deal.id).map(e => ({ id: e.id, event_type_id: e.event_type_id, event_date: e.event_date, event_end_date: e.event_end_date || '', notes: e.notes || '', isExisting: true }));
-        // Show email button if deal has customer with email
+        // Show email button if deal has customer with email, always show print for existing deals
         const hasEmail = deal.customers?.email;
         $('#email-deal-btn').style.display = hasEmail ? 'block' : 'none';
+        $('#print-deal-btn').style.display = 'block';
       } else { 
         $('#deal-modal-title').textContent = 'New Deal'; $('#delete-deal-btn').style.display = 'none'; $('#deal-form').reset(); $('#deal-id').value = ''; $('#deal-stage').value = stages[0]?.stage_id || ''; 
         // Clear customer search
@@ -773,11 +778,178 @@
         $('#deal-customer-search').value = '';
         $('#customer-search-select').classList.remove('has-value');
         $('#email-deal-btn').style.display = 'none';
+        $('#print-deal-btn').style.display = 'none';
       }
       renderDealEvents(); renderDealItems(); renderDealFinishes(); $('#deal-modal').classList.add('active');
     }
     
     function closeDealModal() { $('#deal-modal').classList.remove('active'); }
+    
+    function printDeal() {
+      if (!currentDeal) return;
+      
+      const deal = currentDeal;
+      const customer = customers.find(c => c.id === deal.customer_id);
+      const stage = stages.find(s => s.stage_id === deal.stage);
+      const dealEventsForPrint = currentDealEvents.map(e => {
+        const et = eventTypes.find(t => t.id === e.event_type_id);
+        return { ...e, eventType: et };
+      });
+      
+      // Build print HTML
+      let html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Deal: ${deal.name}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; color: #333; line-height: 1.5; }
+    .header { border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+    .header h1 { font-size: 24px; margin-bottom: 5px; }
+    .header .subtitle { color: #666; font-size: 14px; }
+    .section { margin-bottom: 30px; }
+    .section-title { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #666; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 15px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .info-item { }
+    .info-label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.3px; }
+    .info-value { font-size: 15px; font-weight: 500; }
+    .event-item { padding: 8px 0; border-bottom: 1px solid #eee; }
+    .event-item:last-child { border-bottom: none; }
+    .event-type { font-weight: 600; }
+    .event-date { color: #666; }
+    .finish-card { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 12px; }
+    .finish-name { font-weight: 600; font-size: 15px; margin-bottom: 10px; }
+    .finish-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .finish-detail-label { font-size: 11px; color: #666; text-transform: uppercase; }
+    .finish-detail-value { font-size: 14px; }
+    .item-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .item-row:last-child { border-bottom: none; }
+    .notes-box { background: #f8f9fa; border-radius: 8px; padding: 15px; white-space: pre-wrap; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #999; text-align: center; }
+    @media print {
+      body { padding: 20px; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${deal.name}</h1>
+    <div class="subtitle">${customer?.name || 'No customer assigned'}</div>
+  </div>
+  
+  <div class="section">
+    <div class="section-title">Deal Information</div>
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-label">Customer</div>
+        <div class="info-value">${customer?.name || '—'}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Stage</div>
+        <div class="info-value">${stage?.label || deal.stage}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Estimated Value</div>
+        <div class="info-value">${deal.estimated_value ? formatCurrency(deal.estimated_value) : '—'}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Job Number</div>
+        <div class="info-value">${deal.job_number || '—'}</div>
+      </div>
+    </div>
+  </div>`;
+      
+      // Scheduled Dates
+      if (dealEventsForPrint.length > 0) {
+        html += `
+  <div class="section">
+    <div class="section-title">Scheduled Dates</div>`;
+        dealEventsForPrint.forEach(e => {
+          const dateStr = e.event_end_date && e.event_end_date !== e.event_date 
+            ? `${formatDate(e.event_date)} - ${formatDate(e.event_end_date)}`
+            : formatDate(e.event_date);
+          html += `
+    <div class="event-item">
+      <span class="event-type">${e.eventType?.icon || '📅'} ${e.eventType?.name || 'Event'}</span>
+      <span class="event-date"> — ${dateStr}</span>
+    </div>`;
+        });
+        html += `
+  </div>`;
+      }
+      
+      // Finishes
+      if (currentDealFinishes.length > 0) {
+        html += `
+  <div class="section">
+    <div class="section-title">Finishes</div>`;
+        currentDealFinishes.forEach(f => {
+          html += `
+    <div class="finish-card">
+      <div class="finish-name">${f.name || 'Unnamed Finish'}</div>
+      <div class="finish-details">
+        <div>
+          <div class="finish-detail-label">Color</div>
+          <div class="finish-detail-value">${f.color || '—'}</div>
+        </div>
+        <div>
+          <div class="finish-detail-label">Sheen</div>
+          <div class="finish-detail-value">${f.sheen || '—'}</div>
+        </div>
+        <div>
+          <div class="finish-detail-label">Vendor</div>
+          <div class="finish-detail-value">${f.vendor || '—'}</div>
+        </div>
+      </div>
+    </div>`;
+        });
+        html += `
+  </div>`;
+      }
+      
+      // Deal Items
+      if (currentDealItems.length > 0) {
+        html += `
+  <div class="section">
+    <div class="section-title">Deal Items</div>`;
+        currentDealItems.forEach(i => {
+          html += `
+    <div class="item-row">
+      <span>${i.name || 'Unnamed Item'}</span>
+      <span>${i.quantity ? 'Qty: ' + i.quantity : ''}</span>
+    </div>`;
+        });
+        html += `
+  </div>`;
+      }
+      
+      // Notes
+      if (deal.notes) {
+        html += `
+  <div class="section">
+    <div class="section-title">Notes</div>
+    <div class="notes-box">${deal.notes}</div>
+  </div>`;
+      }
+      
+      // Footer
+      html += `
+  <div class="footer">
+    Printed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+  </div>
+</body>
+</html>`;
+      
+      // Open print window
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    }
     
     async function saveDeal() {
       const id = $('#deal-id').value;
