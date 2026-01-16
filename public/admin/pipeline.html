@@ -619,7 +619,7 @@
     
     function createDealCard(deal) {
       const card = createElement('div', { className: 'deal-card', draggable: true, dataset: { id: deal.id } });
-      const customer = deal.customers, thisEvents = dealEvents.filter(e => e.job_id === deal.id).slice(0, 2);
+      const customer = deal.customers, thisEvents = dealEvents.filter(e => e.job_id === deal.id);
       let html = `<div class="deal-card-title">${deal.name || 'Untitled'}</div>`;
       if (customer) html += `<div class="deal-card-customer">${customer.name}</div>`;
       if (thisEvents.length > 0) { 
