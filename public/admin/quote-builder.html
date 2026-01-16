@@ -469,6 +469,7 @@
                 <h3 class="card-title">Quote Details</h3>
               </div>
               <div class="card-body">
+                <input type="hidden" id="quote-deal-id" value="">
                 <div class="form-group">
                     <label class="form-label">Customer *</label>
                     <select id="customer-select" class="form-select" required>
@@ -690,8 +691,12 @@
     // Get quote ID from URL if editing
     const params = new URLSearchParams(window.location.search);
     quoteId = params.get('id');
+    const dealId = params.get('deal_id');
+    const dealName = params.get('deal_name');
+    const presetCustomerId = params.get('customer_id');
     console.log('URL:', window.location.href);
     console.log('Parsed quoteId:', quoteId);
+    console.log('Deal params:', { dealId, dealName, presetCustomerId });
     
     async function init() {
       // Always set up event listeners first
@@ -797,6 +802,18 @@
         // If editing, load quote
         if (quoteId) {
           await loadQuote(supabase);
+        } else if (dealId || presetCustomerId) {
+          // New quote from deal - pre-fill customer and title
+          if (presetCustomerId) {
+            $('#customer-select').value = presetCustomerId;
+          }
+          if (dealName) {
+            $('#quote-title').value = dealName;
+          }
+          // Store deal ID to link back when saving
+          if (dealId) {
+            $('#quote-deal-id').value = dealId;
+          }
         }
         
         updateSummary();
@@ -2340,6 +2357,12 @@
         // Update selected package ID
         if (selectedPackageId) {
           await supabase.from('quotes').update({ selected_package_id: selectedPackageId }).eq('id', quoteId);
+        }
+        
+        // Link quote to deal if this was created from a deal
+        const linkedDealId = $('#quote-deal-id').value;
+        if (linkedDealId) {
+          await supabase.from('jobs').update({ quote_id: quoteId }).eq('id', linkedDealId);
         }
         
         // TODO: Handle attachment uploads to Supabase Storage

@@ -240,7 +240,13 @@
             </div>
             <div class="form-group"><label class="form-label">Stage</label><select id="deal-stage" class="form-input"></select></div>
             <div class="form-group"><label class="form-label">Estimated Value</label><input type="number" id="deal-value" class="form-input" step="0.01" placeholder="0.00"></div>
-            <div class="form-group"><label class="form-label">Link to Quote</label><select id="deal-quote" class="form-input"><option value="">None</option></select></div>
+            <div class="form-group">
+              <label class="form-label">Link to Quote</label>
+              <div style="display: flex; gap: var(--space-sm);">
+                <select id="deal-quote" class="form-input" style="flex: 1;"><option value="">None</option></select>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="createQuoteForDeal()" title="Create new quote for this deal">+ New Quote</button>
+              </div>
+            </div>
           </div>
           <div class="form-section">
             <div class="form-section-title"><span>📅 Scheduled Dates</span><button type="button" class="btn btn-secondary btn-sm" onclick="addDealEvent()">+ Add Date</button></div>
@@ -949,6 +955,57 @@
       printWindow.onload = () => {
         printWindow.print();
       };
+    }
+    
+    async function createQuoteForDeal() {
+      const dealName = $('#deal-name').value;
+      const customerId = $('#deal-customer').value;
+      
+      if (!dealName) {
+        showToast('Please enter a deal name first', 'error');
+        return;
+      }
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const id = $('#deal-id').value;
+        let dealId = id;
+        
+        // Save the deal first
+        const data = { 
+          name: dealName, 
+          customer_id: customerId || null, 
+          stage: $('#deal-stage').value, 
+          estimated_value: parseFloat($('#deal-value').value) || null, 
+          quote_id: $('#deal-quote').value || null, 
+          notes: $('#deal-notes').value, 
+          job_items: currentDealItems, 
+          job_finishes: currentDealFinishes, 
+          updated_at: new Date().toISOString() 
+        };
+        
+        if (id) {
+          await supabase.from('jobs').update(data).eq('id', id);
+        } else {
+          const { data: numData } = await supabase.rpc('generate_job_number');
+          data.job_number = numData;
+          const { data: newDeal } = await supabase.from('jobs').insert([data]).select().single();
+          dealId = newDeal.id;
+        }
+        
+        await saveDealEvents(supabase, dealId);
+        
+        // Redirect to quote builder with deal info
+        const params = new URLSearchParams();
+        params.set('deal_id', dealId);
+        params.set('deal_name', dealName);
+        if (customerId) params.set('customer_id', customerId);
+        
+        window.location.href = `/admin/quote-builder.html?${params.toString()}`;
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to create quote', 'error');
+      }
     }
     
     async function saveDeal() {
