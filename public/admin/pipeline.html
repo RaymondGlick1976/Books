@@ -22,7 +22,8 @@
     .deal-card-title { font-weight: 600; font-size: 0.875rem; color: var(--color-text); margin-bottom: 4px; }
     .deal-card-customer { font-size: 0.8125rem; color: var(--color-text-muted); margin-bottom: var(--space-sm); }
     .deal-card-dates { font-size: 0.75rem; color: var(--color-text-muted); }
-    .deal-card-date { margin-top: 2px; }
+    .deal-card-date { margin-top: 4px; display: flex; flex-direction: column; }
+    .deal-card-date-label { font-weight: 600; color: var(--color-text); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
     .deal-card-value { font-size: 0.8125rem; font-weight: 600; color: var(--color-primary); margin-top: var(--space-sm); }
     .empty-column { text-align: center; padding: var(--space-xl); color: var(--color-text-muted); font-size: 0.8125rem; }
     .drop-zone { min-height: 100px; border: 2px dashed transparent; border-radius: var(--radius-md); transition: all 0.2s; }
@@ -516,7 +517,7 @@
             const dateDisplay = e.event_end_date && e.event_end_date !== e.event_date 
               ? `${formatDate(e.event_date)} - ${formatDate(e.event_end_date)}`
               : formatDate(e.event_date);
-            html += `<div class="deal-card-date">${et.icon} ${dateDisplay}</div>`; 
+            html += `<div class="deal-card-date"><span class="deal-card-date-label">${et.icon} ${et.name}</span>${dateDisplay}</div>`; 
           }
         }); 
         html += '</div>'; 
