@@ -495,65 +495,20 @@
           </div>
         </div>
         
-        <!-- Email Templates -->
+        <!-- Email Templates Link -->
         <div class="card mb-xl">
           <div class="card-header">
             <h3 class="card-title">Email Templates</h3>
           </div>
           <div class="card-body">
-            <div class="form-help" style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
-              <strong>Available Variables:</strong><br>
-              <code>{{customer_name}}</code> - Customer's full name<br>
-              <code>{{customer_first_name}}</code> - Customer's first name<br>
-              <code>{{quote_number}}</code> / <code>{{invoice_number}}</code> - Document number<br>
-              <code>{{quote_title}}</code> / <code>{{invoice_title}}</code> - Document title<br>
-              <code>{{total}}</code> - Total amount<br>
-              <code>{{amount_due}}</code> - Balance due<br>
-              <code>{{due_date}}</code> - Due date<br>
-              <code>{{company_name}}</code> - Your company name
-            </div>
-            
-            <!-- Quote Email -->
-            <div class="form-group">
-              <label class="form-label">Quote Email Subject</label>
-              <input type="text" id="quote-email-subject" class="form-input" value="Quote #{{quote_number}}: {{quote_title}}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Quote Email Message</label>
-              <textarea id="quote-email-body" class="form-input" rows="4">Hi {{customer_first_name}},
-
-Thank you for your interest in our services! We've prepared a quote for your project.
-
-Click the button below to view the full details and accept your quote.</textarea>
-              <div class="form-help">The quote details and view button are added automatically after this message.</div>
-            </div>
-            
-            <!-- Invoice Email -->
-            <div class="form-group" style="margin-top: var(--space-xl);">
-              <label class="form-label">Invoice Email Subject</label>
-              <input type="text" id="invoice-email-subject" class="form-input" value="Invoice #{{invoice_number}}: {{invoice_title}}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Invoice Email Message</label>
-              <textarea id="invoice-email-body" class="form-input" rows="4">Hi {{customer_first_name}},
-
-Here is your invoice for recent services. The total amount due is {{amount_due}}.
-
-Click the button below to view the full invoice and make a payment.</textarea>
-            </div>
-            
-            <!-- Payment Thank You -->
-            <div class="form-group" style="margin-top: var(--space-xl);">
-              <label class="form-label">Payment Confirmation Message</label>
-              <textarea id="payment-thank-you" class="form-input" rows="4">Thank you for your payment! We truly appreciate your business.
-
-Your payment has been received and a confirmation has been sent to your email address.
-
-If you have any questions about your project, please don't hesitate to reach out.</textarea>
-              <div class="form-help">Shown on the thank you page after a customer makes a payment.</div>
-            </div>
-            
-            <button type="button" class="btn btn-primary" onclick="saveEmailTemplates()">Save Email Templates</button>
+            <p class="text-muted mb-md">Manage all your email templates including quotes, invoices, payment confirmations, and deal stage notifications.</p>
+            <a href="/admin/email-templates.html" class="btn btn-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              Manage Email Templates
+            </a>
           </div>
         </div>
       </div>
@@ -677,15 +632,6 @@ If you have any questions about your project, please don't hesitate to reach out
           $('#notify-job-stage-changed').checked = notifs.job_stage_changed === true;
         }
         
-        if (settings.email_templates) {
-          const templates = settings.email_templates;
-          if (templates.quote_subject) $('#quote-email-subject').value = templates.quote_subject;
-          if (templates.quote_body) $('#quote-email-body').value = templates.quote_body;
-          if (templates.invoice_subject) $('#invoice-email-subject').value = templates.invoice_subject;
-          if (templates.invoice_body) $('#invoice-email-body').value = templates.invoice_body;
-          if (templates.payment_thank_you) $('#payment-thank-you').value = templates.payment_thank_you;
-        }
-        
         if (settings.terms_and_conditions) {
           const terms = settings.terms_and_conditions;
           if (terms.quote) $('#quote-terms').value = terms.quote;
@@ -712,17 +658,6 @@ If you have any questions about your project, please don't hesitate to reach out
         console.error('Save error:', err);
         showToast('Failed to save: ' + err.message, 'error');
       }
-    }
-    
-    async function saveEmailTemplates() {
-      const value = {
-        quote_subject: $('#quote-email-subject').value,
-        quote_body: $('#quote-email-body').value,
-        invoice_subject: $('#invoice-email-subject').value,
-        invoice_body: $('#invoice-email-body').value,
-        payment_thank_you: $('#payment-thank-you').value
-      };
-      await saveSetting('email_templates', value);
     }
     
     async function saveTerms() {

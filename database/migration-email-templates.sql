@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS email_templates (
   name VARCHAR(255) NOT NULL,
   subject VARCHAR(500) NOT NULL,
   body TEXT NOT NULL,
-  template_type VARCHAR(50) NOT NULL CHECK (template_type IN ('deal_stage', 'appointment')),
+  template_type VARCHAR(50) NOT NULL CHECK (template_type IN ('deal_stage', 'appointment', 'quote', 'invoice', 'payment')),
   stage_id VARCHAR(50) REFERENCES job_stages(stage_id) ON DELETE SET NULL,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -49,8 +49,9 @@ ALTER TABLE email_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all access to email_logs" ON email_logs;
 CREATE POLICY "Allow all access to email_logs" ON email_logs FOR ALL USING (true) WITH CHECK (true);
 
--- Insert a generic appointment reminder template (no stage_id needed)
+-- Insert default templates
 INSERT INTO email_templates (name, subject, body, template_type, stage_id) VALUES
+-- Appointment reminder
 (
   'Appointment Reminder',
   'Reminder: {{appointment_type}} on {{appointment_date}}',
@@ -71,8 +72,47 @@ Best regards,
 {{company_name}}',
   'appointment',
   NULL
+),
+-- Quote email
+(
+  'Quote Email',
+  'Quote #{{quote_number}}: {{quote_title}}',
+  'Hi {{first_name}},
+
+Thank you for your interest in our services! We''ve prepared a quote for your project.
+
+Click the button below to view the full details and accept your quote.',
+  'quote',
+  NULL
+),
+-- Invoice email
+(
+  'Invoice Email',
+  'Invoice #{{invoice_number}}: {{invoice_title}}',
+  'Hi {{first_name}},
+
+Here is your invoice for recent services. The total amount due is {{amount_due}}.
+
+Click the button below to view the full invoice and make a payment.',
+  'invoice',
+  NULL
+),
+-- Payment confirmation
+(
+  'Payment Confirmation',
+  'Payment Received - Thank You!',
+  'Thank you for your payment! We truly appreciate your business.
+
+Your payment has been received and a confirmation has been sent to your email address.
+
+If you have any questions about your project, please don''t hesitate to reach out.',
+  'payment',
+  NULL
 )
 ON CONFLICT DO NOTHING;
 
--- NOTE: Create deal stage templates from the Email Templates page
--- This ensures they use YOUR actual stage IDs from your pipeline
+-- If table already exists, add new template types to check constraint
+-- Run this separately if you get a constraint error:
+-- ALTER TABLE email_templates DROP CONSTRAINT IF EXISTS email_templates_template_type_check;
+-- ALTER TABLE email_templates ADD CONSTRAINT email_templates_template_type_check 
+--   CHECK (template_type IN ('deal_stage', 'appointment', 'quote', 'invoice', 'payment'));

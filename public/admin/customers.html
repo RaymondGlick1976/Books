@@ -772,8 +772,14 @@
       try {
         const supabase = await app.waitForSupabase();
         
+        // Valid database fields for customers table
+        const validFields = ['name', 'first_name', 'last_name', 'email', 'phone', 'address', 'city', 'state', 'zip', 'notes', 'lead_source_id'];
+        
         // Transform data
-        const customersToImport = csvData.map(row => {
+        const seenEmails = new Set();
+        const customersToImport = [];
+        
+        for (const row of csvData) {
           const customer = {};
           
           // Get values from mapping
@@ -785,7 +791,12 @@
             customer[target] = value;
           });
           
-          // Combine first_name + last_name into name if no full name
+          // Skip if no email or already seen this email
+          if (!customer.email) continue;
+          if (seenEmails.has(customer.email)) continue;
+          seenEmails.add(customer.email);
+          
+          // Combine first_name + last_name into name if no full name mapped
           if (!customer.name && (customer.first_name || customer.last_name)) {
             customer.name = [customer.first_name, customer.last_name].filter(Boolean).join(' ');
           }
@@ -795,72 +806,69 @@
             customer.address = customer.address + ', ' + customer.address2;
           }
           
-          // Clean up temporary fields
-          delete customer.first_name;
-          delete customer.last_name;
-          delete customer.address2;
+          // Skip if no name
+          if (!customer.name) continue;
           
-          return customer;
-        }).filter(c => c.name && c.email);
+          // Only keep valid database fields
+          const cleanCustomer = {};
+          for (const field of validFields) {
+            if (customer[field] !== undefined && customer[field] !== null) {
+              cleanCustomer[field] = customer[field];
+            }
+          }
+          
+          customersToImport.push(cleanCustomer);
+        }
         
         if (customersToImport.length === 0) {
           showToast('No valid customers to import', 'error');
           return;
         }
         
-        // Get existing emails to check for duplicates
-        const emails = customersToImport.map(c => c.email);
-        const { data: existingCustomers } = await supabase
-          .from('customers')
-          .select('email')
-          .in('email', emails);
-        
-        const existingEmails = new Set((existingCustomers || []).map(c => c.email));
-        
-        // Split into new and updates
-        const newCustomers = customersToImport.filter(c => !existingEmails.has(c.email));
-        const updateCustomers = customersToImport.filter(c => existingEmails.has(c.email));
-        
         let imported = 0;
-        let updated = 0;
         let failed = 0;
         
-        // Insert new customers in batches
-        if (newCustomers.length > 0) {
-          const batchSize = 50;
-          for (let i = 0; i < newCustomers.length; i += batchSize) {
-            const batch = newCustomers.slice(i, i + batchSize);
-            const { data, error } = await supabase
-              .from('customers')
-              .insert(batch)
-              .select();
-            
-            if (error) {
-              console.error('Insert batch error:', error);
-              failed += batch.length;
-            } else {
-              imported += data?.length || 0;
-            }
-          }
-        }
+        // Close the import modal 
+        const modal = document.querySelector('.modal-overlay');
+        if (modal) closeModal(modal);
         
-        // Update existing customers one by one
-        for (const customer of updateCustomers) {
-          const { error } = await supabase
+        showToast(`Starting import of ${customersToImport.length} customers...`, 'info');
+        
+        // Process in batches using upsert (handles duplicates automatically)
+        const batchSize = 50;
+        for (let i = 0; i < customersToImport.length; i += batchSize) {
+          const batch = customersToImport.slice(i, i + batchSize);
+          
+          // Use upsert with email as the conflict key
+          const { data, error } = await supabase
             .from('customers')
-            .update(customer)
-            .eq('email', customer.email);
+            .upsert(batch, { 
+              onConflict: 'email',
+              ignoreDuplicates: false 
+            })
+            .select();
           
           if (error) {
-            console.error('Update error for', customer.email, error);
-            failed++;
+            console.error('Upsert batch error:', error);
+            // Try individual upserts for this batch to identify specific failures
+            for (const customer of batch) {
+              const { error: singleError } = await supabase
+                .from('customers')
+                .upsert(customer, { onConflict: 'email' });
+              
+              if (singleError) {
+                console.error('Failed:', customer.email, singleError);
+                failed++;
+              } else {
+                imported++;
+              }
+            }
           } else {
-            updated++;
+            imported += data?.length || batch.length;
           }
         }
         
-        let message = `Imported ${imported} new customers`;
-        if (updated > 0) message += `, updated ${updated}`;
+        let message = `Imported/updated ${imported} customers`;
         if (failed > 0) message += `, ${failed} failed`;
         
         showToast(message, failed > 0 ? 'warning' : 'success');

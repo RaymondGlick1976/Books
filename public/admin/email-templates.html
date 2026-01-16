@@ -160,25 +160,31 @@
         <div class="variables-help">
           <h4>📝 Available Variables (click to copy)</h4>
           <p class="text-sm text-muted mb-sm">Use these in your templates - they'll be replaced with actual values when sending:</p>
-          <div>
+          <div id="variables-list">
             <span class="variable-tag" onclick="copyVariable('{{first_name}}', event)">{{first_name}}</span>
             <span class="variable-tag" onclick="copyVariable('{{customer_name}}', event)">{{customer_name}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{customer_email}}', event)">{{customer_email}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{deal_name}}', event)">{{deal_name}}</span>
             <span class="variable-tag" onclick="copyVariable('{{company_name}}', event)">{{company_name}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{shop_date}}', event)">{{shop_date}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{installation_date}}', event)">{{installation_date}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{deal_name}}', event)">{{deal_name}}</span>
             <span class="variable-tag" onclick="copyVariable('{{appointment_type}}', event)">{{appointment_type}}</span>
             <span class="variable-tag" onclick="copyVariable('{{appointment_date}}', event)">{{appointment_date}}</span>
             <span class="variable-tag" onclick="copyVariable('{{appointment_time}}', event)">{{appointment_time}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{appointment_location}}', event)">{{appointment_location}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{quote_number}}', event)">{{quote_number}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{quote_title}}', event)">{{quote_title}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{invoice_number}}', event)">{{invoice_number}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{invoice_title}}', event)">{{invoice_title}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{total}}', event)">{{total}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{amount_due}}', event)">{{amount_due}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{due_date}}', event)">{{due_date}}</span>
           </div>
         </div>
         
         <!-- Type Tabs -->
-        <div class="template-type-tabs">
-          <button class="template-type-tab active" data-type="deal_stage" onclick="filterByType('deal_stage')">📋 Deal Stage Templates</button>
-          <button class="template-type-tab" data-type="appointment" onclick="filterByType('appointment')">📅 Appointment Templates</button>
+        <div class="template-type-tabs" style="flex-wrap: wrap;">
+          <button class="template-type-tab active" data-type="deal_stage" onclick="filterByType('deal_stage')">📋 Deal Stages</button>
+          <button class="template-type-tab" data-type="appointment" onclick="filterByType('appointment')">📅 Appointments</button>
+          <button class="template-type-tab" data-type="quote" onclick="filterByType('quote')">📄 Quotes</button>
+          <button class="template-type-tab" data-type="invoice" onclick="filterByType('invoice')">🧾 Invoices</button>
+          <button class="template-type-tab" data-type="payment" onclick="filterByType('payment')">💳 Payments</button>
         </div>
         
         <!-- Templates List -->
@@ -239,6 +245,17 @@
       renderTemplates();
     }
     
+    function getTypeLabel(type) {
+      const labels = {
+        'deal_stage': 'deal stage',
+        'appointment': 'appointment',
+        'quote': 'quote',
+        'invoice': 'invoice',
+        'payment': 'payment confirmation'
+      };
+      return labels[type] || type;
+    }
+    
     function renderTemplates() {
       const container = $('#templates-container');
       const filtered = templates.filter(t => t.template_type === currentType);
@@ -246,7 +263,7 @@
       if (filtered.length === 0) {
         container.innerHTML = `
           <div class="text-center p-xl text-muted">
-            <p>No ${currentType === 'deal_stage' ? 'deal stage' : 'appointment'} templates yet.</p>
+            <p>No ${getTypeLabel(currentType)} templates yet.</p>
             <button class="btn btn-primary mt-md" onclick="showTemplateModal()">Create Your First Template</button>
           </div>
         `;
@@ -255,18 +272,25 @@
       
       container.innerHTML = filtered.map(template => {
         const stage = stages.find(s => s.stage_id === template.stage_id);
-        const stageBadge = stage 
-          ? `<span class="badge" style="background: ${stage.color}; color: white;">${stage.label}</span>`
-          : template.template_type === 'appointment' 
-            ? '<span class="badge badge-info">All Appointments</span>'
-            : '';
+        let badge = '';
+        if (template.template_type === 'deal_stage' && stage) {
+          badge = `<span class="badge" style="background: ${stage.color}; color: white;">${stage.label}</span>`;
+        } else if (template.template_type === 'appointment') {
+          badge = '<span class="badge badge-info">All Appointments</span>';
+        } else if (template.template_type === 'quote') {
+          badge = '<span class="badge" style="background: #10b981; color: white;">Quote Email</span>';
+        } else if (template.template_type === 'invoice') {
+          badge = '<span class="badge" style="background: #f59e0b; color: white;">Invoice Email</span>';
+        } else if (template.template_type === 'payment') {
+          badge = '<span class="badge" style="background: #8b5cf6; color: white;">Payment Confirmation</span>';
+        }
         
         return `
           <div class="template-card">
             <div class="template-card-header">
               <div>
                 <h3 class="template-card-title">${template.name}</h3>
-                <div class="template-card-meta">${stageBadge}</div>
+                <div class="template-card-meta">${badge}</div>
               </div>
               <div class="btn-group">
                 <button class="btn btn-secondary btn-sm" onclick="showTemplateModal('${template.id}')">Edit</button>
@@ -287,6 +311,7 @@
     function showTemplateModal(id = null) {
       const template = id ? templates.find(t => t.id === id) : null;
       const isEdit = !!template;
+      const defaultType = template?.template_type || currentType;
       
       const stageOptions = stages.map(s => 
         `<option value="${s.stage_id}" ${template?.stage_id === s.stage_id ? 'selected' : ''}>${s.label}</option>`
@@ -296,15 +321,18 @@
       content.innerHTML = `
         <div class="form-group">
           <label class="form-label">Template Name *</label>
-          <input type="text" id="template-name" class="form-input" value="${template?.name || ''}" required placeholder="e.g., Quote Sent Follow-up">
+          <input type="text" id="template-name" class="form-input" value="${template?.name || ''}" required placeholder="e.g., Quote Follow-up">
         </div>
         
         <div class="grid grid-cols-2 gap-lg">
           <div class="form-group">
             <label class="form-label">Template Type *</label>
             <select id="template-type" class="form-select" onchange="toggleStageSelect()">
-              <option value="deal_stage" ${template?.template_type === 'deal_stage' || !template ? 'selected' : ''}>Deal Stage</option>
-              <option value="appointment" ${template?.template_type === 'appointment' ? 'selected' : ''}>Appointment</option>
+              <option value="deal_stage" ${defaultType === 'deal_stage' ? 'selected' : ''}>Deal Stage</option>
+              <option value="appointment" ${defaultType === 'appointment' ? 'selected' : ''}>Appointment</option>
+              <option value="quote" ${defaultType === 'quote' ? 'selected' : ''}>Quote Email</option>
+              <option value="invoice" ${defaultType === 'invoice' ? 'selected' : ''}>Invoice Email</option>
+              <option value="payment" ${defaultType === 'payment' ? 'selected' : ''}>Payment Confirmation</option>
             </select>
           </div>
           <div class="form-group" id="stage-select-group">
@@ -318,24 +346,18 @@
         
         <div class="form-group">
           <label class="form-label">Email Subject *</label>
-          <input type="text" id="template-subject" class="form-input" value="${template?.subject?.replace(/"/g, '&quot;') || ''}" required placeholder="e.g., Your quote is ready - {{deal_name}}">
+          <input type="text" id="template-subject" class="form-input" value="${template?.subject?.replace(/"/g, '&quot;') || ''}" required placeholder="e.g., Your quote is ready">
         </div>
         
         <div class="form-group">
           <label class="form-label">Email Body *</label>
           <textarea id="template-body" class="form-textarea" rows="10" required placeholder="Hi {{first_name}},&#10;&#10;Your message here...">${template?.body || ''}</textarea>
+          <p class="form-help" id="body-help"></p>
         </div>
         
-        <div class="variables-insert-help" style="background: var(--color-bg-soft); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-top: var(--space-sm);">
+        <div class="variables-insert-help" id="variables-insert" style="background: var(--color-bg-soft); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-top: var(--space-sm);">
           <p class="text-sm text-muted mb-xs"><strong>Click to insert variable:</strong></p>
-          <span class="variable-tag" onclick="insertVariable('{{first_name}}')">{{first_name}}</span>
-          <span class="variable-tag" onclick="insertVariable('{{customer_name}}')">{{customer_name}}</span>
-          <span class="variable-tag" onclick="insertVariable('{{deal_name}}')">{{deal_name}}</span>
-          <span class="variable-tag" onclick="insertVariable('{{company_name}}')">{{company_name}}</span>
-          <span class="variable-tag" onclick="insertVariable('{{appointment_type}}')">{{appointment_type}}</span>
-          <span class="variable-tag" onclick="insertVariable('{{appointment_date}}')">{{appointment_date}}</span>
-          <span class="variable-tag" onclick="insertVariable('{{appointment_time}}')">{{appointment_time}}</span>
-          <span class="variable-tag" onclick="insertVariable('{{installation_date}}')">{{installation_date}}</span>
+          <div id="modal-variables"></div>
         </div>
       `;
       
@@ -352,10 +374,52 @@
         size: 'lg'
       });
       
+      // Update variables and help text based on type
+      window.updateVariablesForType = () => {
+        const type = $('#template-type').value;
+        const variablesDiv = $('#modal-variables');
+        const helpDiv = $('#body-help');
+        
+        const commonVars = ['{{first_name}}', '{{customer_name}}', '{{company_name}}'];
+        let typeVars = [];
+        let helpText = '';
+        
+        switch(type) {
+          case 'deal_stage':
+            typeVars = ['{{deal_name}}', '{{installation_date}}', '{{shop_date}}'];
+            helpText = 'For deal stage emails sent manually from the pipeline.';
+            break;
+          case 'appointment':
+            typeVars = ['{{appointment_type}}', '{{appointment_date}}', '{{appointment_time}}', '{{appointment_location}}'];
+            helpText = 'For appointment reminder emails.';
+            break;
+          case 'quote':
+            typeVars = ['{{quote_number}}', '{{quote_title}}', '{{total}}'];
+            helpText = 'Sent when you email a quote. The quote link button is added automatically.';
+            break;
+          case 'invoice':
+            typeVars = ['{{invoice_number}}', '{{invoice_title}}', '{{total}}', '{{amount_due}}', '{{due_date}}'];
+            helpText = 'Sent when you email an invoice. The payment link button is added automatically.';
+            break;
+          case 'payment':
+            typeVars = ['{{total}}', '{{invoice_number}}'];
+            helpText = 'Shown on the thank you page after a customer makes a payment.';
+            break;
+        }
+        
+        const allVars = [...commonVars, ...typeVars];
+        variablesDiv.innerHTML = allVars.map(v => 
+          `<span class="variable-tag" onclick="insertVariable('${v}')">${v}</span>`
+        ).join(' ');
+        
+        helpDiv.textContent = helpText;
+      };
+      
       // Toggle stage select visibility
       window.toggleStageSelect = () => {
         const type = $('#template-type').value;
         $('#stage-select-group').style.display = type === 'deal_stage' ? 'block' : 'none';
+        updateVariablesForType();
       };
       toggleStageSelect();
       
