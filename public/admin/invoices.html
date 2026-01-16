@@ -229,7 +229,7 @@
                 <tr>
                   <td>
                     <div>${item.description}</div>
-                    ${item.details ? `<div class="text-sm text-muted">${item.details}</div>` : ''}
+                    ${item.details ? `<div class="text-sm text-muted" style="white-space: pre-wrap;">${item.details}</div>` : ''}
                   </td>
                   <td style="text-align: right;">${item.quantity}</td>
                   <td style="text-align: right;">${formatCurrency(item.unit_price)}</td>

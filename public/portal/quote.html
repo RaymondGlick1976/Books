@@ -101,6 +101,7 @@
     .line-item-details {
       font-size: 0.875rem;
       color: var(--color-text-light);
+      white-space: pre-wrap;
     }
     
     .line-item-price {
@@ -638,6 +639,7 @@
       font-size: 0.875rem;
       margin-bottom: var(--space-md);
       min-height: 40px;
+      white-space: pre-wrap;
     }
     
     .package-price {
@@ -1167,7 +1169,7 @@
         // Content
         const contentDiv = createElement('div', { className: 'line-item-content' });
         contentDiv.appendChild(createElement('h4', { textContent: item.description }));
-        if (item.details) contentDiv.appendChild(createElement('p', { textContent: item.details }));
+        if (item.details) contentDiv.appendChild(createElement('p', { className: 'line-item-details', textContent: item.details }));
         itemEl.appendChild(contentDiv);
         
         // Price

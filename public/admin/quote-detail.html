@@ -456,7 +456,7 @@
           <tr>
             <td>
               <div class="item-name">${item.description}</div>
-              ${item.details ? `<div class="text-sm text-muted">${item.details}</div>` : ''}
+              ${item.details ? `<div class="text-sm text-muted" style="white-space: pre-wrap;">${item.details}</div>` : ''}
             </td>
             <td class="text-right">${qty.toFixed(2)}</td>
             <td class="text-right">${formatCurrency(price)} / Ea</td>
@@ -495,7 +495,7 @@
           <tr style="color: var(--color-text-muted);">
             <td>
               <div class="item-name" style="color: #f59e0b;">${item.description}</div>
-              ${item.details ? `<div class="text-sm">${item.details}</div>` : ''}
+              ${item.details ? `<div class="text-sm" style="white-space: pre-wrap;">${item.details}</div>` : ''}
             </td>
             <td class="text-right">${qty.toFixed(2)}</td>
             <td class="text-right">${formatCurrency(price)} / Ea</td>
