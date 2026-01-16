@@ -161,17 +161,17 @@
           <h4>📝 Available Variables (click to copy)</h4>
           <p class="text-sm text-muted mb-sm">Use these in your templates - they'll be replaced with actual values when sending:</p>
           <div>
-            <span class="variable-tag" onclick="copyVariable('{{first_name}}')">{{first_name}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{customer_name}}')">{{customer_name}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{customer_email}}')">{{customer_email}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{deal_name}}')">{{deal_name}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{company_name}}')">{{company_name}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{shop_date}}')">{{shop_date}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{installation_date}}')">{{installation_date}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{appointment_type}}')">{{appointment_type}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{appointment_date}}')">{{appointment_date}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{appointment_time}}')">{{appointment_time}}</span>
-            <span class="variable-tag" onclick="copyVariable('{{appointment_location}}')">{{appointment_location}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{first_name}}', event)">{{first_name}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{customer_name}}', event)">{{customer_name}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{customer_email}}', event)">{{customer_email}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{deal_name}}', event)">{{deal_name}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{company_name}}', event)">{{company_name}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{shop_date}}', event)">{{shop_date}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{installation_date}}', event)">{{installation_date}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{appointment_type}}', event)">{{appointment_type}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{appointment_date}}', event)">{{appointment_date}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{appointment_time}}', event)">{{appointment_time}}</span>
+            <span class="variable-tag" onclick="copyVariable('{{appointment_location}}', event)">{{appointment_location}}</span>
           </div>
         </div>
         
@@ -318,14 +318,24 @@
         
         <div class="form-group">
           <label class="form-label">Email Subject *</label>
-          <input type="text" id="template-subject" class="form-input" value="${template?.subject || ''}" required placeholder="e.g., Your quote is ready - {{deal_name}}">
-          <p class="form-help">Use variables like {{first_name}}, {{deal_name}}, {{appointment_type}}</p>
+          <input type="text" id="template-subject" class="form-input" value="${template?.subject?.replace(/"/g, '&quot;') || ''}" required placeholder="e.g., Your quote is ready - {{deal_name}}">
         </div>
         
         <div class="form-group">
           <label class="form-label">Email Body *</label>
-          <textarea id="template-body" class="form-textarea" rows="12" required placeholder="Hi {{first_name}},&#10;&#10;Your message here...">${template?.body || ''}</textarea>
-          <p class="form-help">Plain text email. Variables will be replaced when sending.</p>
+          <textarea id="template-body" class="form-textarea" rows="10" required placeholder="Hi {{first_name}},&#10;&#10;Your message here...">${template?.body || ''}</textarea>
+        </div>
+        
+        <div class="variables-insert-help" style="background: var(--color-bg-soft); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); margin-top: var(--space-sm);">
+          <p class="text-sm text-muted mb-xs"><strong>Click to insert variable:</strong></p>
+          <span class="variable-tag" onclick="insertVariable('{{first_name}}')">{{first_name}}</span>
+          <span class="variable-tag" onclick="insertVariable('{{customer_name}}')">{{customer_name}}</span>
+          <span class="variable-tag" onclick="insertVariable('{{deal_name}}')">{{deal_name}}</span>
+          <span class="variable-tag" onclick="insertVariable('{{company_name}}')">{{company_name}}</span>
+          <span class="variable-tag" onclick="insertVariable('{{appointment_type}}')">{{appointment_type}}</span>
+          <span class="variable-tag" onclick="insertVariable('{{appointment_date}}')">{{appointment_date}}</span>
+          <span class="variable-tag" onclick="insertVariable('{{appointment_time}}')">{{appointment_time}}</span>
+          <span class="variable-tag" onclick="insertVariable('{{installation_date}}')">{{installation_date}}</span>
         </div>
       `;
       
@@ -348,6 +358,17 @@
         $('#stage-select-group').style.display = type === 'deal_stage' ? 'block' : 'none';
       };
       toggleStageSelect();
+      
+      // Insert variable at cursor position in body textarea
+      window.insertVariable = (variable) => {
+        const textarea = $('#template-body');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        textarea.value = text.substring(0, start) + variable + text.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+        textarea.focus();
+      };
       
       cancelBtn.onclick = () => closeModal(modal);
       saveBtn.onclick = async () => {
@@ -398,7 +419,11 @@
       }
     }
     
-    function copyVariable(variable) {
+    function copyVariable(variable, event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       navigator.clipboard.writeText(variable);
       showToast('Copied: ' + variable, 'success');
     }
