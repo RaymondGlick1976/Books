@@ -1027,10 +1027,16 @@
       $('#loading-state').style.display = 'none';
       $('#quote-content').style.display = 'block';
       
-      // Hide navigation for public access
+      // Show portal login link for public access instead of nav
       if (isPublicAccess) {
         const nav = $('#portal-nav');
-        if (nav) nav.style.display = 'none';
+        if (nav) {
+          nav.innerHTML = `
+            <a href="/portal/login.html" class="portal-nav-link" style="background: rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 16px;">
+              🔐 Sign into Customer Portal
+            </a>
+          `;
+        }
       }
       
       // Status banner

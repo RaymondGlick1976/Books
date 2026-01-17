@@ -125,6 +125,13 @@ exports.handler = async (event) => {
           <p style="color: #94a3b8; font-size: 14px;">
             This link is unique to your quote and doesn't require a login.
           </p>
+          
+          <div style="border-top: 1px solid #e2e8f0; margin-top: 20px; padding-top: 20px;">
+            <p style="color: #64748b; font-size: 14px; margin: 0;">
+              Want to view all your quotes, invoices, and upload files? 
+              <a href="${siteUrl}/portal/login.html" style="color: #6366f1; text-decoration: underline;">Access your Customer Portal</a>
+            </p>
+          </div>
         </div>
         
         <div style="padding: 20px; text-align: center; background: #1e293b; color: #94a3b8; font-size: 12px;">

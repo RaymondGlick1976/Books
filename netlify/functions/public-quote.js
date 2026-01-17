@@ -9,11 +9,13 @@ exports.handler = async (event) => {
   if (corsResponse) return corsResponse;
   
   const token = event.queryStringParameters?.token;
+  const isPreview = event.queryStringParameters?.preview === '1';
+  
   if (!token) {
     return error('Access token required', 400);
   }
   
-  console.log('Looking up quote with token:', token.substring(0, 8) + '...');
+  console.log('Looking up quote with token:', token.substring(0, 8) + '...', isPreview ? '(admin preview)' : '');
   
   const supabase = getSupabase();
   
@@ -86,8 +88,8 @@ exports.handler = async (event) => {
       console.log('Packages table may not exist yet:', e.message);
     }
     
-    // Update to viewed if sent
-    if (quote.status === 'sent') {
+    // Update to viewed if sent (skip for admin preview)
+    if (quote.status === 'sent' && !isPreview) {
       await supabase
         .from('quotes')
         .update({
@@ -100,20 +102,22 @@ exports.handler = async (event) => {
       quote.viewed_at = new Date().toISOString();
     }
     
-    // Log this view (track all views, not just the first)
-    try {
-      await supabase.from('quote_views').insert({
-        quote_id: quote.id,
-        source: 'public',
-        ip_address: event.headers['x-forwarded-for']?.split(',')[0] || event.headers['client-ip'] || null,
-        user_agent: event.headers['user-agent'] || null
-      });
-      
-      // Increment view count
-      await supabase.rpc('increment_quote_views', { quote_uuid: quote.id });
-    } catch (viewErr) {
-      // Don't fail the request if view logging fails
-      console.log('View logging error (non-fatal):', viewErr.message);
+    // Log this view (track all views, not just the first) - skip for admin preview
+    if (!isPreview) {
+      try {
+        await supabase.from('quote_views').insert({
+          quote_id: quote.id,
+          source: 'public',
+          ip_address: event.headers['x-forwarded-for']?.split(',')[0] || event.headers['client-ip'] || null,
+          user_agent: event.headers['user-agent'] || null
+        });
+        
+        // Increment view count
+        await supabase.rpc('increment_quote_views', { quote_uuid: quote.id });
+      } catch (viewErr) {
+        // Don't fail the request if view logging fails
+        console.log('View logging error (non-fatal):', viewErr.message);
+      }
     }
     
     // Remove internal notes before sending

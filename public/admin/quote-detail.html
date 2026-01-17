@@ -398,9 +398,10 @@
       $('#edit-quote-btn').href = `/admin/quote-builder.html?id=${quote.id}`;
       
       // Customer view button - only show if token exists, otherwise show generate button
+      // Add &preview=1 so view tracking knows it's admin previewing, not customer
       const customerViewBtn = $('#customer-view-btn');
       if (quote.access_token) {
-        customerViewBtn.href = `/portal/quote.html?token=${quote.access_token}`;
+        customerViewBtn.href = `/portal/quote.html?token=${quote.access_token}&preview=1`;
         customerViewBtn.textContent = '👁️ Customer View';
       } else {
         customerViewBtn.href = '#';
@@ -412,7 +413,7 @@
             const token = crypto.randomUUID();
             await supabase.from('quotes').update({ access_token: token }).eq('id', quote.id);
             quote.access_token = token;
-            customerViewBtn.href = `/portal/quote.html?token=${token}`;
+            customerViewBtn.href = `/portal/quote.html?token=${token}&preview=1`;
             customerViewBtn.textContent = '👁️ Customer View';
             customerViewBtn.onclick = null;
             customerViewBtn.target = '_blank';
