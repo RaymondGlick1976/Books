@@ -1614,7 +1614,14 @@
       
       content.innerHTML = `
         <div class="mb-lg">
-          <h4 style="margin: 0 0 var(--space-xs);">${item.description || 'Line Item'}</h4>
+          <div class="form-group">
+            <label class="form-label">Item Name</label>
+            <input type="text" id="edit-item-description" class="form-input" value="${item.description || ''}" placeholder="Item name...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Details / Description</label>
+            <textarea id="edit-item-details" class="form-textarea" rows="4" placeholder="Item details...">${item.details || ''}</textarea>
+          </div>
           <p class="text-muted text-sm" style="margin: 0;">Base price: ${formatCurrency(basePrice)}</p>
         </div>
         <div id="attr-instances"></div>
@@ -1682,6 +1689,8 @@
         
         // Update the line item
         const finalPrice = basePrice + attributeTotal;
+        lineItems[index].description = content.querySelector('#edit-item-description').value.trim() || lineItems[index].description;
+        lineItems[index].details = content.querySelector('#edit-item-details').value.trim();
         lineItems[index].attributeSelections = selections;
         lineItems[index].unitPrice = Math.round(finalPrice * 100) / 100;
         lineItems[index].basePrice = basePrice;
