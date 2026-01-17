@@ -153,6 +153,19 @@
           </div>
         </div>
         
+        <!-- View Activity -->
+        <div class="section-card" id="view-activity-section" style="display: none;">
+          <div class="section-header">
+            <div class="section-title">👁️ View Activity</div>
+            <span class="text-muted text-sm" id="view-count-badge"></span>
+          </div>
+          <div class="section-body">
+            <div id="view-activity-list">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+        
         <!-- Line Items -->
         <div class="section-card">
           <div class="section-header">
@@ -299,6 +312,7 @@
     let customer = null;
     let lineItems = [];
     let changeOrders = [];
+    let quoteViews = [];
     let coItems = [];
     const TAX_RATE = 0.0625;
     
@@ -346,6 +360,20 @@
           .eq('quote_id', quoteId)
           .order('created_at');
         changeOrders = cos || [];
+        
+        // Load quote views (with error handling for new table)
+        try {
+          const { data: views } = await supabase
+            .from('quote_views')
+            .select('*')
+            .eq('quote_id', quoteId)
+            .order('viewed_at', { ascending: false })
+            .limit(20);
+          quoteViews = views || [];
+        } catch (e) {
+          console.log('Quote views table may not exist yet');
+          quoteViews = [];
+        }
         
         renderQuote();
         
@@ -415,6 +443,9 @@
         </div>
       `;
       
+      // Render view activity
+      renderViewActivity();
+      
       // Render line items (non-optional only, or selected options)
       const acceptedItems = lineItems.filter(item => !item.is_optional || item.is_selected);
       
@@ -439,6 +470,81 @@
       $('#quote-notes').innerHTML = quote.notes ? quote.notes.replace(/\n/g, '<br>') : '<span class="text-muted">No notes</span>';
     }
     
+    function renderViewActivity() {
+      const section = $('#view-activity-section');
+      const countBadge = $('#view-count-badge');
+      const list = $('#view-activity-list');
+      
+      // Show section if there are views or if quote was viewed
+      if (quoteViews.length > 0 || quote.viewed_at || quote.view_count > 0) {
+        section.style.display = 'block';
+        
+        const viewCount = quote.view_count || quoteViews.length;
+        countBadge.textContent = `${viewCount} view${viewCount !== 1 ? 's' : ''}`;
+        
+        if (quoteViews.length > 0) {
+          list.innerHTML = quoteViews.map(v => {
+            const viewDate = new Date(v.viewed_at);
+            const timeAgo = getTimeAgo(viewDate);
+            const sourceIcon = v.source === 'portal' ? '🔐' : '📧';
+            const sourceLabel = v.source === 'portal' ? 'Customer Portal' : 'Email Link';
+            
+            return `
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--color-border-light);">
+                <div>
+                  <span style="font-weight: 500;">${sourceIcon} ${sourceLabel}</span>
+                  <span class="text-muted text-sm" style="margin-left: var(--space-sm);">${timeAgo}</span>
+                </div>
+                <div class="text-muted text-sm">${formatDateTime(v.viewed_at)}</div>
+              </div>
+            `;
+          }).join('');
+        } else if (quote.viewed_at) {
+          // Fallback for quotes viewed before tracking was added
+          list.innerHTML = `
+            <div style="padding: 8px 0;">
+              <span>📧 First viewed</span>
+              <span class="text-muted text-sm" style="margin-left: var(--space-sm);">${formatDateTime(quote.viewed_at)}</span>
+            </div>
+          `;
+        } else {
+          list.innerHTML = '<p class="text-muted">View details will appear here when the quote is viewed.</p>';
+        }
+      }
+    }
+    
+    function getTimeAgo(date) {
+      const seconds = Math.floor((new Date() - date) / 1000);
+      const intervals = [
+        { label: 'year', seconds: 31536000 },
+        { label: 'month', seconds: 2592000 },
+        { label: 'week', seconds: 604800 },
+        { label: 'day', seconds: 86400 },
+        { label: 'hour', seconds: 3600 },
+        { label: 'minute', seconds: 60 }
+      ];
+      
+      for (const interval of intervals) {
+        const count = Math.floor(seconds / interval.seconds);
+        if (count >= 1) {
+          return `${count} ${interval.label}${count !== 1 ? 's' : ''} ago`;
+        }
+      }
+      return 'just now';
+    }
+    
+    function formatDateTime(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
+
     function renderLineItems(items, bodySelector, footerSelector) {
       let subtotal = 0, tax = 0;
       

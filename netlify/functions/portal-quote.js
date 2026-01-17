@@ -77,6 +77,22 @@ exports.handler = async (event) => {
       console.log('Packages table may not exist yet:', e.message);
     }
     
+    // Log this view
+    try {
+      await supabase.from('quote_views').insert({
+        quote_id: quote.id,
+        source: 'portal',
+        ip_address: event.headers['x-forwarded-for']?.split(',')[0] || event.headers['client-ip'] || null,
+        user_agent: event.headers['user-agent'] || null
+      });
+      
+      // Increment view count
+      await supabase.rpc('increment_quote_views', { quote_uuid: quote.id });
+    } catch (viewErr) {
+      // Don't fail the request if view logging fails
+      console.log('View logging error (non-fatal):', viewErr.message);
+    }
+    
     return success({
       quote,
       line_items: lineItems || [],

@@ -100,6 +100,22 @@ exports.handler = async (event) => {
       quote.viewed_at = new Date().toISOString();
     }
     
+    // Log this view (track all views, not just the first)
+    try {
+      await supabase.from('quote_views').insert({
+        quote_id: quote.id,
+        source: 'public',
+        ip_address: event.headers['x-forwarded-for']?.split(',')[0] || event.headers['client-ip'] || null,
+        user_agent: event.headers['user-agent'] || null
+      });
+      
+      // Increment view count
+      await supabase.rpc('increment_quote_views', { quote_uuid: quote.id });
+    } catch (viewErr) {
+      // Don't fail the request if view logging fails
+      console.log('View logging error (non-fatal):', viewErr.message);
+    }
+    
     // Remove internal notes before sending
     delete quote.internal_notes;
     
