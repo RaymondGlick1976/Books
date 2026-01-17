@@ -1622,6 +1622,10 @@
             <label class="form-label">Details / Description</label>
             <textarea id="edit-item-details" class="form-textarea" rows="4" placeholder="Item details...">${item.details || ''}</textarea>
           </div>
+          <div class="form-group" style="display: flex; align-items: center; gap: var(--space-sm);">
+            <input type="checkbox" id="edit-item-taxable" ${item.isTaxable ? 'checked' : ''}>
+            <label for="edit-item-taxable" class="form-label" style="margin: 0;">Taxable</label>
+          </div>
           <p class="text-muted text-sm" style="margin: 0;">Base price: ${formatCurrency(basePrice)}</p>
         </div>
         <div id="attr-instances"></div>
@@ -1691,6 +1695,7 @@
         const finalPrice = basePrice + attributeTotal;
         lineItems[index].description = content.querySelector('#edit-item-description').value.trim() || lineItems[index].description;
         lineItems[index].details = content.querySelector('#edit-item-details').value.trim();
+        lineItems[index].isTaxable = content.querySelector('#edit-item-taxable').checked;
         lineItems[index].attributeSelections = selections;
         lineItems[index].unitPrice = Math.round(finalPrice * 100) / 100;
         lineItems[index].basePrice = basePrice;
