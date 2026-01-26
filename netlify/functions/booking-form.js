@@ -1,10 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
-
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -20,7 +15,26 @@ exports.handler = async (event) => {
   }
 
   try {
+    // Check environment variables
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing environment variables');
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Server configuration error',
+          details: 'Missing database credentials'
+        })
+      };
+    }
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
     const slug = event.queryStringParameters?.slug || 'default';
+    console.log('Fetching form with slug:', slug);
     
     // Get form by slug
     const { data: form, error: formError } = await supabase
@@ -30,20 +44,37 @@ exports.handler = async (event) => {
       .eq('is_active', true)
       .single();
     
-    if (formError || !form) {
+    if (formError) {
+      console.error('Form query error:', formError);
       return {
         statusCode: 404,
         headers,
-        body: JSON.stringify({ error: 'Form not found' })
+        body: JSON.stringify({ 
+          error: 'Form not found',
+          details: formError.message,
+          slug: slug
+        })
+      };
+    }
+    
+    if (!form) {
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({ error: 'Form not found', slug: slug })
       };
     }
     
     // Get custom questions
-    const { data: questions } = await supabase
+    const { data: questions, error: questionsError } = await supabase
       .from('booking_form_questions')
       .select('*')
       .eq('form_id', form.id)
       .order('sort_order');
+    
+    if (questionsError) {
+      console.error('Questions query error:', questionsError);
+    }
     
     return {
       statusCode: 200,
@@ -55,11 +86,14 @@ exports.handler = async (event) => {
     };
     
   } catch (err) {
-    console.error('Error:', err);
+    console.error('Booking form error:', err);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Server error' })
+      body: JSON.stringify({ 
+        error: 'Server error',
+        message: err.message 
+      })
     };
   }
 };
