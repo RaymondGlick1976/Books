@@ -39,7 +39,7 @@
     style.id = 'hcd-booking-styles';
     style.textContent = `
       .hcd-booking-form * { box-sizing: border-box; margin: 0; padding: 0; }
-      .hcd-booking-form { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+      .hcd-booking-form { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; padding: 24px; border-radius: 8px; }
       .hcd-form-header { text-align: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
       .hcd-form-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; color: var(--hcd-primary, #6366f1); }
       .hcd-form-desc { color: #666; font-size: 0.95rem; }
