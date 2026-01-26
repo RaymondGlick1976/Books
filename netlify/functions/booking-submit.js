@@ -151,8 +151,125 @@ exports.handler = async (event) => {
       .update({ submission_count: (form?.submission_count || 0) + 1 })
       .eq('id', data.form_id);
     
-    // Send notification email (if configured)
-    // TODO: Add email notification here
+    // Send notification email to admin
+    try {
+      // Get company settings for notification email
+      const { data: companySettings } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'company')
+        .single();
+      
+      // Get notification preferences
+      const { data: notifSettings } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'notifications')
+        .single();
+      
+      const notifications = notifSettings?.value || {};
+      const company = companySettings?.value || {};
+      
+      // Check if new_booking notification is enabled (defaults to true)
+      if (notifications.new_booking === false) {
+        console.log('New booking notifications disabled');
+      } else {
+        const notificationEmail = company.notification_email || company.email || process.env.ADMIN_EMAIL;
+        
+        if (notificationEmail) {
+          const fromEmail = company.email || process.env.FROM_EMAIL || 'noreply@homesteadcabinetdesign.com';
+          const companyName = company.name || 'Homestead Cabinet Design';
+        
+        // Build email body
+        const emailSubject = `🔔 New Lead: ${data.first_name} ${data.last_name} - ${form?.name || 'Booking Form'}`;
+        
+        let emailBody = `New booking form submission received!\n\n`;
+        emailBody += `=== Contact Information ===\n`;
+        emailBody += `Name: ${data.first_name} ${data.last_name}\n`;
+        emailBody += `Email: ${data.email}\n`;
+        emailBody += `Phone: ${data.phone || 'Not provided'}\n`;
+        
+        if (data.address) {
+          emailBody += `\n=== Address ===\n`;
+          emailBody += `${data.address}\n`;
+          if (data.city || data.state || data.zip) {
+            emailBody += `${data.city || ''}, ${data.state || ''} ${data.zip || ''}\n`;
+          }
+        }
+        
+        if (data.service_details) {
+          emailBody += `\n=== Service Details ===\n`;
+          emailBody += `${data.service_details}\n`;
+        }
+        
+        if (data.how_heard) {
+          emailBody += `\n=== How They Heard About Us ===\n`;
+          emailBody += `${data.how_heard}\n`;
+        }
+        
+        if (data.preferred_date || data.preferred_time) {
+          emailBody += `\n=== Preferred Appointment ===\n`;
+          if (data.preferred_date) emailBody += `Date: ${data.preferred_date}\n`;
+          if (data.preferred_time) emailBody += `Time: ${data.preferred_time}\n`;
+        }
+        
+        if (attachmentUrls.length > 0) {
+          emailBody += `\n=== Attachments ===\n`;
+          emailBody += `${attachmentUrls.length} photo(s) uploaded\n`;
+          attachmentUrls.forEach((url, i) => {
+            emailBody += `Photo ${i + 1}: ${url}\n`;
+          });
+        }
+        
+        emailBody += `\n=== Form Details ===\n`;
+        emailBody += `Form: ${form?.name || 'Unknown'}\n`;
+        emailBody += `Job Number: ${jobNumber}\n`;
+        emailBody += `Submitted: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}\n`;
+        emailBody += `\n---\nView this lead in your admin dashboard.`;
+        
+        // Send via Resend or SendGrid
+        if (process.env.RESEND_API_KEY) {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: `${companyName} <${fromEmail}>`,
+              to: [notificationEmail],
+              subject: emailSubject,
+              text: emailBody
+            })
+          });
+          console.log('Notification email sent to:', notificationEmail);
+        } else if (process.env.SENDGRID_API_KEY) {
+          await fetch('https://api.sendgrid.com/v3/mail/send', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              personalizations: [{ to: [{ email: notificationEmail }] }],
+              from: { email: fromEmail, name: companyName },
+              subject: emailSubject,
+              content: [{ type: 'text/plain', value: emailBody }]
+            })
+          });
+          console.log('Notification email sent to:', notificationEmail);
+        } else {
+          console.log('No email provider configured. Would send notification to:', notificationEmail);
+          console.log('Subject:', emailSubject);
+        }
+        } else {
+          console.log('No notification email configured');
+        }
+      }
+    } catch (emailErr) {
+      // Don't fail the submission if email fails
+      console.error('Failed to send notification email:', emailErr);
+    }
     
     return {
       statusCode: 200,

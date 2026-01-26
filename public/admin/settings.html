@@ -139,13 +139,20 @@
               </div>
               <div class="grid grid-cols-2 gap-lg">
                 <div class="form-group">
+                  <label class="form-label">Notification Email</label>
+                  <input type="email" name="notification_email" id="company-notification-email" class="form-input" placeholder="Where to send new lead alerts (defaults to company email)">
+                </div>
+                <div class="form-group">
                   <label class="form-label">Phone</label>
                   <input type="tel" name="phone" id="company-phone" class="form-input">
                 </div>
+              </div>
+              <div class="grid grid-cols-2 gap-lg">
                 <div class="form-group">
                   <label class="form-label">Website</label>
                   <input type="url" name="website" id="company-website" class="form-input" value="https://homesteadcabinetdesign.com">
                 </div>
+                <div class="form-group"></div>
               </div>
               <div class="form-group">
                 <label class="form-label">Address</label>
@@ -383,6 +390,13 @@
                   <span class="notification-label">New Appointment</span>
                   <label class="toggle-switch">
                     <input type="checkbox" name="notify_new_appointment" id="notify-new-appointment" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="notification-row">
+                  <span class="notification-label">New Booking Form Submission</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" name="notify_new_booking" id="notify-new-booking" checked>
                     <span class="toggle-slider"></span>
                   </label>
                 </div>
@@ -707,6 +721,7 @@
           const company = settings.company;
           $('#company-name').value = company.name || '';
           $('#company-email').value = company.email || '';
+          $('#company-notification-email').value = company.notification_email || '';
           $('#company-phone').value = company.phone || '';
           $('#company-website').value = company.website || '';
           $('#company-address').value = company.address || '';
@@ -738,6 +753,7 @@
         if (settings.notifications) {
           const notifs = settings.notifications;
           $('#notify-new-appointment').checked = notifs.new_appointment !== false;
+          $('#notify-new-booking').checked = notifs.new_booking !== false;
           $('#notify-quote-accepted').checked = notifs.quote_accepted !== false;
           $('#notify-quote-declined').checked = notifs.quote_declined !== false;
           $('#notify-quote-viewed').checked = notifs.quote_viewed !== false;
@@ -789,6 +805,7 @@
       const value = {
         name: $('#company-name').value,
         email: $('#company-email').value,
+        notification_email: $('#company-notification-email').value,
         phone: $('#company-phone').value,
         website: $('#company-website').value,
         address: $('#company-address').value,
@@ -832,6 +849,7 @@
       e.preventDefault();
       const value = {
         new_appointment: $('#notify-new-appointment').checked,
+        new_booking: $('#notify-new-booking').checked,
         quote_accepted: $('#notify-quote-accepted').checked,
         quote_declined: $('#notify-quote-declined').checked,
         quote_viewed: $('#notify-quote-viewed').checked,
