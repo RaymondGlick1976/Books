@@ -28,6 +28,14 @@
   to = "/book.html"
   status = 200
 
+# CORS headers for API functions (cross-origin embeds)
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+
 # Environment variables (set these in Netlify dashboard)
 # SUPABASE_URL
 # SUPABASE_ANON_KEY
