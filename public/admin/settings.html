@@ -574,6 +574,57 @@
             </a>
           </div>
         </div>
+        
+        <!-- QuickBooks Integration -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">QuickBooks Online Integration</h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-md">Connect to QuickBooks Online to sync customers and invoices.</p>
+            
+            <div id="qb-status">
+              <div class="loading">Checking connection...</div>
+            </div>
+            
+            <div id="qb-connected" style="display: none;">
+              <div style="background: var(--color-success-bg); border: 1px solid var(--color-success); border-radius: var(--radius-md); padding: var(--space-md); margin-bottom: var(--space-md);">
+                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  <span style="font-weight: 500; color: var(--color-success);">Connected to QuickBooks</span>
+                </div>
+                <div class="text-muted text-sm" style="margin-top: var(--space-xs);" id="qb-connected-info"></div>
+              </div>
+              <button type="button" class="btn btn-secondary" onclick="disconnectQuickBooks()">
+                Disconnect QuickBooks
+              </button>
+            </div>
+            
+            <div id="qb-disconnected" style="display: none;">
+              <button type="button" class="btn btn-primary" onclick="connectQuickBooks()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                Connect to QuickBooks
+              </button>
+              <p class="text-muted text-sm" style="margin-top: var(--space-sm);">
+                You'll be redirected to QuickBooks to authorize the connection.
+              </p>
+            </div>
+            
+            <div id="qb-not-configured" style="display: none;">
+              <div style="background: var(--color-warning-bg); border: 1px solid var(--color-warning); border-radius: var(--radius-md); padding: var(--space-md);">
+                <p style="margin: 0; color: var(--color-warning-dark);">
+                  <strong>Setup Required:</strong> QuickBooks integration requires environment variables to be configured (QB_CLIENT_ID, QB_CLIENT_SECRET).
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -2008,8 +2059,104 @@
       showToast('Finish type deleted', 'success');
     };
     
+    // =============================================
+    // QUICKBOOKS FUNCTIONS
+    // =============================================
+    
+    async function checkQBStatus() {
+      try {
+        const response = await fetch('/.netlify/functions/qb-status');
+        const data = await response.json();
+        
+        document.getElementById('qb-status').style.display = 'none';
+        
+        if (data.error && data.error.includes('not configured')) {
+          document.getElementById('qb-not-configured').style.display = 'block';
+        } else if (data.connected) {
+          document.getElementById('qb-connected').style.display = 'block';
+          const connectedAt = new Date(data.connectedAt).toLocaleDateString();
+          document.getElementById('qb-connected-info').textContent = `Connected on ${connectedAt} • Company ID: ${data.realmId}`;
+        } else {
+          document.getElementById('qb-disconnected').style.display = 'block';
+        }
+      } catch (err) {
+        console.error('QB status check failed:', err);
+        document.getElementById('qb-status').innerHTML = '<span class="text-muted">Unable to check QuickBooks status</span>';
+      }
+    }
+    
+    async function connectQuickBooks() {
+      try {
+        const response = await fetch('/.netlify/functions/qb-auth');
+        const data = await response.json();
+        
+        if (data.error) {
+          if (data.error.includes('not configured')) {
+            document.getElementById('qb-disconnected').style.display = 'none';
+            document.getElementById('qb-not-configured').style.display = 'block';
+          } else {
+            showToast(data.error, 'error');
+          }
+          return;
+        }
+        
+        // Redirect to QuickBooks auth
+        window.location.href = data.authUrl;
+      } catch (err) {
+        showToast('Failed to start QuickBooks connection', 'error');
+      }
+    }
+    
+    async function disconnectQuickBooks() {
+      if (!confirm('Are you sure you want to disconnect QuickBooks? This won\'t affect data already synced.')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch('/.netlify/functions/qb-disconnect', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+          showToast('QuickBooks disconnected', 'success');
+          document.getElementById('qb-connected').style.display = 'none';
+          document.getElementById('qb-disconnected').style.display = 'block';
+        } else {
+          showToast(data.error || 'Failed to disconnect', 'error');
+        }
+      } catch (err) {
+        showToast('Failed to disconnect QuickBooks', 'error');
+      }
+    }
+    
+    // Check for QB callback params
+    function handleQBCallback() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('qb_connected') === '1') {
+        showToast('QuickBooks connected successfully!', 'success');
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (params.get('qb_error')) {
+        const errorMap = {
+          'missing_params': 'QuickBooks authorization was incomplete',
+          'token_exchange_failed': 'Failed to complete QuickBooks authorization',
+          'save_failed': 'Failed to save QuickBooks connection',
+          'not_configured': 'QuickBooks is not configured yet',
+          'unexpected': 'An unexpected error occurred'
+        };
+        const error = params.get('qb_error');
+        showToast(errorMap[error] || error, 'error');
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+    
     // Initialize - load all data in parallel
     async function initSettings() {
+      // Handle QB callback params
+      handleQBCallback();
+      
+      // Check QB status
+      checkQBStatus();
+      
       const supabase = await app.waitForSupabase();
       
       // Load all data in parallel

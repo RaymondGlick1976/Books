@@ -142,6 +142,7 @@
       
       data.forEach(invoice => {
         const row = createElement('tr');
+        const qbIcon = invoice.qb_invoice_id ? `<span title="Synced to QuickBooks" style="color: var(--color-success); margin-right: 4px;">✓QB</span>` : '';
         row.innerHTML = `
           <td><strong>${invoice.invoice_number}</strong></td>
           <td>
@@ -152,12 +153,13 @@
           <td>${formatCurrency(invoice.total)}</td>
           <td>${formatCurrency(invoice.amount_paid)}</td>
           <td class="${invoice.amount_due > 0 ? 'text-danger font-bold' : ''}">${formatCurrency(invoice.amount_due)}</td>
-          <td><span class="badge badge-${invoice.status}">${invoice.status}</span></td>
+          <td><span class="badge badge-${invoice.status}">${invoice.status}</span> ${qbIcon}</td>
           <td>${invoice.due_date ? formatDate(invoice.due_date) : '—'}</td>
           <td class="table-actions">
             <button class="btn btn-ghost btn-sm" onclick="viewInvoice('${invoice.id}')">View</button>
             ${invoice.status === 'draft' ? `<button class="btn btn-ghost btn-sm" onclick="sendInvoice('${invoice.id}')">Send</button>` : ''}
             ${invoice.amount_due > 0 ? `<button class="btn btn-ghost btn-sm" onclick="recordPayment('${invoice.id}')">Record Payment</button>` : ''}
+            ${!invoice.qb_invoice_id ? `<button class="btn btn-ghost btn-sm" onclick="syncInvoiceToQB('${invoice.id}').then(loadInvoices)" title="Sync to QuickBooks">QB</button>` : ''}
           </td>
         `;
         tbody.appendChild(row);
@@ -300,6 +302,17 @@
         </div>
         
         ${paymentsHtml}
+        
+        ${invoice.qb_invoice_id ? `
+          <div style="margin-top: var(--space-lg); padding: var(--space-sm); background: var(--color-success-bg); border-radius: var(--radius-sm); display: flex; align-items: center; gap: var(--space-sm);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <span class="text-sm" style="color: var(--color-success);">Synced to QuickBooks</span>
+            <span class="text-sm text-muted">${invoice.qb_synced_at ? '• ' + formatDate(invoice.qb_synced_at) : ''}</span>
+          </div>
+        ` : ''}
       `;
       
       const footer = createElement('div', { className: 'btn-group' });
@@ -308,6 +321,22 @@
         textContent: 'Close'
       });
       footer.appendChild(closeBtn);
+      
+      // QuickBooks sync button (if not already synced)
+      if (!invoice.qb_invoice_id) {
+        const qbBtn = createElement('button', {
+          className: 'btn btn-ghost',
+          innerHTML: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>Sync to QuickBooks`
+        });
+        qbBtn.addEventListener('click', async () => {
+          qbBtn.disabled = true;
+          qbBtn.textContent = 'Syncing...';
+          await syncInvoiceToQB(id);
+          closeModal(modal);
+          loadInvoices(); // Refresh list
+        });
+        footer.appendChild(qbBtn);
+      }
       
       if (invoice.amount_due > 0) {
         const payBtn = createElement('button', {
@@ -469,6 +498,35 @@
       } catch (err) {
         console.error('Payment error:', err);
         showToast('Failed to record payment: ' + err.message, 'error');
+      }
+    }
+    
+    // Sync invoice to QuickBooks
+    async function syncInvoiceToQB(invoiceId) {
+      try {
+        const response = await fetch('/.netlify/functions/qb-sync-invoice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoiceId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          if (data.error.includes('not connected')) {
+            showToast('QuickBooks not connected. Go to Settings to connect.', 'error');
+          } else {
+            showToast('QuickBooks sync failed: ' + data.error, 'error');
+          }
+          return false;
+        }
+        
+        showToast(data.message || 'Synced to QuickBooks!', 'success');
+        return true;
+      } catch (err) {
+        console.error('QB sync error:', err);
+        showToast('Failed to sync to QuickBooks', 'error');
+        return false;
       }
     }
     
