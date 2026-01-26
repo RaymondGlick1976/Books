@@ -93,6 +93,35 @@
     .search-select-empty { padding: var(--space-md); color: var(--color-text-muted); font-size: 0.875rem; text-align: center; }
     .search-select-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--color-text-muted); padding: 4px; display: none; }
     .search-select.has-value .search-select-clear { display: block; }
+    
+    /* Mobile responsive styles */
+    @media (max-width: 768px) {
+      .pipeline-header { flex-direction: column; align-items: stretch; gap: var(--space-sm); }
+      .pipeline-actions { justify-content: flex-start; overflow-x: auto; padding-bottom: var(--space-xs); }
+      .pipeline-actions .btn { white-space: nowrap; }
+      .view-toggle { order: -1; width: 100%; }
+      .view-toggle button { flex: 1; }
+      .calendar-header { flex-direction: column; gap: var(--space-sm); padding: var(--space-md); }
+      .calendar-nav { width: 100%; justify-content: space-between; }
+      .calendar-title { min-width: auto; }
+      .calendar-legend { padding: var(--space-xs) var(--space-sm); gap: var(--space-sm); }
+      .calendar-legend-item { font-size: 0.65rem; }
+      .calendar-day { min-height: 55px; }
+      .calendar-event { font-size: 0.5rem; padding: 1px 2px; }
+      .list-view-table { font-size: 0.75rem; }
+      .list-view-table th, .list-view-table td { padding: var(--space-xs) var(--space-sm); }
+      .deal-card { padding: var(--space-sm); }
+      .deal-card-title { font-size: 0.8rem; }
+      .deal-card-customer { font-size: 0.75rem; }
+      .dropdown-menu { position: fixed !important; left: var(--space-sm) !important; right: var(--space-sm) !important; bottom: var(--space-sm) !important; top: auto !important; max-height: 50vh; overflow-y: auto; }
+    }
+    
+    @media (max-width: 480px) {
+      .calendar-day-header { font-size: 0.6rem; padding: var(--space-xs); }
+      .calendar-day { min-height: 45px; }
+      .calendar-day-number { width: 18px; height: 18px; font-size: 0.6rem; }
+      .pipeline-column { flex: 0 0 92vw; }
+    }
   </style>
 </head>
 <body>

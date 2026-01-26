@@ -955,3 +955,95 @@ window.requireAuth = requireAuth;
 window.requirePermission = requirePermission;
 window.requireAdmin = requireAdmin;
 window.applyRoleRestrictions = applyRoleRestrictions;
+
+// =============================================
+// MOBILE MENU FUNCTIONALITY
+// =============================================
+
+function initMobileMenu() {
+  // Only run on pages with sidebar
+  const sidebar = document.querySelector('.app-sidebar');
+  const appMain = document.querySelector('.app-main');
+  if (!sidebar || !appMain) return;
+  
+  // Create mobile menu toggle button
+  const toggleBtn = document.createElement('button');
+  toggleBtn.className = 'mobile-menu-toggle';
+  toggleBtn.setAttribute('aria-label', 'Toggle menu');
+  toggleBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  `;
+  
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'sidebar-overlay';
+  
+  // Insert toggle button at beginning of header or main
+  const header = document.querySelector('.app-header');
+  if (header) {
+    header.insertBefore(toggleBtn, header.firstChild);
+  } else {
+    appMain.insertBefore(toggleBtn, appMain.firstChild);
+  }
+  
+  // Insert overlay
+  document.body.appendChild(overlay);
+  
+  // Toggle sidebar
+  function toggleSidebar() {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+    document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
+  }
+  
+  // Close sidebar
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  
+  // Event listeners
+  toggleBtn.addEventListener('click', toggleSidebar);
+  overlay.addEventListener('click', closeSidebar);
+  
+  // Close on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+      closeSidebar();
+    }
+  });
+  
+  // Close sidebar when clicking a nav link (for mobile)
+  sidebar.querySelectorAll('.sidebar-nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        closeSidebar();
+      }
+    });
+  });
+  
+  // Handle resize - close sidebar if resizing to desktop
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (window.innerWidth > 768) {
+        closeSidebar();
+      }
+    }, 100);
+  });
+}
+
+// Initialize mobile menu when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMobileMenu);
+} else {
+  initMobileMenu();
+}
+
+window.initMobileMenu = initMobileMenu;
