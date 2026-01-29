@@ -2530,7 +2530,9 @@
                 <div style="text-align: right;">Price</div>
                 <div></div>
               </div>
-              ${pkg.items.map((item, itemIndex) => `
+              ${pkg.items.map((item, itemIndex) => {
+                const hasAttrs = item.attributeSelections && item.attributeSelections.length > 0;
+                return `
                 <div class="package-item-row ${!item.is_included ? 'excluded' : ''}" data-item-index="${itemIndex}">
                   <div class="package-item-drag">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2538,7 +2540,16 @@
                       <line x1="16" y1="6" x2="16" y2="6.01"/><line x1="16" y1="12" x2="16" y2="12.01"/><line x1="16" y1="18" x2="16" y2="18.01"/>
                     </svg>
                   </div>
-                  <div class="package-item-name">${item.name}</div>
+                  <div>
+                    <div class="package-item-name">${item.name}</div>
+                    ${hasAttrs ? `
+                      <div style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 2px;">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 2px;">
+                          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                        ${item.attributeSelections.length} attr${item.attributeSelections.length > 1 ? 's' : ''} (hidden)
+                      </div>
+                    ` : ''}
+                  </div>
                   <div>${item.quantity}</div>
                   <div style="text-align: right;">${item.is_included ? formatCurrency(item.price) : ''}</div>
                   <div>
@@ -2547,7 +2558,7 @@
                     </button>
                   </div>
                 </div>
-              `).join('')}
+              `}).join('')}
               <div class="package-total-row">
                 <div></div>
                 <div>Bundle Total</div>
@@ -2778,10 +2789,14 @@
       });
       
       // Add custom item option
+      const hasAttrs = pricingAttributes.length > 0;
       content.appendChild(createElement('div', {
         className: 'mt-lg pt-lg',
         style: 'border-top: 1px solid var(--color-border);',
-        innerHTML: '<button class="btn btn-link" id="add-custom-pkg-item">+ Add Custom Item</button>'
+        innerHTML: `
+          <button class="btn btn-link" id="add-custom-pkg-item">+ Add Custom Item</button>
+          ${hasAttrs ? '<p class="text-muted text-sm mt-md"><strong>Tip:</strong> After adding items, click the edit button to add pricing attributes. Attributes are hidden from customer view.</p>' : ''}
+        `
       }));
       
       const footer = createElement('div', { className: 'btn-group' }, [
@@ -2803,6 +2818,8 @@
                   description: item.description || '',
                   quantity: 1,
                   price: item.default_price || 0,
+                  basePrice: item.default_price || 0,
+                  attributeSelections: [],
                   is_included: true
                 });
               }
@@ -2833,27 +2850,247 @@
     
     function showPackageItemModal(packageIndex, item = null, itemIndex = null) {
       const isEdit = item !== null;
+      const basePrice = item?.basePrice || item?.price || 0;
+      
+      // Reconstruct attribute instances from saved selections (like editLineItem)
+      let attributeInstances = [];
+      if (item?.attributeSelections && item.attributeSelections.length > 0) {
+        attributeInstances = item.attributeSelections.map(sel => {
+          const attr = pricingAttributes.find(a => a.id === sel.attribute_id);
+          return {
+            attrId: sel.attribute_id,
+            attrName: sel.attribute_name,
+            attr: attr,
+            optionId: sel.option_id,
+            quantity: sel.quantity || 1,
+            unitPriceOverride: sel.unit_price
+          };
+        }).filter(inst => inst.attr);
+      }
+      
+      const PRICING_LABELS = {
+        sqft: 'Sq. Ft.',
+        linft: 'Lin. Ft.',
+        each: 'Qty',
+        percentage: '%'
+      };
       
       const content = createElement('div');
-      content.innerHTML = `
+      
+      function calculateAttributeTotal() {
+        let total = 0;
+        const currentBasePrice = parseFloat(content.querySelector('#item-price')?.value) || 0;
+        
+        attributeInstances.forEach(inst => {
+          const attr = inst.attr;
+          const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+          if (selectedOpt) {
+            const pricingType = selectedOpt.pricing_type || 'each';
+            const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
+            const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
+            total += calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice);
+          }
+        });
+        return total;
+      }
+      
+      function updatePkgTotalPreview() {
+        const basePriceVal = parseFloat(content.querySelector('#item-price')?.value) || 0;
+        const attrTotal = calculateAttributeTotal();
+        const total = basePriceVal + attrTotal;
+        
+        const previewEl = content.querySelector('#pkg-preview-price');
+        const attrTotalEl = content.querySelector('#pkg-attr-total');
+        const basePriceEl = content.querySelector('#pkg-base-price');
+        
+        if (basePriceEl) basePriceEl.textContent = formatCurrency(basePriceVal);
+        if (attrTotalEl) attrTotalEl.textContent = formatCurrency(attrTotal);
+        if (previewEl) previewEl.textContent = formatCurrency(total);
+      }
+      
+      function renderPkgAttributeSelectors() {
+        const currentBasePrice = parseFloat(content.querySelector('#item-price')?.value) || 0;
+        
+        const instancesHtml = attributeInstances.length > 0 ? attributeInstances.map((inst, idx) => {
+          const attr = inst.attr;
+          const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+          const pricingType = selectedOpt?.pricing_type || 'each';
+          const defaultUnitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
+          const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
+          const showQty = selectedOpt && pricingType !== 'percentage';
+          const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice) : 0;
+          
+          return \`
+            <div class="attr-instance" data-idx="\${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+                <label class="form-label" style="margin: 0;">\${attr.name}</label>
+                <button type="button" class="btn btn-ghost btn-sm pkg-remove-instance" data-idx="\${idx}" title="Remove">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr \${selectedOpt ? '80px' : ''} \${showQty ? '80px' : ''} 90px; gap: var(--space-sm); align-items: end;">
+                <div>
+                  <select class="form-select pkg-attr-select" data-idx="\${idx}">
+                    <option value="">-- Select --</option>
+                    \${(attr.options || []).sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map(opt => {
+                      const optPrice = parseFloat(opt.unit_price ?? opt.flat_adjustment ?? 0);
+                      const optType = opt.pricing_type || 'each';
+                      let priceLabel = '';
+                      if (optType === 'percentage') {
+                        priceLabel = optPrice ? \` (\${optPrice}%)\` : '';
+                      } else if (optPrice) {
+                        priceLabel = \` ($\${optPrice.toFixed(2)})\`;
+                      }
+                      return \`
+                        <option value="\${opt.id}" 
+                          data-unit-price="\${optPrice}"
+                          data-pricing-type="\${optType}"
+                          data-name="\${opt.name}"
+                          \${inst.optionId === opt.id ? 'selected' : ''}>
+                          \${opt.name}\${priceLabel}
+                        </option>
+                      \`;
+                    }).join('')}
+                  </select>
+                </div>
+                \${selectedOpt ? \`
+                  <div>
+                    <label class="form-label text-sm">\${pricingType === 'percentage' ? '%' : '$/unit'}</label>
+                    <input type="number" class="form-input pkg-attr-unit-price" data-idx="\${idx}" value="\${effectiveUnitPrice}" min="0" step="0.01" style="font-size: 0.875rem;">
+                  </div>
+                \` : ''}
+                \${showQty ? \`
+                  <div>
+                    <label class="form-label text-sm">\${PRICING_LABELS[pricingType] || 'Qty'}</label>
+                    <input type="number" class="form-input pkg-attr-qty" data-idx="\${idx}" value="\${inst.quantity}" min="0" step="0.01" style="font-size: 0.875rem;">
+                  </div>
+                \` : ''}
+                <div style="text-align: right;">
+                  <label class="form-label text-sm">Total</label>
+                  <div class="pkg-attr-line-total" style="font-weight: 600; color: var(--color-primary);">\${formatCurrency(lineTotal)}</div>
+                </div>
+              </div>
+            </div>
+          \`;
+        }).join('') : '<p class="text-muted text-center" style="padding: var(--space-md);">No attributes. Click a button below to add pricing attributes.</p>';
+        
+        const addButtonsHtml = pricingAttributes.length > 0 ? pricingAttributes.map(attr => \`
+          <button type="button" class="btn btn-secondary btn-sm pkg-add-attr-btn" data-attr-id="\${attr.id}" style="margin-right: var(--space-sm); margin-bottom: var(--space-sm);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            \${attr.name}
+          </button>
+        \`).join('') : '<p class="text-muted text-sm">No pricing attributes configured. Add them in Catalog → Pricing Attributes.</p>';
+        
+        content.querySelector('#pkg-attr-instances').innerHTML = instancesHtml;
+        content.querySelector('#pkg-add-buttons').innerHTML = addButtonsHtml;
+        
+        updatePkgTotalPreview();
+        attachPkgInstanceListeners();
+      }
+      
+      function attachPkgInstanceListeners() {
+        // Option selection changes
+        content.querySelectorAll('.pkg-attr-select').forEach(sel => {
+          sel.addEventListener('change', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            attributeInstances[idx].optionId = e.target.value;
+            attributeInstances[idx].unitPriceOverride = null;
+            renderPkgAttributeSelectors();
+          });
+        });
+        
+        // Unit price changes
+        content.querySelectorAll('.pkg-attr-unit-price').forEach(inp => {
+          inp.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            const newPrice = parseFloat(e.target.value) || 0;
+            attributeInstances[idx].unitPriceOverride = newPrice;
+            
+            const inst = attributeInstances[idx];
+            const attr = inst.attr;
+            const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+            const currentBasePrice = parseFloat(content.querySelector('#item-price')?.value) || 0;
+            if (selectedOpt) {
+              const pricingType = selectedOpt.pricing_type || 'each';
+              const lineTotal = calculateAttributeLineTotalWithPrice(newPrice, pricingType, inst.quantity, currentBasePrice);
+              e.target.closest('.attr-instance').querySelector('.pkg-attr-line-total').textContent = formatCurrency(lineTotal);
+            }
+            updatePkgTotalPreview();
+          });
+        });
+        
+        // Quantity changes
+        content.querySelectorAll('.pkg-attr-qty').forEach(inp => {
+          inp.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            attributeInstances[idx].quantity = parseFloat(e.target.value) || 0;
+            
+            const inst = attributeInstances[idx];
+            const attr = inst.attr;
+            const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+            const currentBasePrice = parseFloat(content.querySelector('#item-price')?.value) || 0;
+            if (selectedOpt) {
+              const pricingType = selectedOpt.pricing_type || 'each';
+              const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
+              const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
+              const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice);
+              e.target.closest('.attr-instance').querySelector('.pkg-attr-line-total').textContent = formatCurrency(lineTotal);
+            }
+            updatePkgTotalPreview();
+          });
+        });
+        
+        // Remove instance buttons
+        content.querySelectorAll('.pkg-remove-instance').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.target.closest('.pkg-remove-instance').dataset.idx);
+            attributeInstances.splice(idx, 1);
+            renderPkgAttributeSelectors();
+          });
+        });
+        
+        // Add attribute buttons
+        content.querySelectorAll('.pkg-add-attr-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const attrId = e.target.closest('.pkg-add-attr-btn').dataset.attrId;
+            const attr = pricingAttributes.find(a => a.id === attrId);
+            if (attr) {
+              attributeInstances.push({
+                attrId: attr.id,
+                attrName: attr.name,
+                attr: attr,
+                optionId: '',
+                quantity: 1,
+                unitPriceOverride: null
+              });
+              renderPkgAttributeSelectors();
+            }
+          });
+        });
+      }
+      
+      // Determine if we have pricing attributes available
+      const hasAttributes = pricingAttributes.length > 0;
+      
+      content.innerHTML = \`
         <div class="form-group">
           <label class="form-label">Item Name *</label>
-          <input type="text" id="item-name" class="form-input" value="${item?.name || ''}" placeholder="e.g., Cabinet Refacing">
+          <input type="text" id="item-name" class="form-input" value="\${item?.name || ''}" placeholder="e.g., Cabinet Refacing">
         </div>
         <div class="form-group">
           <label class="form-label">Description <span class="form-label-optional">(optional)</span></label>
-          <textarea id="item-description" class="form-textarea" rows="2" placeholder="Item description...">${item?.description || ''}</textarea>
+          <textarea id="item-description" class="form-textarea" rows="2" placeholder="Item description...">\${item?.description || ''}</textarea>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
           <div class="form-group">
             <label class="form-label">Quantity</label>
-            <input type="number" id="item-qty" class="form-input" value="${item?.quantity || 1}" min="0" step="0.01">
+            <input type="number" id="item-qty" class="form-input" value="\${item?.quantity || 1}" min="0" step="0.01">
           </div>
           <div class="form-group">
-            <label class="form-label">Price</label>
+            <label class="form-label">\${hasAttributes ? 'Base Price' : 'Price'}</label>
             <div class="input-group">
               <span class="input-group-prepend">$</span>
-              <input type="number" id="item-price" class="form-input" value="${item?.price || 0}" min="0" step="0.01">
+              <input type="number" id="item-price" class="form-input" value="\${item?.basePrice || item?.price || 0}" min="0" step="0.01">
             </div>
           </div>
         </div>
@@ -2864,12 +3101,51 @@
               <div class="toggle-description">Uncheck to show as excluded (crossed out)</div>
             </div>
             <label class="toggle">
-              <input type="checkbox" id="item-included" ${item?.is_included !== false ? 'checked' : ''}>
+              <input type="checkbox" id="item-included" \${item?.is_included !== false ? 'checked' : ''}>
               <span class="toggle-slider"></span>
             </label>
           </div>
         </div>
-      `;
+        
+        \${hasAttributes ? \`
+          <div style="margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: 1px solid var(--color-border);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md);">
+              <h4 style="margin: 0;">Pricing Attributes</h4>
+              <span class="badge badge-info" style="font-size: 0.7rem;">Hidden from customer</span>
+            </div>
+            <div id="pkg-attr-instances"></div>
+            <div id="pkg-add-buttons" style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+              <label class="form-label" style="margin-bottom: var(--space-sm);">Add Attributes:</label>
+            </div>
+            <div class="price-preview" style="padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
+              <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-sm);">
+                <span class="text-muted">Base Price:</span>
+                <span id="pkg-base-price">\${formatCurrency(basePrice)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-sm);">
+                <span class="text-muted">Attributes Total:</span>
+                <span id="pkg-attr-total">\${formatCurrency(0)}</span>
+              </div>
+              <hr style="border: none; border-top: 1px solid var(--color-border); margin: var(--space-sm) 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 600;">Total Price:</span>
+                <span id="pkg-preview-price" style="font-size: 1.25rem; font-weight: 600; color: var(--color-primary);">\${formatCurrency(basePrice)}</span>
+              </div>
+            </div>
+          </div>
+        \` : ''}
+      \`;
+      
+      // Render attributes if available
+      if (hasAttributes) {
+        setTimeout(() => {
+          renderPkgAttributeSelectors();
+          // Add listener to base price input to recalculate totals
+          content.querySelector('#item-price').addEventListener('input', () => {
+            renderPkgAttributeSelectors();
+          });
+        }, 0);
+      }
       
       const footer = createElement('div', { className: 'flex justify-between' });
       const leftBtns = createElement('div');
@@ -2895,9 +3171,10 @@
       footer.appendChild(rightBtns);
       
       const modal = createModal({
-        title: isEdit ? 'Edit Item' : 'Add Item to Bundle',
+        title: isEdit ? 'Edit Bundle Item' : 'Add Item to Bundle',
         content,
-        footer
+        footer,
+        size: hasAttributes ? 'lg' : 'md'
       });
       
       cancelBtn.onclick = () => closeModal(modal);
@@ -2908,11 +3185,40 @@
           return;
         }
         
+        // Calculate final price with attributes
+        const basePriceVal = parseFloat($('#item-price').value) || 0;
+        let attributeTotal = 0;
+        const selections = [];
+        
+        attributeInstances.forEach(inst => {
+          const attr = inst.attr;
+          const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+          if (selectedOpt) {
+            const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
+            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, basePriceVal);
+            attributeTotal += lineTotal;
+            selections.push({
+              attribute_id: inst.attrId,
+              attribute_name: inst.attrName,
+              option_id: inst.optionId,
+              option_name: selectedOpt.name,
+              unit_price: effectiveUnitPrice,
+              pricing_type: selectedOpt.pricing_type || 'each',
+              quantity: inst.quantity,
+              line_total: lineTotal
+            });
+          }
+        });
+        
+        const finalPrice = basePriceVal + attributeTotal;
+        
         const newItem = {
           name,
           description: $('#item-description').value.trim(),
           quantity: parseFloat($('#item-qty').value) || 1,
-          price: parseFloat($('#item-price').value) || 0,
+          price: Math.round(finalPrice * 100) / 100,
+          basePrice: basePriceVal,
+          attributeSelections: selections,
           is_included: $('#item-included').checked
         };
         
