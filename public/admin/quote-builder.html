@@ -914,8 +914,11 @@
           await supabase.from('quote_line_items').insert(lineItemsToInsert);
         }
         
-        // Save packages
-        await supabase.from('quote_package_items').delete().match({ package_id: packages.filter(p => p.id).map(p => p.id) });
+        // Save packages - first delete existing items, then packages
+        const existingPkgIds = packages.filter(p => p.id).map(p => p.id);
+        if (existingPkgIds.length > 0) {
+          await supabase.from('quote_package_items').delete().in('package_id', existingPkgIds);
+        }
         await supabase.from('quote_packages').delete().eq('quote_id', quoteId);
         
         for (let i = 0; i < packages.length; i++) {
@@ -2774,8 +2777,11 @@
         
         await supabase.from('quote_line_items').insert(lineItemsToInsert);
         
-        // Save packages
-        await supabase.from('quote_package_items').delete().match({ package_id: packages.filter(p => p.id).map(p => p.id) });
+        // Save packages - first delete existing items, then packages
+        const existingPkgIds = packages.filter(p => p.id).map(p => p.id);
+        if (existingPkgIds.length > 0) {
+          await supabase.from('quote_package_items').delete().in('package_id', existingPkgIds);
+        }
         await supabase.from('quote_packages').delete().eq('quote_id', quoteId);
         
         let selectedPackageId = null;
@@ -2813,6 +2819,8 @@
               description: item.description,
               quantity: item.quantity,
               price: item.price,
+              base_price: item.basePrice || item.price,
+              attribute_selections: item.attributeSelections || [],
               is_included: item.is_included,
               show_price: item.show_price !== false,
               sort_order: idx
