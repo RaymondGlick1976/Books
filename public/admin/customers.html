@@ -91,6 +91,129 @@
       font-size: 0.75rem;
       color: var(--color-text-muted);
     }
+    
+    /* Email Compose Modal Styles */
+    .email-compose-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--color-border);
+      margin-bottom: var(--space-lg);
+    }
+    .email-compose-tab {
+      padding: var(--space-sm) var(--space-lg);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      transition: all var(--transition-fast);
+    }
+    .email-compose-tab:hover {
+      color: var(--color-text);
+    }
+    .email-compose-tab.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+    .email-compose-content {
+      display: none;
+    }
+    .email-compose-content.active {
+      display: block;
+    }
+    .template-select-card {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      margin-bottom: var(--space-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .template-select-card:hover {
+      border-color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
+    .template-select-card.selected {
+      border-color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
+    .template-select-card-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .template-select-card-preview {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .email-history-item {
+      border-left: 3px solid var(--color-primary);
+      padding: var(--space-md);
+      margin-bottom: var(--space-md);
+      background: var(--color-bg-soft);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    }
+    .email-history-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-sm);
+    }
+    .email-history-item-subject {
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    .email-history-item-date {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+    .email-history-item-body {
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      white-space: pre-wrap;
+      max-height: 80px;
+      overflow: hidden;
+      position: relative;
+    }
+    .email-history-item-body.expanded {
+      max-height: none;
+    }
+    .email-history-toggle {
+      font-size: 0.75rem;
+      color: var(--color-primary);
+      cursor: pointer;
+      margin-top: var(--space-xs);
+    }
+    .email-btn {
+      background: none;
+      border: none;
+      padding: 4px;
+      cursor: pointer;
+      color: var(--color-primary);
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+    }
+    .email-btn:hover {
+      background: var(--color-primary-soft);
+    }
+    .variable-tag {
+      display: inline-block;
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-family: monospace;
+      cursor: pointer;
+      margin: 2px;
+    }
+    .variable-tag:hover {
+      background: var(--color-primary);
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -256,7 +379,15 @@
         const row = createElement('tr');
         row.innerHTML = `
           <td><strong>${customer.name}</strong></td>
-          <td><a href="mailto:${customer.email}">${customer.email}</a></td>
+          <td>
+            <a href="javascript:void(0)" onclick="openEmailCompose('${customer.id}')" style="display: inline-flex; align-items: center; gap: 6px;">
+              ${customer.email}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </a>
+          </td>
           <td>${formatPhone(customer.phone) || '—'}</td>
           <td>${customer.city ? `${customer.city}, ${customer.state}` : '—'}</td>
           <td>${customer.lead_source ? `<span class="badge badge-info">${customer.lead_source}</span>` : '—'}</td>
@@ -369,9 +500,23 @@
       
       const footer = createElement('div', { className: 'flex justify-between' });
       
-      const leftBtns = createElement('div');
+      const leftBtns = createElement('div', { className: 'btn-group' });
       let deleteBtn = null;
+      let emailBtn = null;
       if (isEdit) {
+        emailBtn = createElement('button', {
+          type: 'button',
+          className: 'btn btn-secondary'
+        });
+        emailBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          Email
+        `;
+        leftBtns.appendChild(emailBtn);
+        
         deleteBtn = createElement('button', {
           type: 'button',
           className: 'btn btn-danger',
@@ -419,6 +564,12 @@
             await deleteCustomer(customer.id);
             closeModal(modal);
           }
+        });
+      }
+      if (emailBtn) {
+        emailBtn.addEventListener('click', () => {
+          closeModal(modal);
+          openEmailCompose(customer.id);
         });
       }
     }
@@ -475,6 +626,273 @@
       const customer = customers.find(c => c.id === id);
       if (customer) showCustomerModal(customer);
     };
+    
+    // ==========================================
+    // EMAIL COMPOSE FUNCTIONALITY
+    // ==========================================
+    
+    let emailTemplates = [];
+    
+    async function loadEmailTemplates() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data } = await supabase
+          .from('email_templates')
+          .select('*')
+          .eq('is_active', true)
+          .order('name');
+        emailTemplates = data || [];
+      } catch (err) {
+        console.error('Failed to load email templates:', err);
+        emailTemplates = [];
+      }
+    }
+    
+    async function loadEmailHistory(customerId) {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data } = await supabase
+          .from('email_logs')
+          .select('*')
+          .eq('customer_id', customerId)
+          .order('sent_at', { ascending: false });
+        return data || [];
+      } catch (err) {
+        console.error('Failed to load email history:', err);
+        return [];
+      }
+    }
+    
+    window.openEmailCompose = async (customerId) => {
+      const customer = customers.find(c => c.id === customerId);
+      if (!customer) return;
+      
+      // Load templates if not already loaded
+      if (emailTemplates.length === 0) {
+        await loadEmailTemplates();
+      }
+      
+      // Load email history
+      const emailHistory = await loadEmailHistory(customerId);
+      
+      const content = createElement('div');
+      content.innerHTML = `
+        <div class="email-compose-tabs">
+          <div class="email-compose-tab active" data-tab="compose">Compose</div>
+          <div class="email-compose-tab" data-tab="history">History (${emailHistory.length})</div>
+        </div>
+        
+        <div id="compose-tab" class="email-compose-content active">
+          <div class="form-group">
+            <label class="form-label">To</label>
+            <input type="email" id="email-to" class="form-input" value="${customer.email}" readonly style="background: var(--color-bg-soft);">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Template (optional)</label>
+            <select id="email-template" class="form-select" onchange="applyTemplate()">
+              <option value="">— Custom Email —</option>
+              ${emailTemplates.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Subject *</label>
+            <input type="text" id="email-subject" class="form-input" placeholder="Enter subject line" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Message *</label>
+            <textarea id="email-body" class="form-textarea" rows="8" placeholder="Write your message..." required></textarea>
+          </div>
+          
+          <div style="background: var(--color-bg-soft); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md);">
+            <p class="text-sm text-muted mb-xs"><strong>Insert variable:</strong></p>
+            <span class="variable-tag" onclick="insertEmailVariable('{{first_name}}')">{{first_name}}</span>
+            <span class="variable-tag" onclick="insertEmailVariable('{{customer_name}}')">{{customer_name}}</span>
+            <span class="variable-tag" onclick="insertEmailVariable('{{company_name}}')">{{company_name}}</span>
+          </div>
+        </div>
+        
+        <div id="history-tab" class="email-compose-content">
+          ${emailHistory.length === 0 
+            ? '<p class="text-center text-muted p-xl">No emails sent to this customer yet.</p>'
+            : emailHistory.map(email => `
+              <div class="email-history-item">
+                <div class="email-history-item-header">
+                  <div class="email-history-item-subject">${escapeHtml(email.subject)}</div>
+                  <div class="email-history-item-date">${formatDate(email.sent_at)}</div>
+                </div>
+                <div class="email-history-item-body" id="body-${email.id}">${escapeHtml(email.body)}</div>
+                <div class="email-history-toggle" onclick="toggleEmailBody('${email.id}')">Show more</div>
+              </div>
+            `).join('')
+          }
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'flex justify-end gap-md' });
+      footer.innerHTML = `
+        <button type="button" class="btn btn-secondary" id="email-cancel-btn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="email-send-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+          Send Email
+        </button>
+      `;
+      
+      const modal = createModal({
+        title: `Email ${customer.name}`,
+        content,
+        footer,
+        size: 'lg'
+      });
+      
+      // Store customer data for template replacement
+      modal.customerData = customer;
+      
+      // Tab switching
+      content.querySelectorAll('.email-compose-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          content.querySelectorAll('.email-compose-tab').forEach(t => t.classList.remove('active'));
+          content.querySelectorAll('.email-compose-content').forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          content.querySelector(`#${tab.dataset.tab}-tab`).classList.add('active');
+        });
+      });
+      
+      // Cancel button
+      content.parentElement.querySelector('#email-cancel-btn').addEventListener('click', () => closeModal(modal));
+      
+      // Send button
+      content.parentElement.querySelector('#email-send-btn').addEventListener('click', async () => {
+        const subject = $('#email-subject').value.trim();
+        const body = $('#email-body').value.trim();
+        
+        if (!subject || !body) {
+          showToast('Please enter subject and message', 'error');
+          return;
+        }
+        
+        await sendCustomerEmail(customer, subject, body);
+        closeModal(modal);
+      });
+    };
+    
+    window.applyTemplate = () => {
+      const templateId = $('#email-template').value;
+      if (!templateId) {
+        $('#email-subject').value = '';
+        $('#email-body').value = '';
+        return;
+      }
+      
+      const template = emailTemplates.find(t => t.id === templateId);
+      if (!template) return;
+      
+      // Get the customer data from the modal
+      const modal = document.querySelector('.modal-overlay');
+      const customer = modal?.customerData;
+      
+      // Replace template variables
+      let subject = template.subject;
+      let body = template.body;
+      
+      if (customer) {
+        const firstName = customer.first_name || customer.name?.split(' ')[0] || '';
+        subject = subject.replace(/\{\{first_name\}\}/g, firstName)
+                         .replace(/\{\{customer_name\}\}/g, customer.name || '');
+        body = body.replace(/\{\{first_name\}\}/g, firstName)
+                   .replace(/\{\{customer_name\}\}/g, customer.name || '');
+      }
+      
+      // Get company name from settings (if available) or use default
+      subject = subject.replace(/\{\{company_name\}\}/g, 'Homestead Cabinet Design');
+      body = body.replace(/\{\{company_name\}\}/g, 'Homestead Cabinet Design');
+      
+      $('#email-subject').value = subject;
+      $('#email-body').value = body;
+    };
+    
+    window.insertEmailVariable = (variable) => {
+      const textarea = $('#email-body');
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      textarea.value = text.substring(0, start) + variable + text.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+      textarea.focus();
+    };
+    
+    window.toggleEmailBody = (emailId) => {
+      const bodyEl = $(`#body-${emailId}`);
+      const toggleEl = bodyEl.nextElementSibling;
+      if (bodyEl.classList.contains('expanded')) {
+        bodyEl.classList.remove('expanded');
+        toggleEl.textContent = 'Show more';
+      } else {
+        bodyEl.classList.add('expanded');
+        toggleEl.textContent = 'Show less';
+      }
+    };
+    
+    async function sendCustomerEmail(customer, subject, body) {
+      try {
+        const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+        
+        // Replace any remaining variables
+        const firstName = customer.first_name || customer.name?.split(' ')[0] || '';
+        const processedSubject = subject.replace(/\{\{first_name\}\}/g, firstName)
+                                        .replace(/\{\{customer_name\}\}/g, customer.name || '')
+                                        .replace(/\{\{company_name\}\}/g, 'Homestead Cabinet Design');
+        const processedBody = body.replace(/\{\{first_name\}\}/g, firstName)
+                                  .replace(/\{\{customer_name\}\}/g, customer.name || '')
+                                  .replace(/\{\{company_name\}\}/g, 'Homestead Cabinet Design');
+        
+        const response = await fetch('/.netlify/functions/send-template-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to_email: customer.email,
+            subject: processedSubject,
+            body: processedBody,
+            customer_id: customer.id,
+            sent_by: user?.id || null
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to send email');
+        }
+        
+        showToast('Email sent successfully!', 'success');
+      } catch (err) {
+        console.error('Send email error:', err);
+        showToast('Failed to send email: ' + err.message, 'error');
+      }
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    }
     
     // ==========================================
     // CSV IMPORT FUNCTIONALITY
@@ -884,6 +1302,7 @@
     // Initialize
     async function init() {
       await loadLeadSources();
+      await loadEmailTemplates();
       await loadCustomers();
     }
     init();
