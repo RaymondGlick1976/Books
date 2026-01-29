@@ -28,11 +28,17 @@ CREATE TABLE IF NOT EXISTS quote_package_items (
   description TEXT,
   quantity DECIMAL(10,2) DEFAULT 1,
   price DECIMAL(10,2) DEFAULT 0,
+  base_price DECIMAL(10,2) DEFAULT 0,  -- Base price before attributes
+  attribute_selections JSONB DEFAULT '[]',  -- Pricing attributes for this item
   is_included BOOLEAN DEFAULT true,  -- false = shown as excluded/crossed out
   show_price BOOLEAN DEFAULT true,   -- whether to show price to customer
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add columns if table already exists (for existing installations)
+ALTER TABLE quote_package_items ADD COLUMN IF NOT EXISTS base_price DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE quote_package_items ADD COLUMN IF NOT EXISTS attribute_selections JSONB DEFAULT '[]';
 
 -- RLS policies
 ALTER TABLE quote_packages ENABLE ROW LEVEL SECURITY;
