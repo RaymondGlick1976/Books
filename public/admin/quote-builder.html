@@ -6,6 +6,50 @@
   <title>Quote Builder | Admin | Homestead Cabinet Design</title>
   <link rel="stylesheet" href="/css/styles.css?v=50">
   <style>
+    /* Autosave status indicator */
+    .save-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      padding: 4px 12px;
+      border-radius: var(--radius-md);
+      background: var(--color-bg-soft);
+    }
+    
+    .save-status.saving {
+      color: var(--color-primary);
+    }
+    
+    .save-status.saved {
+      color: var(--color-success);
+    }
+    
+    .save-status.unsaved {
+      color: var(--color-warning);
+    }
+    
+    .save-status.error {
+      color: var(--color-danger);
+    }
+    
+    .save-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    
+    .save-status.saving .save-status-dot {
+      animation: pulse 1s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    
     .builder-layout {
       display: grid;
       grid-template-columns: 1fr 380px;
@@ -463,6 +507,10 @@
         <div class="flex items-center gap-md">
           <a href="/admin/quotes.html" class="btn btn-ghost btn-sm">← Back</a>
           <h2 id="page-title">New Quote</h2>
+          <div class="save-status" id="save-status" style="display: none;">
+            <span class="save-status-dot"></span>
+            <span class="save-status-text">Saved</span>
+          </div>
         </div>
         <div class="flex items-center gap-sm">
           <button class="btn btn-secondary" id="save-draft-btn">Save Draft</button>
@@ -697,7 +745,231 @@
     let leadSources = [];
     let appUsers = [];
     
+    // Autosave state
+    let isDirty = false;
+    let isSaving = false;
+    let autosaveTimer = null;
+    let initialLoadComplete = false;
+    const AUTOSAVE_DELAY = 3000; // 3 seconds after last change
+    
     const TAX_RATE = 0.0625;
+    
+    // Autosave functions
+    function updateSaveStatus(status, message) {
+      const statusEl = $('#save-status');
+      const textEl = statusEl.querySelector('.save-status-text');
+      
+      statusEl.style.display = 'inline-flex';
+      statusEl.className = 'save-status ' + status;
+      textEl.textContent = message;
+    }
+    
+    function markDirty() {
+      // Don't mark dirty during initial load
+      if (!initialLoadComplete) return;
+      
+      if (!isDirty) {
+        isDirty = true;
+        updateSaveStatus('unsaved', 'Unsaved changes');
+      }
+      scheduleAutosave();
+    }
+    
+    function scheduleAutosave() {
+      // Clear existing timer
+      if (autosaveTimer) {
+        clearTimeout(autosaveTimer);
+      }
+      
+      // Schedule new autosave
+      autosaveTimer = setTimeout(() => {
+        autosave();
+      }, AUTOSAVE_DELAY);
+    }
+    
+    async function autosave() {
+      // Don't autosave if already saving or nothing changed
+      if (isSaving || !isDirty) return;
+      
+      // Must have minimum data to autosave
+      const customerId = $('#customer-select').value;
+      const title = $('#quote-title').value.trim();
+      
+      // For new quotes, need at least customer OR title to start autosaving
+      if (!quoteId && !customerId && !title) {
+        return; // Not enough data yet
+      }
+      
+      isSaving = true;
+      updateSaveStatus('saving', 'Saving...');
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Calculate totals
+        let subtotal = 0;
+        let taxableSubtotal = 0;
+        
+        lineItems.forEach(item => {
+          if (!item.isOptional) {
+            const qty = item.quantity || 1;
+            const lineTotal = (item.unitPrice || 0) * qty;
+            subtotal += lineTotal;
+            if (item.isTaxable) {
+              taxableSubtotal += lineTotal;
+            }
+          }
+        });
+        
+        const taxAmount = taxableSubtotal * TAX_RATE;
+        const validDays = parseInt($('#valid-days').value) || 30;
+        const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000);
+        
+        const quoteData = {
+          customer_id: customerId || null,
+          title: title || 'Untitled Quote',
+          description: $('#quote-description').value.trim() || null,
+          quote_type: 'final',
+          status: 'draft', // Autosave always saves as draft
+          valid_days: validDays,
+          expires_at: expiresAt.toISOString(),
+          deposit_type: $('#deposit-type').value,
+          deposit_value: parseFloat($('#deposit-value').value) || 50,
+          video_url: $('#video-url').value.trim() || null,
+          notes: $('#customer-notes').value.trim() || null,
+          internal_notes: $('#internal-notes').value.trim() || null,
+          tax_rate: TAX_RATE,
+          subtotal,
+          subtotal_low: subtotal,
+          subtotal_high: subtotal,
+          tax_amount: taxAmount,
+          total: subtotal + taxAmount,
+          total_low: subtotal + taxAmount,
+          total_high: subtotal + taxAmount,
+          packages_enabled: packagesEnabled
+        };
+        
+        let savedQuote;
+        if (quoteId) {
+          // Update existing
+          const { data, error } = await supabase
+            .from('quotes')
+            .update(quoteData)
+            .eq('id', quoteId)
+            .select()
+            .single();
+          if (error) throw error;
+          savedQuote = data;
+        } else {
+          // Create new quote
+          const { data: numData } = await supabase.rpc('generate_quote_number');
+          quoteData.quote_number = numData;
+          quoteData.access_token = crypto.randomUUID();
+          
+          const { data, error } = await supabase
+            .from('quotes')
+            .insert(quoteData)
+            .select()
+            .single();
+          if (error) throw error;
+          savedQuote = data;
+          quoteId = savedQuote.id;
+          
+          // Update URL without reload
+          const newUrl = new URL(window.location);
+          newUrl.searchParams.set('id', quoteId);
+          window.history.replaceState({}, '', newUrl);
+          
+          // Update page title
+          $('#page-title').textContent = `Quote #${savedQuote.quote_number}`;
+        }
+        
+        // Save line items
+        await supabase.from('quote_line_items').delete().eq('quote_id', quoteId);
+        
+        if (lineItems.length > 0) {
+          const lineItemsToInsert = lineItems.map((item, index) => {
+            const lineTotal = (item.unitPrice || 0) * (item.quantity || 1);
+            return {
+              quote_id: quoteId,
+              catalog_item_id: item.catalogItemId,
+              description: item.description,
+              details: item.details,
+              quantity: item.quantity,
+              unit_price: item.unitPrice,
+              price_range_low: null,
+              price_range_high: null,
+              is_range_pricing: false,
+              line_total: lineTotal,
+              line_total_low: lineTotal,
+              line_total_high: lineTotal,
+              photo_url: item.photoUrl,
+              is_optional: item.isOptional,
+              is_taxable: item.isTaxable,
+              sort_order: index,
+              attribute_selections: item.attributeSelections || []
+            };
+          });
+          
+          await supabase.from('quote_line_items').insert(lineItemsToInsert);
+        }
+        
+        // Save packages
+        await supabase.from('quote_package_items').delete().match({ package_id: packages.filter(p => p.id).map(p => p.id) });
+        await supabase.from('quote_packages').delete().eq('quote_id', quoteId);
+        
+        for (let i = 0; i < packages.length; i++) {
+          const pkg = packages[i];
+          const pkgTotal = pkg.price || pkg.items.filter(item => item.is_included).reduce((sum, item) => sum + (item.quantity * item.price), 0);
+          
+          const { data: savedPkg, error: pkgError } = await supabase
+            .from('quote_packages')
+            .insert({
+              quote_id: quoteId,
+              name: pkg.name,
+              description: pkg.description,
+              price: pkg.price,
+              is_recommended: pkg.is_recommended,
+              is_selected: pkg.is_selected,
+              sort_order: i
+            })
+            .select()
+            .single();
+          
+          if (pkgError) throw pkgError;
+          
+          // Save package items
+          if (pkg.items.length > 0) {
+            const pkgItemsToInsert = pkg.items.map((item, idx) => ({
+              package_id: savedPkg.id,
+              name: item.name,
+              description: item.description,
+              quantity: item.quantity,
+              price: item.price,
+              base_price: item.basePrice || item.price,
+              attribute_selections: item.attributeSelections || [],
+              is_included: item.is_included,
+              sort_order: idx
+            }));
+            
+            await supabase.from('quote_package_items').insert(pkgItemsToInsert);
+          }
+          
+          packages[i].id = savedPkg.id;
+        }
+        
+        isDirty = false;
+        updateSaveStatus('saved', 'All changes saved');
+        
+      } catch (error) {
+        console.error('Autosave error:', error);
+        updateSaveStatus('error', 'Save failed');
+        // Schedule retry
+        setTimeout(scheduleAutosave, 5000);
+      } finally {
+        isSaving = false;
+      }
+    }
     
     // Get quote ID from URL if editing
     const params = new URLSearchParams(window.location.search);
@@ -825,12 +1097,17 @@
           if (dealId) {
             $('#quote-deal-id').value = dealId;
           }
+          initialLoadComplete = true;
+        } else {
+          // Brand new quote
+          initialLoadComplete = true;
         }
         
         updateSummary();
       } catch (err) {
         console.error('Init error:', err);
         showToast('Failed to initialize: ' + err.message, 'error');
+        initialLoadComplete = true;
       }
     }
     
@@ -951,9 +1228,15 @@
         updatePackagesUI();
         updateSummary();
         
+        // Reset dirty state after loading - quote is saved
+        isDirty = false;
+        initialLoadComplete = true;
+        updateSaveStatus('saved', 'All changes saved');
+        
       } catch (err) {
         console.error('Load quote error:', err);
         showToast('Failed to load quote', 'error');
+        initialLoadComplete = true; // Still allow changes even if load failed
       }
     }
     
@@ -962,10 +1245,14 @@
       $('#deposit-type').addEventListener('change', (e) => {
         $('#deposit-suffix').textContent = e.target.value === 'percentage' ? '%' : '$';
         updateSummary();
+        markDirty();
       });
       
       // Deposit value change
-      $('#deposit-value').addEventListener('input', updateSummary);
+      $('#deposit-value').addEventListener('input', () => {
+        updateSummary();
+        markDirty();
+      });
       
       // Add from catalog
       $('#add-from-catalog-btn').addEventListener('click', showCatalogModal);
@@ -999,6 +1286,15 @@
       
       // New customer button
       $('#new-customer-btn').addEventListener('click', showNewCustomerModal);
+      
+      // Autosave triggers for form fields
+      $('#customer-select').addEventListener('change', markDirty);
+      $('#quote-title').addEventListener('input', markDirty);
+      $('#quote-description').addEventListener('input', markDirty);
+      $('#valid-days').addEventListener('input', markDirty);
+      $('#video-url').addEventListener('input', markDirty);
+      $('#customer-notes').addEventListener('input', markDirty);
+      $('#internal-notes').addEventListener('input', markDirty);
     }
     
     function showCatalogModal() {
@@ -1079,10 +1375,73 @@
       // All attributes are available for all items
       if (pricingAttributes.length > 0) {
         showAttributeConfigModal(catalogItem, pricingAttributes);
-      } else {
-        // No attributes defined, add directly
+      } else if (catalogItem) {
+        // Catalog item with no attributes - add directly
         addLineItemDirect(catalogItem, []);
+      } else {
+        // Custom item with no attributes - show simple form
+        showSimpleCustomItemModal();
       }
+    }
+    
+    function showSimpleCustomItemModal() {
+      const content = createElement('div');
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Item Name *</label>
+          <input type="text" id="simple-item-name" class="form-input" placeholder="e.g., Custom Cabinet Work">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description <span class="form-label-optional">(optional)</span></label>
+          <textarea id="simple-item-desc" class="form-textarea" rows="2" placeholder="Item details..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Price</label>
+          <div class="input-group">
+            <span class="input-group-prepend">$</span>
+            <input type="number" id="simple-item-price" class="form-input" value="0" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-check">
+            <input type="checkbox" id="simple-item-taxable" class="form-check-input" checked>
+            <span class="form-check-label">Taxable</span>
+          </label>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+      const addBtn = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: 'Add to Quote' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(addBtn);
+      
+      const modal = createModal({
+        title: 'Add Custom Item',
+        content,
+        footer,
+        size: 'sm'
+      });
+      
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      addBtn.addEventListener('click', () => {
+        const name = content.querySelector('#simple-item-name').value.trim();
+        if (!name) {
+          showToast('Please enter an item name', 'error');
+          return;
+        }
+        
+        const customItem = {
+          id: null,
+          name: name,
+          description: content.querySelector('#simple-item-desc').value.trim(),
+          default_price: parseFloat(content.querySelector('#simple-item-price').value) || 0,
+          is_taxable: content.querySelector('#simple-item-taxable').checked
+        };
+        
+        closeModal(modal);
+        addLineItemDirect(customItem, []);
+      });
     }
     
     function addLineItemDirect(catalogItem, attributeSelections) {
@@ -1118,10 +1477,12 @@
       lineItems.push(item);
       renderLineItems();
       updateSummary();
+      markDirty();
     }
     
     function showAttributeConfigModal(catalogItem, itemAttrs) {
       const basePrice = catalogItem?.default_price || 0;
+      const isCustomItem = !catalogItem;
       
       // Track attribute instances (for multiple of same attribute)
       // Start EMPTY - user adds what they need
@@ -1136,6 +1497,9 @@
       
       const content = createElement('div');
       
+      // Track the base price for custom items (can be edited)
+      let currentBasePrice = basePrice;
+      
       function renderAttributeSelectors() {
         const instancesHtml = attributeInstances.length > 0 ? attributeInstances.map((inst, idx) => {
           const attr = inst.attr;
@@ -1144,7 +1508,7 @@
           const defaultUnitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
           const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
           const showQty = selectedOpt && pricingType !== 'percentage';
-          const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, basePrice) : 0;
+          const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice) : 0;
           
           return `
             <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
@@ -1215,17 +1579,25 @@
         attachInstanceListeners();
       }
       
-      function calculateAttributeLineTotal(option, quantity, basePrice) {
+      function calculateAttributeLineTotal(option, quantity, basePriceVal) {
         const unitPrice = parseFloat(option.unit_price ?? option.flat_adjustment ?? 0);
         const pricingType = option.pricing_type || 'each';
         
         if (pricingType === 'percentage') {
-          return basePrice * (unitPrice / 100);
+          return basePriceVal * (unitPrice / 100);
         }
         return unitPrice * quantity;
       }
       
       function updateTotalPreview() {
+        // Get current base price from input if it's a custom item
+        if (isCustomItem) {
+          const basePriceInput = content.querySelector('#custom-base-price');
+          if (basePriceInput) {
+            currentBasePrice = parseFloat(basePriceInput.value) || 0;
+          }
+        }
+        
         let attributeTotal = 0;
         
         attributeInstances.forEach(inst => {
@@ -1235,15 +1607,17 @@
             const pricingType = selectedOpt.pricing_type || 'each';
             const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
-            attributeTotal += calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, basePrice);
+            attributeTotal += calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice);
           }
         });
         
-        const total = basePrice + attributeTotal;
+        const total = currentBasePrice + attributeTotal;
         
         const previewEl = content.querySelector('#preview-price');
         const attrTotalEl = content.querySelector('#attr-total');
+        const basePriceDisplay = content.querySelector('#base-price-display');
         
+        if (basePriceDisplay) basePriceDisplay.textContent = formatCurrency(currentBasePrice);
         if (previewEl) previewEl.textContent = formatCurrency(total);
         if (attrTotalEl) attrTotalEl.textContent = formatCurrency(attributeTotal);
       }
@@ -1331,8 +1705,26 @@
       
       content.innerHTML = `
         <div class="mb-lg">
-          <h4 style="margin: 0 0 var(--space-xs);">${catalogItem.name}</h4>
-          <p class="text-muted text-sm" style="margin: 0;">Base price: ${formatCurrency(basePrice)}</p>
+          ${isCustomItem ? `
+            <div class="form-group">
+              <label class="form-label">Item Name *</label>
+              <input type="text" id="custom-item-name" class="form-input" placeholder="e.g., Custom Cabinet Work" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description <span class="form-label-optional">(optional)</span></label>
+              <textarea id="custom-item-desc" class="form-textarea" rows="2" placeholder="Item details..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Base Price</label>
+              <div class="input-group">
+                <span class="input-group-prepend">$</span>
+                <input type="number" id="custom-base-price" class="form-input" value="0" min="0" step="0.01">
+              </div>
+            </div>
+          ` : `
+            <h4 style="margin: 0 0 var(--space-xs);">${catalogItem?.name || 'Item'}</h4>
+            <p class="text-muted text-sm" style="margin: 0;">Base price: ${formatCurrency(basePrice)}</p>
+          `}
         </div>
         <div id="attr-instances"></div>
         <div id="add-buttons" style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
@@ -1341,7 +1733,7 @@
         <div class="price-preview" style="padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
           <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-sm);">
             <span class="text-muted">Base Price:</span>
-            <span>${formatCurrency(basePrice)}</span>
+            <span id="base-price-display">${formatCurrency(currentBasePrice)}</span>
           </div>
           <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-sm);">
             <span class="text-muted">Attributes Total:</span>
@@ -1350,12 +1742,23 @@
           <hr style="border: none; border-top: 1px solid var(--color-border); margin: var(--space-sm) 0;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-weight: 600;">Total Price:</span>
-            <span id="preview-price" style="font-size: 1.5rem; font-weight: 600; color: var(--color-primary);">${formatCurrency(basePrice)}</span>
+            <span id="preview-price" style="font-size: 1.5rem; font-weight: 600; color: var(--color-primary);">${formatCurrency(currentBasePrice)}</span>
           </div>
         </div>
       `;
       
       renderAttributeSelectors();
+      
+      // Add listener for custom base price changes
+      if (isCustomItem) {
+        const basePriceInput = content.querySelector('#custom-base-price');
+        if (basePriceInput) {
+          basePriceInput.addEventListener('input', () => {
+            currentBasePrice = parseFloat(basePriceInput.value) || 0;
+            renderAttributeSelectors(); // Re-render to update percentage calculations
+          });
+        }
+      }
       
       // Create footer with proper DOM elements
       const footer = createElement('div', { className: 'btn-group' });
@@ -1373,6 +1776,15 @@
       
       cancelBtn.addEventListener('click', () => closeModal(modal));
       addBtn.addEventListener('click', () => {
+        // For custom items, validate name is provided
+        if (isCustomItem) {
+          const nameInput = content.querySelector('#custom-item-name');
+          if (!nameInput?.value.trim()) {
+            showToast('Please enter an item name', 'error');
+            return;
+          }
+        }
+        
         // Gather all attribute selections with quantities
         const selections = [];
         
@@ -1382,7 +1794,7 @@
           if (selectedOpt) {
             // Use override price if set, otherwise use option's default price
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
-            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, basePrice);
+            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, currentBasePrice);
             selections.push({
               attribute_id: inst.attrId,
               attribute_name: inst.attrName,
@@ -1397,7 +1809,20 @@
         });
         
         closeModal(modal);
-        addLineItemDirect(catalogItem, selections);
+        
+        // For custom items, create a pseudo catalog item with the form values
+        if (isCustomItem) {
+          const customItem = {
+            id: null,
+            name: content.querySelector('#custom-item-name').value.trim(),
+            description: content.querySelector('#custom-item-desc')?.value.trim() || '',
+            default_price: currentBasePrice,
+            is_taxable: true
+          };
+          addLineItemDirect(customItem, selections);
+        } else {
+          addLineItemDirect(catalogItem, selections);
+        }
       });
     }
     
@@ -1714,6 +2139,7 @@
         closeModal(modal);
         renderLineItems();
         updateSummary();
+        markDirty();
         showToast('Item updated', 'success');
       });
     }
@@ -1782,6 +2208,7 @@
             lineItems.splice(toIndex, 0, movedItem);
             renderLineItems();
             updateSummary();
+            markDirty();
           }
         });
         
@@ -1803,6 +2230,7 @@
           placeholder: 'Item description',
           onInput: (e) => {
             lineItems[index].description = e.target.value;
+            markDirty();
           }
         }));
         descCell.appendChild(createElement('input', {
@@ -1813,6 +2241,7 @@
           style: 'font-size: 0.875rem;',
           onInput: (e) => {
             lineItems[index].details = e.target.value;
+            markDirty();
           }
         }));
         
@@ -1861,6 +2290,7 @@
           onInput: (e) => {
             lineItems[index].quantity = parseFloat(e.target.value) || 1;
             updateSummary();
+            markDirty();
           }
         }));
         row.appendChild(qtyCell);
@@ -1876,6 +2306,7 @@
           onInput: (e) => {
             lineItems[index].unitPrice = parseFloat(e.target.value) || 0;
             updateSummary();
+            markDirty();
           }
         }));
         row.appendChild(priceCell);
@@ -1896,6 +2327,7 @@
           }
           row.classList.toggle('optional', e.target.checked);
           updateSummary();
+          markDirty();
         });
         const optLabel = createElement('label', { className: 'form-check' });
         optLabel.appendChild(optCheckbox);
@@ -1926,6 +2358,7 @@
               lineItems.splice(index, 1);
               renderLineItems();
               updateSummary();
+              markDirty();
             }
           }
         }));
@@ -2194,28 +2627,36 @@
     }
     
     async function saveQuote(status) {
+      // Cancel any pending autosave
+      if (autosaveTimer) clearTimeout(autosaveTimer);
+      isSaving = true;
+      
       const customerId = $('#customer-select').value;
       const title = $('#quote-title').value.trim();
       
       if (!customerId) {
         showToast('Please select a customer', 'error');
+        isSaving = false;
         return;
       }
       
       if (!title) {
         showToast('Please enter a project title', 'error');
+        isSaving = false;
         return;
       }
       
       // Must have either line items OR packages
       if (lineItems.length === 0 && packages.length === 0) {
         showToast('Please add line items or bundles', 'error');
+        isSaving = false;
         return;
       }
       
       // If packages enabled, must have at least one package
       if (packagesEnabled && packages.length === 0) {
         showToast('Please add at least one bundle', 'error');
+        isSaving = false;
         return;
       }
       
@@ -2416,6 +2857,11 @@
           showToast('Quote saved as draft', 'success');
         }
         
+        // Clear autosave state
+        isDirty = false;
+        if (autosaveTimer) clearTimeout(autosaveTimer);
+        updateSaveStatus('saved', 'All changes saved');
+        
         // Redirect to quote view
         setTimeout(() => {
           window.location.href = `/admin/quotes.html`;
@@ -2425,6 +2871,7 @@
         console.error('Save error:', err);
         showToast('Failed to save: ' + err.message, 'error');
       } finally {
+        isSaving = false;
         btn.disabled = false;
         btn.textContent = status === 'draft' ? 'Save Draft' : 'Send to Customer';
       }
@@ -2459,6 +2906,7 @@
       }
       
       renderPackages();
+      markDirty();
     }
     
     function renderPackages() {
