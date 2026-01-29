@@ -29,7 +29,7 @@ exports.handler = async (event) => {
     // Verify quote belongs to customer
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
-      .select('id, customer_id')
+      .select('id, customer_id, tax_rate')
       .eq('id', quote_id)
       .single();
     
@@ -76,7 +76,42 @@ exports.handler = async (event) => {
         return error('Failed to update selection', 500);
       }
       
-      return success({ success: true });
+      // Recalculate quote totals based on current selections
+      const { data: lineItems } = await supabase
+        .from('quote_line_items')
+        .select('*')
+        .eq('quote_id', quote_id);
+      
+      let subtotal = 0;
+      let taxableSubtotal = 0;
+      
+      (lineItems || []).forEach(item => {
+        // Include item if: not optional, OR optional and selected
+        const includeInTotal = !item.is_optional || item.is_selected;
+        if (includeInTotal) {
+          const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
+          subtotal += lineTotal;
+          if (item.is_taxable) {
+            taxableSubtotal += lineTotal;
+          }
+        }
+      });
+      
+      const taxRate = quote.tax_rate || 0.0625;
+      const taxAmount = taxableSubtotal * taxRate;
+      const total = subtotal + taxAmount;
+      
+      // Update quote with new totals
+      await supabase
+        .from('quotes')
+        .update({
+          subtotal: subtotal,
+          tax_amount: taxAmount,
+          total: total
+        })
+        .eq('id', quote_id);
+      
+      return success({ success: true, total, subtotal, tax_amount: taxAmount });
     }
     
     return error('Missing item_id or package_id', 400);
