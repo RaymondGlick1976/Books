@@ -2920,66 +2920,66 @@
           const showQty = selectedOpt && pricingType !== 'percentage';
           const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice) : 0;
           
-          return \`
-            <div class="attr-instance" data-idx="\${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
+          return `
+            <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
-                <label class="form-label" style="margin: 0;">\${attr.name}</label>
-                <button type="button" class="btn btn-ghost btn-sm pkg-remove-instance" data-idx="\${idx}" title="Remove">
+                <label class="form-label" style="margin: 0;">${attr.name}</label>
+                <button type="button" class="btn btn-ghost btn-sm pkg-remove-instance" data-idx="${idx}" title="Remove">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr \${selectedOpt ? '80px' : ''} \${showQty ? '80px' : ''} 90px; gap: var(--space-sm); align-items: end;">
+              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${showQty ? '80px' : ''} 90px; gap: var(--space-sm); align-items: end;">
                 <div>
-                  <select class="form-select pkg-attr-select" data-idx="\${idx}">
+                  <select class="form-select pkg-attr-select" data-idx="${idx}">
                     <option value="">-- Select --</option>
-                    \${(attr.options || []).sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map(opt => {
+                    ${(attr.options || []).sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map(opt => {
                       const optPrice = parseFloat(opt.unit_price ?? opt.flat_adjustment ?? 0);
                       const optType = opt.pricing_type || 'each';
                       let priceLabel = '';
                       if (optType === 'percentage') {
-                        priceLabel = optPrice ? \` (\${optPrice}%)\` : '';
+                        priceLabel = optPrice ? ` (${optPrice}%)` : '';
                       } else if (optPrice) {
-                        priceLabel = \` ($\${optPrice.toFixed(2)})\`;
+                        priceLabel = ` ($${optPrice.toFixed(2)})`;
                       }
-                      return \`
-                        <option value="\${opt.id}" 
-                          data-unit-price="\${optPrice}"
-                          data-pricing-type="\${optType}"
-                          data-name="\${opt.name}"
-                          \${inst.optionId === opt.id ? 'selected' : ''}>
-                          \${opt.name}\${priceLabel}
+                      return `
+                        <option value="${opt.id}" 
+                          data-unit-price="${optPrice}"
+                          data-pricing-type="${optType}"
+                          data-name="${opt.name}"
+                          ${inst.optionId === opt.id ? 'selected' : ''}>
+                          ${opt.name}${priceLabel}
                         </option>
-                      \`;
+                      `;
                     }).join('')}
                   </select>
                 </div>
-                \${selectedOpt ? \`
+                ${selectedOpt ? `
                   <div>
-                    <label class="form-label text-sm">\${pricingType === 'percentage' ? '%' : '$/unit'}</label>
-                    <input type="number" class="form-input pkg-attr-unit-price" data-idx="\${idx}" value="\${effectiveUnitPrice}" min="0" step="0.01" style="font-size: 0.875rem;">
+                    <label class="form-label text-sm">${pricingType === 'percentage' ? '%' : '$/unit'}</label>
+                    <input type="number" class="form-input pkg-attr-unit-price" data-idx="${idx}" value="${effectiveUnitPrice}" min="0" step="0.01" style="font-size: 0.875rem;">
                   </div>
-                \` : ''}
-                \${showQty ? \`
+                ` : ''}
+                ${showQty ? `
                   <div>
-                    <label class="form-label text-sm">\${PRICING_LABELS[pricingType] || 'Qty'}</label>
-                    <input type="number" class="form-input pkg-attr-qty" data-idx="\${idx}" value="\${inst.quantity}" min="0" step="0.01" style="font-size: 0.875rem;">
+                    <label class="form-label text-sm">${PRICING_LABELS[pricingType] || 'Qty'}</label>
+                    <input type="number" class="form-input pkg-attr-qty" data-idx="${idx}" value="${inst.quantity}" min="0" step="0.01" style="font-size: 0.875rem;">
                   </div>
-                \` : ''}
+                ` : ''}
                 <div style="text-align: right;">
                   <label class="form-label text-sm">Total</label>
-                  <div class="pkg-attr-line-total" style="font-weight: 600; color: var(--color-primary);">\${formatCurrency(lineTotal)}</div>
+                  <div class="pkg-attr-line-total" style="font-weight: 600; color: var(--color-primary);">${formatCurrency(lineTotal)}</div>
                 </div>
               </div>
             </div>
-          \`;
+          `;
         }).join('') : '<p class="text-muted text-center" style="padding: var(--space-md);">No attributes. Click a button below to add pricing attributes.</p>';
         
-        const addButtonsHtml = pricingAttributes.length > 0 ? pricingAttributes.map(attr => \`
-          <button type="button" class="btn btn-secondary btn-sm pkg-add-attr-btn" data-attr-id="\${attr.id}" style="margin-right: var(--space-sm); margin-bottom: var(--space-sm);">
+        const addButtonsHtml = pricingAttributes.length > 0 ? pricingAttributes.map(attr => `
+          <button type="button" class="btn btn-secondary btn-sm pkg-add-attr-btn" data-attr-id="${attr.id}" style="margin-right: var(--space-sm); margin-bottom: var(--space-sm);">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            \${attr.name}
+            ${attr.name}
           </button>
-        \`).join('') : '<p class="text-muted text-sm">No pricing attributes configured. Add them in Catalog → Pricing Attributes.</p>';
+        `).join('') : '<p class="text-muted text-sm">No pricing attributes configured. Add them in Catalog → Pricing Attributes.</p>';
         
         content.querySelector('#pkg-attr-instances').innerHTML = instancesHtml;
         content.querySelector('#pkg-add-buttons').innerHTML = addButtonsHtml;
@@ -3072,25 +3072,25 @@
       // Determine if we have pricing attributes available
       const hasAttributes = pricingAttributes.length > 0;
       
-      content.innerHTML = \`
+      content.innerHTML = `
         <div class="form-group">
           <label class="form-label">Item Name *</label>
-          <input type="text" id="item-name" class="form-input" value="\${item?.name || ''}" placeholder="e.g., Cabinet Refacing">
+          <input type="text" id="item-name" class="form-input" value="${item?.name || ''}" placeholder="e.g., Cabinet Refacing">
         </div>
         <div class="form-group">
           <label class="form-label">Description <span class="form-label-optional">(optional)</span></label>
-          <textarea id="item-description" class="form-textarea" rows="2" placeholder="Item description...">\${item?.description || ''}</textarea>
+          <textarea id="item-description" class="form-textarea" rows="2" placeholder="Item description...">${item?.description || ''}</textarea>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
           <div class="form-group">
             <label class="form-label">Quantity</label>
-            <input type="number" id="item-qty" class="form-input" value="\${item?.quantity || 1}" min="0" step="0.01">
+            <input type="number" id="item-qty" class="form-input" value="${item?.quantity || 1}" min="0" step="0.01">
           </div>
           <div class="form-group">
-            <label class="form-label">\${hasAttributes ? 'Base Price' : 'Price'}</label>
+            <label class="form-label">${hasAttributes ? 'Base Price' : 'Price'}</label>
             <div class="input-group">
               <span class="input-group-prepend">$</span>
-              <input type="number" id="item-price" class="form-input" value="\${item?.basePrice || item?.price || 0}" min="0" step="0.01">
+              <input type="number" id="item-price" class="form-input" value="${item?.basePrice || item?.price || 0}" min="0" step="0.01">
             </div>
           </div>
         </div>
@@ -3101,13 +3101,13 @@
               <div class="toggle-description">Uncheck to show as excluded (crossed out)</div>
             </div>
             <label class="toggle">
-              <input type="checkbox" id="item-included" \${item?.is_included !== false ? 'checked' : ''}>
+              <input type="checkbox" id="item-included" ${item?.is_included !== false ? 'checked' : ''}>
               <span class="toggle-slider"></span>
             </label>
           </div>
         </div>
         
-        \${hasAttributes ? \`
+        ${hasAttributes ? `
           <div style="margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: 1px solid var(--color-border);">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md);">
               <h4 style="margin: 0;">Pricing Attributes</h4>
@@ -3120,21 +3120,21 @@
             <div class="price-preview" style="padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
               <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-sm);">
                 <span class="text-muted">Base Price:</span>
-                <span id="pkg-base-price">\${formatCurrency(basePrice)}</span>
+                <span id="pkg-base-price">${formatCurrency(basePrice)}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-sm);">
                 <span class="text-muted">Attributes Total:</span>
-                <span id="pkg-attr-total">\${formatCurrency(0)}</span>
+                <span id="pkg-attr-total">${formatCurrency(0)}</span>
               </div>
               <hr style="border: none; border-top: 1px solid var(--color-border); margin: var(--space-sm) 0;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-weight: 600;">Total Price:</span>
-                <span id="pkg-preview-price" style="font-size: 1.25rem; font-weight: 600; color: var(--color-primary);">\${formatCurrency(basePrice)}</span>
+                <span id="pkg-preview-price" style="font-size: 1.25rem; font-weight: 600; color: var(--color-primary);">${formatCurrency(basePrice)}</span>
               </div>
             </div>
           </div>
-        \` : ''}
-      \`;
+        ` : ''}
+      `;
       
       // Render attributes if available
       if (hasAttributes) {
