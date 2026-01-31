@@ -116,14 +116,14 @@
     </aside>
     
     <main class="app-main">
-      <header class="app-header" style="position: relative; z-index: 100;">
+      <header class="app-header" style="position: relative; z-index: 100; overflow: visible;">
         <div class="quote-header">
           <div>
             <a href="/admin/quotes.html" class="text-muted text-sm">← Back to Quotes</a>
             <h2 class="quote-title" id="quote-title">Loading...</h2>
             <p class="quote-meta" id="quote-meta"></p>
           </div>
-          <div class="quote-actions">
+          <div class="quote-actions" style="position: relative; z-index: 1000;">
             <a href="#" id="view-deal-btn" class="btn btn-secondary" style="display:none;">View Deal</a>
             <a href="#" id="edit-quote-btn" class="btn btn-secondary">Edit Quote</a>
             <a href="#" id="view-invoice-btn" class="btn btn-secondary" style="display:none;">View Invoice</a>
