@@ -1709,10 +1709,13 @@
       console.log('quote.packages_enabled:', quote.packages_enabled);
       console.log('packages.length:', packages.length);
       console.log('selectedPackageId:', selectedPackageId);
-      console.log('All packages:', JSON.stringify(packages.map(p => ({ id: p.id, name: p.name, is_selected: p.is_selected, price: p.price }))));
+      console.log('All packages:', JSON.stringify(packages.map(p => ({ id: p.id, name: p.name, is_selected: p.is_selected, price: p.price, items: p.items?.length }))));
       
-      // If packages are enabled and one is selected, calculate from package
-      if (quote.packages_enabled && packages.length > 0) {
+      // Check if we have packages and a selected one
+      // Calculate from packages if: packages exist AND (one is selected OR packages_enabled is true)
+      const hasSelectedPackage = selectedPackageId || packages.some(p => p.is_selected === true || p.is_selected === 'true');
+      
+      if (packages.length > 0 && hasSelectedPackage) {
         // Find selected package by ID OR by is_selected flag (fallback)
         let selectedPkg = packages.find(p => p.id === selectedPackageId);
         
@@ -1722,7 +1725,7 @@
           console.log('Package found by is_selected flag:', selectedPkg?.name);
         }
         
-        console.log('Selected package:', selectedPkg?.name, 'Price:', selectedPkg?.price);
+        console.log('Selected package:', selectedPkg?.name, 'Price:', selectedPkg?.price, 'Items:', selectedPkg?.items?.length);
         
         if (selectedPkg) {
           // Sync selectedPackageId if it was found via is_selected flag
@@ -1733,17 +1736,24 @@
           
           // Calculate package total - use price field or sum of items
           let pkgTotal = 0;
-          if (selectedPkg.price !== null && selectedPkg.price !== undefined) {
+          if (selectedPkg.price !== null && selectedPkg.price !== undefined && selectedPkg.price !== '') {
             pkgTotal = parseFloat(selectedPkg.price) || 0;
             console.log('Using package price field:', pkgTotal);
           } else if (selectedPkg.items && selectedPkg.items.length > 0) {
             pkgTotal = selectedPkg.items
-              .filter(i => i.is_included)
-              .reduce((sum, item) => sum + ((parseFloat(item.quantity) || 1) * (parseFloat(item.price) || 0)), 0);
+              .filter(i => i.is_included !== false)
+              .reduce((sum, item) => {
+                const qty = parseFloat(item.quantity) || 1;
+                const price = parseFloat(item.price) || 0;
+                console.log('  Item:', item.name, 'qty:', qty, 'price:', price, 'included:', item.is_included);
+                return sum + (qty * price);
+              }, 0);
             console.log('Calculated from items:', pkgTotal);
+          } else {
+            console.log('WARNING: Package has no price and no items!');
           }
           
-          console.log('Package total:', pkgTotal);
+          console.log('Final package total:', pkgTotal);
           
           subtotal = pkgTotal;
           subtotalLow = pkgTotal;
