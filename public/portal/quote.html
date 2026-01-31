@@ -19,7 +19,7 @@
   </script>
   <style>
     .quote-container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
     }
     
@@ -596,17 +596,20 @@
     
     .packages-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: var(--space-lg);
+      max-width: 900px;
+      margin: 0 auto;
     }
     
-    @media (max-width: 900px) {
+    @media (min-width: 1200px) {
       .packages-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        max-width: 1100px;
       }
     }
     
-    @media (max-width: 600px) {
+    @media (max-width: 700px) {
       .packages-grid {
         grid-template-columns: 1fr;
       }
@@ -616,7 +619,7 @@
       background: var(--color-bg-card);
       border: 2px solid var(--color-border);
       border-radius: var(--radius-lg);
-      padding: var(--space-lg);
+      padding: var(--space-xl);
       position: relative;
       transition: all 0.2s ease;
       cursor: pointer;
@@ -687,7 +690,7 @@
     }
     
     .package-name {
-      font-size: 1.25rem;
+      font-size: 1.35rem;
       font-weight: 700;
       text-align: center;
       margin-bottom: var(--space-sm);
@@ -696,22 +699,23 @@
     .package-description {
       text-align: center;
       color: var(--color-text-muted);
-      font-size: 0.875rem;
+      font-size: 0.9rem;
       margin-bottom: var(--space-md);
       min-height: 40px;
       white-space: pre-wrap;
+      line-height: 1.5;
     }
     
     .package-price {
       text-align: center;
-      font-size: 2rem;
+      font-size: 2.25rem;
       font-weight: 700;
       color: var(--color-text);
       margin-bottom: var(--space-lg);
     }
     
     .package-price sup {
-      font-size: 1rem;
+      font-size: 1.1rem;
       vertical-align: super;
     }
     
