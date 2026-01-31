@@ -187,6 +187,21 @@
       padding: var(--space-md) var(--space-2xl);
     }
     
+    .payment-method-btn {
+      border: 2px solid var(--color-border);
+      transition: all 0.2s ease;
+    }
+    
+    .payment-method-btn.active {
+      border-color: var(--color-primary);
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+    }
+    
+    .payment-method-btn:hover:not(.active) {
+      border-color: var(--color-primary);
+    }
+    
     .video-container {
       position: relative;
       padding-bottom: 56.25%;
@@ -939,23 +954,52 @@
         <!-- Accept Section -->
         <div class="accept-section" id="accept-section">
           <p class="text-muted mb-lg">
-            By accepting this quote, you agree to the terms and authorize the payment.
+            By accepting this quote, you agree to the terms and authorize the work to begin.
           </p>
           
-          <div style="max-width: 300px; margin: 0 auto var(--space-lg);">
-            <label class="form-label text-center" style="color: var(--color-text-light);">Payment Amount</label>
-            <div style="display: flex; align-items: center; gap: var(--space-sm);">
-              <span style="font-size: 1.25rem;">$</span>
-              <input type="number" id="payment-amount" class="form-input" style="font-size: 1.25rem; text-align: center;" step="0.01" min="1">
+          <div id="payment-options" style="max-width: 400px; margin: 0 auto var(--space-lg);">
+            <!-- Payment Method Selection -->
+            <div style="display: flex; gap: var(--space-sm); margin-bottom: var(--space-lg);">
+              <button type="button" class="btn btn-secondary payment-method-btn active" id="pay-card-btn" onclick="selectPaymentMethod('card')" style="flex: 1;">
+                💳 Pay by Card
+              </button>
+              <button type="button" class="btn btn-secondary payment-method-btn" id="pay-check-btn" onclick="selectPaymentMethod('check')" style="flex: 1;">
+                🏦 Check / Cash
+              </button>
             </div>
-            <div class="text-sm text-muted mt-sm text-center">
-              Minimum deposit: <span id="min-deposit">$0.00</span>
+            
+            <!-- Card Payment Amount -->
+            <div id="card-payment-section">
+              <label class="form-label text-center" style="color: var(--color-text-light);">Payment Amount</label>
+              <div style="display: flex; align-items: center; gap: var(--space-sm); justify-content: center;">
+                <span style="font-size: 1.25rem;">$</span>
+                <input type="number" id="payment-amount" class="form-input" style="font-size: 1.25rem; text-align: center; max-width: 150px;" step="0.01" min="1">
+              </div>
+              <div class="text-sm text-muted mt-sm text-center">
+                Minimum deposit: <span id="min-deposit">$0.00</span>
+              </div>
+            </div>
+            
+            <!-- Check/Cash Info -->
+            <div id="check-payment-section" style="display: none; text-align: center;">
+              <p class="text-muted mb-md">
+                You'll receive payment instructions after accepting. Make checks payable to:
+              </p>
+              <div style="background: var(--color-bg-alt); padding: var(--space-md); border-radius: var(--radius-md); font-weight: 600;">
+                Homestead Cabinet Design
+              </div>
             </div>
           </div>
           
           <button class="btn btn-accent accept-btn" id="accept-btn">
             Accept Quote & Pay
           </button>
+          
+          <!-- Preview Mode Warning -->
+          <div id="preview-warning" style="display: none; margin-top: var(--space-md); padding: var(--space-md); background: #fef3c7; border-radius: var(--radius-md); text-align: center;">
+            <strong>⚠️ Preview Mode</strong><br>
+            <span class="text-sm">Payment is disabled in preview. Open in new tab to test actual checkout.</span>
+          </div>
         </div>
         
         <!-- Notes Section -->
@@ -2072,15 +2116,44 @@
       this.dataset.userModified = 'true';
     });
     
+    // Payment method selection
+    let selectedPaymentMethod = 'card';
+    const isPreviewMode = new URLSearchParams(window.location.search).get('preview') === '1';
+    
+    // Show preview warning if in preview mode
+    if (isPreviewMode) {
+      const previewWarning = $('#preview-warning');
+      if (previewWarning) previewWarning.style.display = 'block';
+    }
+    
+    function selectPaymentMethod(method) {
+      selectedPaymentMethod = method;
+      
+      // Update button states
+      $('#pay-card-btn').classList.toggle('active', method === 'card');
+      $('#pay-check-btn').classList.toggle('active', method === 'check');
+      
+      // Show/hide relevant sections
+      $('#card-payment-section').style.display = method === 'card' ? 'block' : 'none';
+      $('#check-payment-section').style.display = method === 'check' ? 'block' : 'none';
+      
+      // Update button text
+      $('#accept-btn').textContent = method === 'card' ? 'Accept Quote & Pay' : 'Accept Quote';
+    }
+    
     // Accept quote button
     $('#accept-btn').addEventListener('click', async () => {
       const btn = $('#accept-btn');
-      const paymentAmount = Math.round(parseFloat($('#payment-amount').value) * 100) / 100;
-      const minDeposit = Math.round((window.minDepositAmount || 0) * 100) / 100;
       
-      // Validate payment amount (use small epsilon for floating point comparison)
-      if (!paymentAmount || paymentAmount < minDeposit - 0.01) {
-        showToast(`Minimum payment is ${formatCurrency(minDeposit)}`, 'error');
+      // Check if in preview mode
+      if (isPreviewMode) {
+        showToast('Payment disabled in preview mode. Open in new tab to test.', 'info');
+        return;
+      }
+      
+      // Packages required validation
+      if (packages.length > 0 && !selectedPackageId) {
+        showToast('Please select a bundle first', 'error');
         return;
       }
       
@@ -2093,51 +2166,117 @@
           .filter(i => i.is_optional === true && i.is_selected === true)
           .map(i => i.id);
         
-        let response;
-        
-        if (isPublicAccess) {
-          // Use public checkout API
-          const res = await fetch('/.netlify/functions/public-checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              token: accessToken,
-              selected_options: selectedOptions,
-              payment_amount: paymentAmount
-            })
-          });
+        if (selectedPaymentMethod === 'check') {
+          // Accept without Stripe - mark as accepted with check/cash payment pending
+          await acceptWithCheckPayment(selectedOptions);
+        } else {
+          // Card payment via Stripe
+          const paymentAmount = Math.round(parseFloat($('#payment-amount').value) * 100) / 100;
+          const minDeposit = Math.round((window.minDepositAmount || 0) * 100) / 100;
           
-          if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error || 'Failed to create checkout');
+          // Validate payment amount
+          if (!paymentAmount || paymentAmount < minDeposit - 0.01) {
+            showToast(`Minimum payment is ${formatCurrency(minDeposit)}`, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Accept Quote & Pay';
+            return;
           }
-          response = await res.json();
-        } else {
-          // Use authenticated API
-          response = await apiCall('create-checkout', {
-            method: 'POST',
-            body: JSON.stringify({
-              quote_id: quote.id,
-              selected_options: selectedOptions,
-              payment_amount: paymentAmount
-            })
-          });
-        }
-        
-        // Redirect to Stripe
-        if (response.url) {
-          window.location.href = response.url;
-        } else {
-          throw new Error('Failed to create checkout session');
+          
+          await processCardPayment(selectedOptions, paymentAmount);
         }
         
       } catch (err) {
         console.error('Checkout error:', err);
         showToast(err.message || 'Failed to process. Please try again.', 'error');
         btn.disabled = false;
-        btn.textContent = 'Accept Quote & Pay';
+        btn.textContent = selectedPaymentMethod === 'card' ? 'Accept Quote & Pay' : 'Accept Quote';
       }
     });
+    
+    async function acceptWithCheckPayment(selectedOptions) {
+      let response;
+      
+      if (isPublicAccess) {
+        // Use public API
+        const res = await fetch('/.netlify/functions/public-quote-selection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: accessToken,
+            selected_options: selectedOptions,
+            selected_package_id: selectedPackageId,
+            accept_quote: true,
+            payment_method: 'check'
+          })
+        });
+        
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || 'Failed to accept quote');
+        }
+        response = await res.json();
+      } else {
+        // Use authenticated API
+        response = await apiCall('portal-quote-selection', {
+          method: 'POST',
+          body: JSON.stringify({
+            quote_id: quote.id,
+            selected_options: selectedOptions,
+            selected_package_id: selectedPackageId,
+            accept_quote: true,
+            payment_method: 'check'
+          })
+        });
+      }
+      
+      // Show success message
+      showToast('Quote accepted! Payment instructions will be sent.', 'success');
+      
+      // Reload the page to show accepted status
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    }
+    
+    async function processCardPayment(selectedOptions, paymentAmount) {
+      let response;
+      
+      if (isPublicAccess) {
+        // Use public checkout API
+        const res = await fetch('/.netlify/functions/public-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: accessToken,
+            selected_options: selectedOptions,
+            payment_amount: paymentAmount
+          })
+        });
+        
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || 'Failed to create checkout');
+        }
+        response = await res.json();
+      } else {
+        // Use authenticated API
+        response = await apiCall('create-checkout', {
+          method: 'POST',
+          body: JSON.stringify({
+            quote_id: quote.id,
+            selected_options: selectedOptions,
+            payment_amount: paymentAmount
+          })
+        });
+      }
+      
+      // Redirect to Stripe
+      if (response.url) {
+        window.location.href = response.url;
+      } else {
+        throw new Error('Failed to create checkout session');
+      }
+    }
     
     // Event delegation for optional item buttons
     document.addEventListener('click', function(e) {

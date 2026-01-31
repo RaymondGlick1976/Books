@@ -19,7 +19,7 @@ exports.handler = async (event) => {
   }
   
   const supabase = getSupabase();
-  const { quote_id, item_id, selected, package_id } = parseBody(event);
+  const { quote_id, item_id, selected, package_id, selected_options, selected_package_id, accept_quote, payment_method } = parseBody(event);
   
   if (!quote_id) {
     return error('Missing quote_id', 400);
@@ -29,12 +29,64 @@ exports.handler = async (event) => {
     // Verify quote belongs to customer
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
-      .select('id, customer_id, tax_rate')
+      .select('id, customer_id, tax_rate, status')
       .eq('id', quote_id)
       .single();
     
     if (quoteError || !quote || quote.customer_id !== customer.id) {
       return error('Quote not found', 404);
+    }
+    
+    // Handle accept quote with check/cash payment
+    if (accept_quote && payment_method === 'check') {
+      // Only allow accepting quotes that are sent or viewed
+      if (!['sent', 'viewed', 'draft'].includes(quote.status)) {
+        return error('Quote cannot be accepted', 400);
+      }
+      
+      // Update selected options if provided
+      if (selected_options && selected_options.length > 0) {
+        for (const optionId of selected_options) {
+          await supabase
+            .from('quote_line_items')
+            .update({ is_selected: true })
+            .eq('id', optionId)
+            .eq('quote_id', quote_id);
+        }
+      }
+      
+      // Update selected package if provided
+      if (selected_package_id) {
+        await supabase
+          .from('quote_packages')
+          .update({ is_selected: false })
+          .eq('quote_id', quote_id);
+        
+        await supabase
+          .from('quote_packages')
+          .update({ is_selected: true })
+          .eq('id', selected_package_id)
+          .eq('quote_id', quote_id);
+      }
+      
+      // Mark quote as accepted
+      const { error: updateError } = await supabase
+        .from('quotes')
+        .update({
+          status: 'accepted',
+          accepted_at: new Date().toISOString(),
+          selected_package_id: selected_package_id || null,
+          payment_method: 'check'
+        })
+        .eq('id', quote_id);
+      
+      if (updateError) throw updateError;
+      
+      return success({ 
+        accepted: true, 
+        message: 'Quote accepted. Payment instructions will be provided.',
+        payment_method: 'check'
+      });
     }
     
     // Handle package selection
