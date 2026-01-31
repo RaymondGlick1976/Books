@@ -1080,10 +1080,13 @@
       if (quote.packages_enabled && packages && packages.length > 0) {
         // Show packages section
         $('#packages-section').style.display = 'block';
+        
+        // IMPORTANT: Set selectedPackageId BEFORE rendering so totals calculate correctly
+        selectedPackageId = quote.selected_package_id || packages.find(p => p.is_selected)?.id || null;
+        
         renderPackages();
         
-        // Check if a package is already selected
-        selectedPackageId = quote.selected_package_id || packages.find(p => p.is_selected)?.id || null;
+        // Show warning if no package selected yet
         if (!selectedPackageId && quote.status !== 'accepted' && quote.status !== 'converted') {
           $('#package-warning').style.display = 'flex';
         }
@@ -1379,7 +1382,10 @@
       sortedItems.forEach(item => {
         const isOptional = item.is_optional === true;
         const isSelected = item.is_selected === true;
-        const isSelectable = isOptional && ['sent', 'viewed'].includes(quote.status);
+        // Allow selection if quote is sent/viewed, OR if it's a draft being previewed
+        const canSelect = ['sent', 'viewed', 'draft'].includes(quote.status) && 
+                         !['accepted', 'converted', 'expired', 'rejected'].includes(quote.status);
+        const isSelectable = isOptional && canSelect;
         const itemId = item.id;
         
         const itemEl = createElement('div', {
