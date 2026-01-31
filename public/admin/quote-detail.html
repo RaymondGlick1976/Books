@@ -165,9 +165,14 @@
               <button class="btn btn-sm btn-secondary" onclick="closePreviewModal()">✕ Close</button>
             </div>
           </div>
-          <div class="modal-body" style="flex: 1; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; background: #e5e7eb; padding: 20px;">
-            <div id="preview-frame-container" style="background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; transition: width 0.3s ease, height 0.3s ease;">
-              <iframe id="preview-iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+          <div class="modal-body" style="flex: 1; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; background: #e5e7eb; padding: 20px; position: relative;">
+            <div id="preview-loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 10;">
+              <div style="width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: var(--color-primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px;"></div>
+              <div style="color: #6b7280; font-size: 14px;">Loading preview...</div>
+            </div>
+            <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+            <div id="preview-frame-container" style="background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; transition: width 0.3s ease, height 0.3s ease; opacity: 0;">
+              <iframe id="preview-iframe" style="width: 100%; height: 100%; border: none;" onload="onPreviewLoaded()"></iframe>
             </div>
           </div>
         </div>
@@ -961,6 +966,11 @@
       const modal = $('#preview-modal');
       const iframe = $('#preview-iframe');
       const container = $('#preview-frame-container');
+      const loading = $('#preview-loading');
+      
+      // Show loading, hide iframe
+      loading.style.display = 'block';
+      container.style.opacity = '0';
       
       // Set device and load iframe
       currentDevice = device;
@@ -975,6 +985,20 @@
       iframe.src = url;
       modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
+    }
+    
+    let previewLoadTimeout = null;
+    
+    function onPreviewLoaded() {
+      // The iframe fires onload when the HTML is loaded, but the quote page
+      // needs time to fetch and render data. Wait a bit longer.
+      clearTimeout(previewLoadTimeout);
+      previewLoadTimeout = setTimeout(() => {
+        const loading = $('#preview-loading');
+        const container = $('#preview-frame-container');
+        loading.style.display = 'none';
+        container.style.opacity = '1';
+      }, 800); // Give the page time to load data and render
     }
     
     function setPreviewDevice(device) {
@@ -1018,9 +1042,17 @@
     function closePreviewModal() {
       const modal = $('#preview-modal');
       const iframe = $('#preview-iframe');
+      const loading = $('#preview-loading');
+      const container = $('#preview-frame-container');
+      
+      clearTimeout(previewLoadTimeout);
       modal.style.display = 'none';
       iframe.src = 'about:blank';
       document.body.style.overflow = '';
+      
+      // Reset for next open
+      loading.style.display = 'block';
+      container.style.opacity = '0';
     }
     
     // Close modal on escape key

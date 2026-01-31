@@ -6,6 +6,17 @@
   <title>Quote | Customer Portal | Homestead Cabinet Design</title>
   <link rel="stylesheet" href="/css/styles.css?v=30">
   <script src="https://js.stripe.com/v3/"></script>
+  <script>
+    // Early check for public access - runs before body renders
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('token')) {
+        window.isPublicQuoteAccess = true;
+        // Add style to hide default nav until page loads
+        document.write('<style>.portal-nav{display:none !important;}.portal-header{justify-content:center;}</style>');
+      }
+    })();
+  </script>
   <style>
     .quote-container {
       max-width: 800px;
@@ -1118,12 +1129,18 @@
       // Show portal login link for public access instead of nav
       if (isPublicAccess) {
         const nav = $('#portal-nav');
+        const header = $('#portal-header');
         if (nav) {
           nav.innerHTML = `
             <a href="/portal/login.html" class="portal-nav-link" style="background: rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 16px;">
               🔐 Sign into Customer Portal
             </a>
           `;
+          // Show the nav now that content is set (was hidden by early script)
+          nav.style.display = '';
+        }
+        if (header) {
+          header.style.justifyContent = '';
         }
       }
       
