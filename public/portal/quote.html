@@ -1418,13 +1418,12 @@
     }
     
     async function loadQuoteFooter() {
-      let footer = null;
+      let globalFooter = null;
       
-      // For public access, use data from API response
+      // Get global footer settings (for banner)
       if (isPublicAccess && quoteFooterData) {
-        footer = quoteFooterData;
+        globalFooter = quoteFooterData;
       } else {
-        // For authenticated portal access, fetch from settings
         try {
           const supabase = await app.waitForSupabase();
           const { data, error } = await supabase
@@ -1434,27 +1433,25 @@
             .single();
           
           if (data && data.value) {
-            footer = data.value;
+            globalFooter = data.value;
           }
         } catch (err) {
           // Quote footer not configured
         }
       }
       
-      // Display banner if enabled and has image
-      if (footer && footer.enabled && footer.image_url) {
+      // Display global banner if enabled and has image
+      if (globalFooter && globalFooter.enabled && globalFooter.image_url) {
         const banner = $('#quote-footer-banner');
         const image = $('#quote-footer-banner-image');
         const link = $('#quote-footer-banner-link');
         const title = $('#quote-footer-banner-title');
         
-        // Set image
-        image.src = footer.image_url;
-        image.alt = footer.title || 'Learn More';
+        image.src = globalFooter.image_url;
+        image.alt = globalFooter.title || 'Learn More';
         
-        // Set link
-        if (footer.link_url) {
-          link.href = footer.link_url;
+        if (globalFooter.link_url) {
+          link.href = globalFooter.link_url;
           link.style.cursor = 'pointer';
         } else {
           link.removeAttribute('href');
@@ -1462,18 +1459,50 @@
           link.onclick = (e) => e.preventDefault();
         }
         
-        // Set title
-        if (footer.title) {
-          title.textContent = footer.title;
+        if (globalFooter.title) {
+          title.textContent = globalFooter.title;
           title.style.display = 'block';
         }
         
-        // Show banner
         banner.style.display = 'block';
       }
       
-      // Display before/after slider if enabled and has images
-      if (footer && footer.slider_enabled && footer.before_image && footer.after_image) {
+      // Check for quote-specific slider settings first, then fall back to global
+      let sliderSettings = null;
+      
+      // Quote-specific slider (from quote.slider_settings)
+      if (quote.slider_settings && quote.slider_settings.enabled && 
+          quote.slider_settings.before_image && quote.slider_settings.after_image) {
+        sliderSettings = {
+          enabled: true,
+          title: quote.slider_settings.title,
+          subtitle: quote.slider_settings.subtitle,
+          before_image: quote.slider_settings.before_image,
+          before_label: quote.slider_settings.before_label,
+          before_desc: quote.slider_settings.before_desc,
+          after_image: quote.slider_settings.after_image,
+          after_label: quote.slider_settings.after_label,
+          after_desc: quote.slider_settings.after_desc
+        };
+      } 
+      // Fall back to global slider settings
+      else if (globalFooter && globalFooter.slider_enabled && 
+               globalFooter.before_image && globalFooter.after_image) {
+        sliderSettings = {
+          enabled: true,
+          title: globalFooter.slider_title,
+          subtitle: globalFooter.slider_subtitle,
+          before_image: globalFooter.before_image,
+          before_label: globalFooter.before_label,
+          before_desc: globalFooter.before_desc,
+          after_image: globalFooter.after_image,
+          after_label: globalFooter.after_label,
+          after_desc: globalFooter.after_desc
+        };
+      }
+      
+      // Display slider if we have valid settings
+      if (sliderSettings && sliderSettings.enabled) {
         const slider = $('#quote-footer-slider');
         const beforeEl = $('#ba-before');
         const afterEl = $('#ba-after');
@@ -1482,25 +1511,25 @@
         const container = $('#ba-slider-container');
         
         // Set title and subtitle
-        $('#quote-slider-title').textContent = footer.slider_title || 'See the Transformation';
-        $('#quote-slider-subtitle').textContent = footer.slider_subtitle || 'Drag the slider to reveal';
+        $('#quote-slider-title').textContent = sliderSettings.title || 'See the Transformation';
+        $('#quote-slider-subtitle').textContent = sliderSettings.subtitle || 'Drag the slider to reveal';
         
         // Set images
-        beforeEl.style.backgroundImage = `url('${footer.before_image}')`;
-        afterEl.style.backgroundImage = `url('${footer.after_image}')`;
+        beforeEl.style.backgroundImage = `url('${sliderSettings.before_image}')`;
+        afterEl.style.backgroundImage = `url('${sliderSettings.after_image}')`;
         
         // Set labels
-        $('#ba-before-label').textContent = footer.before_label || 'Before';
-        $('#ba-after-label').textContent = footer.after_label || 'After';
+        $('#ba-before-label').textContent = sliderSettings.before_label || 'Before';
+        $('#ba-after-label').textContent = sliderSettings.after_label || 'After';
         
         // Set descriptions if provided
-        if (footer.before_desc) {
+        if (sliderSettings.before_desc) {
           $('#ba-before-desc').style.display = 'block';
-          $('#ba-before-desc-text').textContent = footer.before_desc;
+          $('#ba-before-desc-text').textContent = sliderSettings.before_desc;
         }
-        if (footer.after_desc) {
+        if (sliderSettings.after_desc) {
           $('#ba-after-desc').style.display = 'block';
-          $('#ba-after-desc-text').textContent = footer.after_desc;
+          $('#ba-after-desc-text').textContent = sliderSettings.after_desc;
         }
         
         // Show slider

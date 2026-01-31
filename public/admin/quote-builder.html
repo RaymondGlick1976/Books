@@ -666,6 +666,64 @@
               </div>
             </div>
             
+            <!-- Before/After Slider -->
+            <div class="card mb-xl">
+              <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 class="card-title">Before/After Comparison</h3>
+                <label class="form-check" style="margin: 0;">
+                  <input type="checkbox" id="slider-enabled">
+                  <span class="form-check-label">Show on quote</span>
+                </label>
+              </div>
+              <div class="card-body" id="slider-options" style="display: none;">
+                <p style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: var(--space-md);">
+                  Add a draggable before/after slider showing this customer's transformation.
+                </p>
+                <div class="grid grid-cols-2 gap-lg">
+                  <div class="form-group">
+                    <label class="form-label">Slider Title</label>
+                    <input type="text" id="slider-title" class="form-input" placeholder="See the Transformation" value="See the Transformation">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Slider Subtitle</label>
+                    <input type="text" id="slider-subtitle" class="form-input" placeholder="Drag to compare" value="Drag the slider to reveal">
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-lg">
+                  <div>
+                    <div class="form-group">
+                      <label class="form-label">Before Image URL</label>
+                      <input type="url" id="slider-before-image" class="form-input" placeholder="https://example.com/before.jpg">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Before Label</label>
+                      <input type="text" id="slider-before-label" class="form-input" placeholder="Before" value="Before">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Before Description <span class="form-label-optional">(optional)</span></label>
+                      <input type="text" id="slider-before-desc" class="form-input" placeholder="e.g., Current Kitchen">
+                    </div>
+                  </div>
+                  <div>
+                    <div class="form-group">
+                      <label class="form-label">After Image URL</label>
+                      <input type="url" id="slider-after-image" class="form-input" placeholder="https://example.com/after.jpg">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">After Label</label>
+                      <input type="text" id="slider-after-label" class="form-input" placeholder="After" value="After">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">After Description <span class="form-label-optional">(optional)</span></label>
+                      <input type="text" id="slider-after-desc" class="form-input" placeholder="e.g., Your New Kitchen">
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="previewQuoteSlider()">Preview Slider</button>
+                <div id="slider-preview" style="display: none; margin-top: var(--space-lg);"></div>
+              </div>
+            </div>
+            
             <!-- Attachments -->
             <div class="card">
               <div class="card-header">
@@ -846,7 +904,18 @@
           total: subtotal + taxAmount,
           total_low: subtotal + taxAmount,
           total_high: subtotal + taxAmount,
-          packages_enabled: packagesEnabled
+          packages_enabled: packagesEnabled,
+          slider_settings: {
+            enabled: $('#slider-enabled').checked,
+            title: $('#slider-title').value.trim() || 'See the Transformation',
+            subtitle: $('#slider-subtitle').value.trim() || 'Drag the slider to reveal',
+            before_image: $('#slider-before-image').value.trim() || null,
+            before_label: $('#slider-before-label').value.trim() || 'Before',
+            before_desc: $('#slider-before-desc').value.trim() || null,
+            after_image: $('#slider-after-image').value.trim() || null,
+            after_label: $('#slider-after-label').value.trim() || 'After',
+            after_desc: $('#slider-after-desc').value.trim() || null
+          }
         };
         
         let savedQuote;
@@ -1170,6 +1239,21 @@
         $('#customer-notes').value = quote.notes || '';
         $('#internal-notes').value = quote.internal_notes || '';
         
+        // Load slider settings
+        if (quote.slider_settings) {
+          const slider = quote.slider_settings;
+          $('#slider-enabled').checked = slider.enabled === true;
+          $('#slider-options').style.display = slider.enabled ? 'block' : 'none';
+          $('#slider-title').value = slider.title || 'See the Transformation';
+          $('#slider-subtitle').value = slider.subtitle || 'Drag the slider to reveal';
+          $('#slider-before-image').value = slider.before_image || '';
+          $('#slider-before-label').value = slider.before_label || 'Before';
+          $('#slider-before-desc').value = slider.before_desc || '';
+          $('#slider-after-image').value = slider.after_image || '';
+          $('#slider-after-label').value = slider.after_label || 'After';
+          $('#slider-after-desc').value = slider.after_desc || '';
+        }
+        
         lineItems = (quote.quote_line_items || []).map(item => ({
           id: item.id,
           catalogItemId: item.catalog_item_id,
@@ -1300,6 +1384,22 @@
       $('#video-url').addEventListener('input', markDirty);
       $('#customer-notes').addEventListener('input', markDirty);
       $('#internal-notes').addEventListener('input', markDirty);
+      
+      // Slider toggle
+      $('#slider-enabled').addEventListener('change', (e) => {
+        $('#slider-options').style.display = e.target.checked ? 'block' : 'none';
+        markDirty();
+      });
+      
+      // Slider field autosave triggers
+      $('#slider-title').addEventListener('input', markDirty);
+      $('#slider-subtitle').addEventListener('input', markDirty);
+      $('#slider-before-image').addEventListener('input', markDirty);
+      $('#slider-before-label').addEventListener('input', markDirty);
+      $('#slider-before-desc').addEventListener('input', markDirty);
+      $('#slider-after-image').addEventListener('input', markDirty);
+      $('#slider-after-label').addEventListener('input', markDirty);
+      $('#slider-after-desc').addEventListener('input', markDirty);
     }
     
     function showCatalogModal() {
@@ -2714,7 +2814,18 @@
           total: subtotal + taxAmount,
           total_low: subtotal + taxAmount,
           total_high: subtotal + taxAmount,
-          packages_enabled: packagesEnabled
+          packages_enabled: packagesEnabled,
+          slider_settings: {
+            enabled: $('#slider-enabled').checked,
+            title: $('#slider-title').value.trim() || 'See the Transformation',
+            subtitle: $('#slider-subtitle').value.trim() || 'Drag the slider to reveal',
+            before_image: $('#slider-before-image').value.trim() || null,
+            before_label: $('#slider-before-label').value.trim() || 'Before',
+            before_desc: $('#slider-before-desc').value.trim() || null,
+            after_image: $('#slider-after-image').value.trim() || null,
+            after_label: $('#slider-after-label').value.trim() || 'After',
+            after_desc: $('#slider-after-desc').value.trim() || null
+          }
         };
         
         if (status === 'sent') {
@@ -3723,6 +3834,79 @@
         content,
         size: 'md'
       });
+    }
+    
+    function previewQuoteSlider() {
+      const enabled = $('#slider-enabled').checked;
+      const beforeImage = $('#slider-before-image').value.trim();
+      const afterImage = $('#slider-after-image').value.trim();
+      const sliderTitle = $('#slider-title').value.trim() || 'See the Transformation';
+      const sliderSubtitle = $('#slider-subtitle').value.trim() || 'Drag the slider to reveal';
+      const beforeLabel = $('#slider-before-label').value.trim() || 'Before';
+      const afterLabel = $('#slider-after-label').value.trim() || 'After';
+      const beforeDesc = $('#slider-before-desc').value.trim();
+      const afterDesc = $('#slider-after-desc').value.trim();
+      
+      const preview = $('#slider-preview');
+      
+      if (!enabled) {
+        preview.style.display = 'none';
+        showToast('Slider is disabled', 'info');
+        return;
+      }
+      
+      if (!beforeImage || !afterImage) {
+        preview.style.display = 'none';
+        showToast('Please enter both before and after image URLs', 'error');
+        return;
+      }
+      
+      const sliderId = 'preview-slider-' + Date.now();
+      
+      preview.innerHTML = `
+        <div style="max-width: 500px; margin: 0 auto; background: var(--color-bg-soft); padding: var(--space-lg); border-radius: var(--radius-lg);">
+          <h4 style="margin-bottom: 5px; text-align: center;">${sliderTitle}</h4>
+          <p style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: 15px; text-align: center;">${sliderSubtitle}</p>
+          <div id="${sliderId}" style="position: relative; height: 250px; cursor: ew-resize; user-select: none; overflow: hidden; border-radius: 12px; box-shadow: var(--shadow-md);">
+            <div class="ba-before" style="position: absolute; inset: 0; background-image: url('${beforeImage}'); background-size: cover; background-position: center;">
+              <div style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,.7); color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${beforeLabel}</div>
+              ${beforeDesc ? `<div style="position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,.6); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px;">${beforeDesc}</div>` : ''}
+            </div>
+            <div class="ba-after" style="position: absolute; inset: 0; background-image: url('${afterImage}'); background-size: cover; background-position: center; clip-path: inset(0 50% 0 0);">
+              <div style="position: absolute; top: 12px; right: 12px; background: var(--color-primary); color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${afterLabel}</div>
+              ${afterDesc ? `<div style="position: absolute; bottom: 12px; right: 12px; background: var(--color-primary); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px;">${afterDesc}</div>` : ''}
+            </div>
+            <div class="ba-handle" style="position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 4px; background: white; box-shadow: 0 0 10px rgba(0,0,0,.3); z-index: 10;">
+              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 36px; height: 36px; background: white; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,.2); display: flex; align-items: center; justify-content: center; font-size: 14px; color: #6b7280;">⟷</div>
+            </div>
+          </div>
+        </div>
+      `;
+      preview.style.display = 'block';
+      
+      // Initialize slider interaction
+      setTimeout(() => {
+        const box = document.getElementById(sliderId);
+        if (!box) return;
+        const aft = box.querySelector('.ba-after');
+        const hdl = box.querySelector('.ba-handle');
+        let dragging = false;
+        
+        function update(clientX) {
+          const rect = box.getBoundingClientRect();
+          const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+          const pos = (x / rect.width) * 100;
+          aft.style.clipPath = 'inset(0 ' + (100 - pos) + '% 0 0)';
+          hdl.style.left = pos + '%';
+        }
+        
+        box.addEventListener('mousedown', (e) => { e.preventDefault(); dragging = true; });
+        box.addEventListener('touchstart', (e) => { dragging = true; });
+        document.addEventListener('mouseup', () => { dragging = false; });
+        document.addEventListener('touchend', () => { dragging = false; });
+        document.addEventListener('mousemove', (e) => { if (dragging) update(e.clientX); });
+        document.addEventListener('touchmove', (e) => { if (dragging && e.touches[0]) update(e.touches[0].clientX); });
+      }, 100);
     }
   </script>
 </body>
