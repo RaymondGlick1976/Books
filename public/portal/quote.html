@@ -260,6 +260,12 @@
       margin-bottom: var(--space-xl);
     }
     
+    /* Quote Footer Banner */
+    #quote-footer-banner-link:hover img {
+      transform: scale(1.02);
+      box-shadow: var(--shadow-lg);
+    }
+    
     /* Change Order Styles */
     .change-order-card {
       background: var(--color-bg-card);
@@ -935,6 +941,16 @@
             <div class="video-container" id="video-container"></div>
           </div>
         </div>
+        
+        <!-- Promotional Footer Banner -->
+        <div id="quote-footer-banner" class="quote-section" style="display: none;">
+          <div class="quote-section-body" style="text-align: center; padding: var(--space-xl);">
+            <p id="quote-footer-banner-title" style="font-weight: 600; margin-bottom: var(--space-md); font-size: 1.1rem; display: none;"></p>
+            <a id="quote-footer-banner-link" href="#" target="_blank" rel="noopener noreferrer" style="display: inline-block;">
+              <img id="quote-footer-banner-image" src="" alt="View More" style="max-width: 100%; max-height: 250px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); transition: transform 0.2s ease;">
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -1082,7 +1098,12 @@
         $('#packages-section').style.display = 'block';
         
         // IMPORTANT: Set selectedPackageId BEFORE rendering so totals calculate correctly
-        selectedPackageId = quote.selected_package_id || packages.find(p => p.is_selected)?.id || null;
+        // Check for both boolean true and string 'true' (database may return either)
+        selectedPackageId = quote.selected_package_id || 
+                           packages.find(p => p.is_selected === true || p.is_selected === 'true')?.id || 
+                           null;
+        
+        console.log('Selected package ID:', selectedPackageId);
         
         renderPackages();
         
@@ -1139,6 +1160,9 @@
       
       // Load and display terms
       loadTerms();
+      
+      // Load and display promotional footer
+      loadQuoteFooter();
       
       // Calculate totals
       updateTotals();
@@ -1367,6 +1391,49 @@
       }
     }
     
+    async function loadQuoteFooter() {
+      try {
+        const { data, error } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'quote_footer')
+          .single();
+        
+        if (data && data.value && data.value.enabled && data.value.image_url) {
+          const footer = data.value;
+          const banner = $('#quote-footer-banner');
+          const image = $('#quote-footer-banner-image');
+          const link = $('#quote-footer-banner-link');
+          const title = $('#quote-footer-banner-title');
+          
+          // Set image
+          image.src = footer.image_url;
+          image.alt = footer.title || 'Learn More';
+          
+          // Set link
+          if (footer.link_url) {
+            link.href = footer.link_url;
+            link.style.cursor = 'pointer';
+          } else {
+            link.removeAttribute('href');
+            link.style.cursor = 'default';
+            link.onclick = (e) => e.preventDefault();
+          }
+          
+          // Set title
+          if (footer.title) {
+            title.textContent = footer.title;
+            title.style.display = 'block';
+          }
+          
+          // Show banner
+          banner.style.display = 'block';
+        }
+      } catch (err) {
+        console.log('Quote footer not configured');
+      }
+    }
+    
     function renderLineItems() {
       const container = $('#line-items-container');
       clearElement(container);
@@ -1499,7 +1566,8 @@
       const sortedPackages = [...packages].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       
       sortedPackages.forEach(pkg => {
-        const isSelected = pkg.id === selectedPackageId || pkg.is_selected;
+        const pkgIsSelected = pkg.is_selected === true || pkg.is_selected === 'true';
+        const isSelected = pkg.id === selectedPackageId || pkgIsSelected;
         const total = pkg.price || pkg.items.filter(i => i.is_included).reduce((sum, item) => sum + (item.quantity * item.price), 0);
         
         // Filter items to show
@@ -1613,8 +1681,16 @@
       
       // If packages are enabled and one is selected, calculate from package
       if (quote.packages_enabled && packages.length > 0) {
-        const selectedPkg = packages.find(p => p.id === selectedPackageId);
+        // Find selected package by ID OR by is_selected flag (fallback)
+        const selectedPkg = packages.find(p => p.id === selectedPackageId) || 
+                           packages.find(p => p.is_selected === true || p.is_selected === 'true');
+        
         if (selectedPkg) {
+          // Sync selectedPackageId if it was found via is_selected flag
+          if (!selectedPackageId && selectedPkg) {
+            selectedPackageId = selectedPkg.id;
+          }
+          
           // Calculate package total
           const pkgTotal = selectedPkg.price || selectedPkg.items
             .filter(i => i.is_included)

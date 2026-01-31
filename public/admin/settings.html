@@ -204,6 +204,52 @@
           </div>
         </div>
         
+        <!-- Quote Footer / Promotional Banner -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Quote Footer Banner</h3>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              Add a promotional banner or link that appears at the bottom of every customer quote. Great for digital catalogs, portfolios, or special offers.
+            </p>
+            <form id="quote-footer-form">
+              <div class="form-group">
+                <label class="form-label">Banner Image URL</label>
+                <input type="url" name="footer_image_url" id="quote-footer-image" class="form-input" placeholder="https://example.com/banner.jpg">
+                <div class="form-help">URL to an image (recommended size: 800x200 or similar banner ratio)</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Link URL</label>
+                <input type="url" name="footer_link_url" id="quote-footer-link" class="form-input" placeholder="https://example.com/catalog">
+                <div class="form-help">Where customers go when they click the banner</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Banner Title (optional)</label>
+                <input type="text" name="footer_title" id="quote-footer-title" class="form-input" placeholder="e.g., View Our Portfolio">
+                <div class="form-help">Text shown above the banner image</div>
+              </div>
+              <div class="form-group">
+                <label class="form-check">
+                  <input type="checkbox" id="quote-footer-enabled" checked>
+                  <span class="form-check-label">Show footer banner on quotes</span>
+                </label>
+              </div>
+              
+              <!-- Preview -->
+              <div id="quote-footer-preview" style="display: none; margin-top: var(--space-lg); padding: var(--space-lg); background: var(--color-bg-soft); border-radius: var(--radius-lg);">
+                <div class="text-sm text-muted mb-sm">Preview:</div>
+                <div id="quote-footer-preview-content" style="text-align: center;"></div>
+              </div>
+              
+              <div style="margin-top: var(--space-lg);">
+                <button type="submit" class="btn btn-primary">Save Quote Footer</button>
+                <button type="button" class="btn btn-secondary" onclick="previewQuoteFooter()">Preview</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        
         <!-- Invoice Settings -->
         <div class="card mb-xl">
           <div class="card-header">
@@ -833,6 +879,74 @@
       };
       await saveSetting('quotes', value);
     });
+    
+    // Quote footer form
+    $('#quote-footer-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const value = {
+        enabled: $('#quote-footer-enabled').checked,
+        image_url: $('#quote-footer-image').value.trim(),
+        link_url: $('#quote-footer-link').value.trim(),
+        title: $('#quote-footer-title').value.trim()
+      };
+      await saveSetting('quote_footer', value);
+    });
+    
+    function previewQuoteFooter() {
+      const imageUrl = $('#quote-footer-image').value.trim();
+      const linkUrl = $('#quote-footer-link').value.trim();
+      const title = $('#quote-footer-title').value.trim();
+      const enabled = $('#quote-footer-enabled').checked;
+      
+      const preview = $('#quote-footer-preview');
+      const content = $('#quote-footer-preview-content');
+      
+      if (!enabled || !imageUrl) {
+        preview.style.display = 'none';
+        if (!enabled) {
+          showToast('Footer banner is disabled', 'info');
+        } else {
+          showToast('Please enter an image URL', 'error');
+        }
+        return;
+      }
+      
+      let html = '';
+      if (title) {
+        html += `<p style="font-weight: 600; margin-bottom: var(--space-sm); color: var(--color-text);">${title}</p>`;
+      }
+      
+      if (linkUrl) {
+        html += `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block;"><img src="${imageUrl}" alt="${title || 'View More'}" style="max-width: 100%; max-height: 200px; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);"></a>`;
+      } else {
+        html += `<img src="${imageUrl}" alt="${title || 'Banner'}" style="max-width: 100%; max-height: 200px; border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">`;
+      }
+      
+      content.innerHTML = html;
+      preview.style.display = 'block';
+    }
+    
+    // Load quote footer settings
+    async function loadQuoteFooterSettings() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'quote_footer')
+          .single();
+        
+        if (data && data.value) {
+          const footer = data.value;
+          $('#quote-footer-enabled').checked = footer.enabled !== false;
+          $('#quote-footer-image').value = footer.image_url || '';
+          $('#quote-footer-link').value = footer.link_url || '';
+          $('#quote-footer-title').value = footer.title || '';
+        }
+      } catch (err) {
+        console.log('Quote footer settings not found, using defaults');
+      }
+    }
     
     // Invoice settings form
     $('#invoice-settings-form').addEventListener('submit', async (e) => {
@@ -2199,6 +2313,15 @@
           // Handle finish_types specially
           if (s.key === 'finish_types') {
             finishTypes = Array.isArray(s.value) ? s.value : [];
+            return;
+          }
+          // Handle quote_footer specially
+          if (s.key === 'quote_footer' && s.value) {
+            const footer = s.value;
+            $('#quote-footer-enabled').checked = footer.enabled !== false;
+            $('#quote-footer-image').value = footer.image_url || '';
+            $('#quote-footer-link').value = footer.link_url || '';
+            $('#quote-footer-title').value = footer.title || '';
             return;
           }
           const input = document.getElementById(s.key);
