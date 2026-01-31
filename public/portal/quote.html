@@ -969,6 +969,7 @@
     let stripe = null;
     let accessToken = null;
     let isPublicAccess = false;
+    let quoteFooterData = null;
     
     // Get quote ID or token from URL
     const params = new URLSearchParams(window.location.search);
@@ -1019,6 +1020,7 @@
         changeOrders = response.change_orders || [];
         payments = response.payments || [];
         packages = response.packages || [];
+        quoteFooterData = response.quote_footer || null;
         
         renderQuote();
         
@@ -1392,45 +1394,68 @@
     }
     
     async function loadQuoteFooter() {
-      try {
-        const { data, error } = await supabase
-          .from('settings')
-          .select('value')
-          .eq('key', 'quote_footer')
-          .single();
-        
-        if (data && data.value && data.value.enabled && data.value.image_url) {
-          const footer = data.value;
-          const banner = $('#quote-footer-banner');
-          const image = $('#quote-footer-banner-image');
-          const link = $('#quote-footer-banner-link');
-          const title = $('#quote-footer-banner-title');
+      console.log('=== LOADING QUOTE FOOTER ===');
+      
+      let footer = null;
+      
+      // For public access, use data from API response
+      if (isPublicAccess && quoteFooterData) {
+        footer = quoteFooterData;
+        console.log('Using footer data from API:', footer);
+      } else {
+        // For authenticated portal access, fetch from settings
+        try {
+          const supabase = await app.waitForSupabase();
+          const { data, error } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'quote_footer')
+            .single();
           
-          // Set image
-          image.src = footer.image_url;
-          image.alt = footer.title || 'Learn More';
+          console.log('Quote footer data from DB:', data);
           
-          // Set link
-          if (footer.link_url) {
-            link.href = footer.link_url;
-            link.style.cursor = 'pointer';
-          } else {
-            link.removeAttribute('href');
-            link.style.cursor = 'default';
-            link.onclick = (e) => e.preventDefault();
+          if (data && data.value) {
+            footer = data.value;
           }
-          
-          // Set title
-          if (footer.title) {
-            title.textContent = footer.title;
-            title.style.display = 'block';
-          }
-          
-          // Show banner
-          banner.style.display = 'block';
+        } catch (err) {
+          console.log('Quote footer not configured:', err);
         }
-      } catch (err) {
-        console.log('Quote footer not configured');
+      }
+      
+      // Display footer if enabled and has image
+      if (footer && footer.enabled && footer.image_url) {
+        const banner = $('#quote-footer-banner');
+        const image = $('#quote-footer-banner-image');
+        const link = $('#quote-footer-banner-link');
+        const title = $('#quote-footer-banner-title');
+        
+        console.log('Footer settings:', footer);
+        
+        // Set image
+        image.src = footer.image_url;
+        image.alt = footer.title || 'Learn More';
+        
+        // Set link
+        if (footer.link_url) {
+          link.href = footer.link_url;
+          link.style.cursor = 'pointer';
+        } else {
+          link.removeAttribute('href');
+          link.style.cursor = 'default';
+          link.onclick = (e) => e.preventDefault();
+        }
+        
+        // Set title
+        if (footer.title) {
+          title.textContent = footer.title;
+          title.style.display = 'block';
+        }
+        
+        // Show banner
+        banner.style.display = 'block';
+        console.log('Quote footer banner displayed');
+      } else {
+        console.log('Quote footer not enabled or missing image URL');
       }
     }
     
@@ -1679,22 +1704,46 @@
       let taxableSubtotalHigh = 0;
       let hasRange = false;
       
+      // DEBUG LOGGING
+      console.log('=== UPDATE TOTALS DEBUG ===');
+      console.log('quote.packages_enabled:', quote.packages_enabled);
+      console.log('packages.length:', packages.length);
+      console.log('selectedPackageId:', selectedPackageId);
+      console.log('All packages:', JSON.stringify(packages.map(p => ({ id: p.id, name: p.name, is_selected: p.is_selected, price: p.price }))));
+      
       // If packages are enabled and one is selected, calculate from package
       if (quote.packages_enabled && packages.length > 0) {
         // Find selected package by ID OR by is_selected flag (fallback)
-        const selectedPkg = packages.find(p => p.id === selectedPackageId) || 
-                           packages.find(p => p.is_selected === true || p.is_selected === 'true');
+        let selectedPkg = packages.find(p => p.id === selectedPackageId);
+        
+        // If not found by ID, check is_selected flag (handle both boolean and string)
+        if (!selectedPkg) {
+          selectedPkg = packages.find(p => p.is_selected === true || p.is_selected === 'true');
+          console.log('Package found by is_selected flag:', selectedPkg?.name);
+        }
+        
+        console.log('Selected package:', selectedPkg?.name, 'Price:', selectedPkg?.price);
         
         if (selectedPkg) {
           // Sync selectedPackageId if it was found via is_selected flag
-          if (!selectedPackageId && selectedPkg) {
+          if (!selectedPackageId) {
             selectedPackageId = selectedPkg.id;
+            console.log('Set selectedPackageId to:', selectedPackageId);
           }
           
-          // Calculate package total
-          const pkgTotal = selectedPkg.price || selectedPkg.items
-            .filter(i => i.is_included)
-            .reduce((sum, item) => sum + (item.quantity * item.price), 0);
+          // Calculate package total - use price field or sum of items
+          let pkgTotal = 0;
+          if (selectedPkg.price !== null && selectedPkg.price !== undefined) {
+            pkgTotal = parseFloat(selectedPkg.price) || 0;
+            console.log('Using package price field:', pkgTotal);
+          } else if (selectedPkg.items && selectedPkg.items.length > 0) {
+            pkgTotal = selectedPkg.items
+              .filter(i => i.is_included)
+              .reduce((sum, item) => sum + ((parseFloat(item.quantity) || 1) * (parseFloat(item.price) || 0)), 0);
+            console.log('Calculated from items:', pkgTotal);
+          }
+          
+          console.log('Package total:', pkgTotal);
           
           subtotal = pkgTotal;
           subtotalLow = pkgTotal;
@@ -1706,6 +1755,8 @@
             taxableSubtotalLow = pkgTotal;
             taxableSubtotalHigh = pkgTotal;
           }
+        } else {
+          console.log('NO SELECTED PACKAGE FOUND');
         }
         
         // Also add any selected optional line items (add-ons)

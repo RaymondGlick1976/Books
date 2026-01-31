@@ -88,6 +88,22 @@ exports.handler = async (event) => {
       console.log('Packages table may not exist yet:', e.message);
     }
     
+    // Get quote footer settings
+    let quoteFooter = null;
+    try {
+      const { data: footerData } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'quote_footer')
+        .single();
+      
+      if (footerData && footerData.value) {
+        quoteFooter = footerData.value;
+      }
+    } catch (e) {
+      console.log('Quote footer settings not found');
+    }
+    
     // Update to viewed if sent (skip for admin preview)
     if (quote.status === 'sent' && !isPreview) {
       await supabase
@@ -130,6 +146,7 @@ exports.handler = async (event) => {
       change_orders: changeOrders || [],
       payments: payments || [],
       packages: packages || [],
+      quote_footer: quoteFooter,
     });
     
   } catch (err) {
