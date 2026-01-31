@@ -207,46 +207,105 @@
         <!-- Quote Footer / Promotional Banner -->
         <div class="card mb-xl">
           <div class="card-header">
-            <h3 class="card-title">Quote Footer Banner</h3>
+            <h3 class="card-title">Quote Footer</h3>
           </div>
           <div class="card-body">
             <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
-              Add a promotional banner or link that appears at the bottom of every customer quote. Great for digital catalogs, portfolios, or special offers.
+              Add promotional content at the bottom of every customer quote. Choose a banner image/link, a before/after slider, or both.
             </p>
             <form id="quote-footer-form">
-              <div class="form-group">
-                <label class="form-label">Banner Image URL</label>
-                <input type="url" name="footer_image_url" id="quote-footer-image" class="form-input" placeholder="https://example.com/banner.jpg">
-                <div class="form-help">URL to an image (recommended size: 800x200 or similar banner ratio)</div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Link URL</label>
-                <input type="url" name="footer_link_url" id="quote-footer-link" class="form-input" placeholder="https://example.com/catalog">
-                <div class="form-help">Where customers go when they click the banner</div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Banner Title (optional)</label>
-                <input type="text" name="footer_title" id="quote-footer-title" class="form-input" placeholder="e.g., View Our Portfolio">
-                <div class="form-help">Text shown above the banner image</div>
-              </div>
-              <div class="form-group">
-                <label class="form-check">
-                  <input type="checkbox" id="quote-footer-enabled" checked>
-                  <span class="form-check-label">Show footer banner on quotes</span>
-                </label>
+              
+              <!-- Banner Section -->
+              <div style="background: var(--color-bg-soft); padding: var(--space-lg); border-radius: var(--radius-lg); margin-bottom: var(--space-xl);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                  <h4 style="margin: 0; font-size: 1rem;">Promotional Banner</h4>
+                  <label class="form-check" style="margin: 0;">
+                    <input type="checkbox" id="quote-footer-enabled">
+                    <span class="form-check-label">Enable</span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Banner Image URL</label>
+                  <input type="url" id="quote-footer-image" class="form-input" placeholder="https://example.com/banner.jpg">
+                  <div class="form-help">URL to an image (recommended size: 800x200 or similar banner ratio)</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Link URL</label>
+                  <input type="url" id="quote-footer-link" class="form-input" placeholder="https://example.com/catalog">
+                  <div class="form-help">Where customers go when they click the banner</div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label">Banner Title (optional)</label>
+                  <input type="text" id="quote-footer-title" class="form-input" placeholder="e.g., View Our Portfolio">
+                </div>
               </div>
               
-              <!-- Preview -->
-              <div id="quote-footer-preview" style="display: none; margin-top: var(--space-lg); padding: var(--space-lg); background: var(--color-bg-soft); border-radius: var(--radius-lg);">
-                <div class="text-sm text-muted mb-sm">Preview:</div>
-                <div id="quote-footer-preview-content" style="text-align: center;"></div>
+              <!-- Before/After Slider Section -->
+              <div style="background: var(--color-bg-soft); padding: var(--space-lg); border-radius: var(--radius-lg); margin-bottom: var(--space-xl);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                  <h4 style="margin: 0; font-size: 1rem;">Before/After Comparison Slider</h4>
+                  <label class="form-check" style="margin: 0;">
+                    <input type="checkbox" id="quote-footer-slider-enabled">
+                    <span class="form-check-label">Enable</span>
+                  </label>
+                </div>
+                <p style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: var(--space-md);">
+                  Show customers a draggable before/after comparison of your work.
+                </p>
+                <div class="grid grid-cols-2 gap-lg">
+                  <div class="form-group">
+                    <label class="form-label">Slider Title</label>
+                    <input type="text" id="quote-footer-slider-title" class="form-input" placeholder="See the Transformation" value="See the Transformation">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Slider Subtitle</label>
+                    <input type="text" id="quote-footer-slider-subtitle" class="form-input" placeholder="Drag to compare" value="Drag the slider to reveal">
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-lg">
+                  <div>
+                    <div class="form-group">
+                      <label class="form-label">Before Image URL</label>
+                      <input type="url" id="quote-footer-before-image" class="form-input" placeholder="https://example.com/before.jpg">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Before Label</label>
+                      <input type="text" id="quote-footer-before-label" class="form-input" placeholder="Before" value="Before">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Before Description</label>
+                      <input type="text" id="quote-footer-before-desc" class="form-input" placeholder="e.g., Dated Oak Cabinets">
+                    </div>
+                  </div>
+                  <div>
+                    <div class="form-group">
+                      <label class="form-label">After Image URL</label>
+                      <input type="url" id="quote-footer-after-image" class="form-input" placeholder="https://example.com/after.jpg">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">After Label</label>
+                      <input type="text" id="quote-footer-after-label" class="form-input" placeholder="After" value="After">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">After Description</label>
+                      <input type="text" id="quote-footer-after-desc" class="form-input" placeholder="e.g., Modern Shaker Style">
+                    </div>
+                  </div>
+                </div>
               </div>
               
-              <div style="margin-top: var(--space-lg);">
+              <div style="display: flex; gap: var(--space-md);">
                 <button type="submit" class="btn btn-primary">Save Quote Footer</button>
-                <button type="button" class="btn btn-secondary" onclick="previewQuoteFooter()">Preview</button>
+                <button type="button" class="btn btn-secondary" onclick="previewQuoteFooter()">Preview Banner</button>
+                <button type="button" class="btn btn-secondary" onclick="previewSlider()">Preview Slider</button>
               </div>
             </form>
+            
+            <!-- Preview Area -->
+            <div id="quote-footer-preview" style="display: none; margin-top: var(--space-xl); padding: var(--space-lg); background: var(--color-bg-soft); border-radius: var(--radius-lg);">
+              <div class="text-sm text-muted mb-sm">Preview:</div>
+              <div id="quote-footer-preview-content" style="text-align: center;"></div>
+            </div>
           </div>
         </div>
         
@@ -884,10 +943,21 @@
     $('#quote-footer-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const value = {
+        // Banner settings
         enabled: $('#quote-footer-enabled').checked,
         image_url: $('#quote-footer-image').value.trim(),
         link_url: $('#quote-footer-link').value.trim(),
-        title: $('#quote-footer-title').value.trim()
+        title: $('#quote-footer-title').value.trim(),
+        // Slider settings
+        slider_enabled: $('#quote-footer-slider-enabled').checked,
+        slider_title: $('#quote-footer-slider-title').value.trim(),
+        slider_subtitle: $('#quote-footer-slider-subtitle').value.trim(),
+        before_image: $('#quote-footer-before-image').value.trim(),
+        before_label: $('#quote-footer-before-label').value.trim(),
+        before_desc: $('#quote-footer-before-desc').value.trim(),
+        after_image: $('#quote-footer-after-image').value.trim(),
+        after_label: $('#quote-footer-after-label').value.trim(),
+        after_desc: $('#quote-footer-after-desc').value.trim()
       };
       await saveSetting('quote_footer', value);
     });
@@ -904,9 +974,9 @@
       if (!enabled || !imageUrl) {
         preview.style.display = 'none';
         if (!enabled) {
-          showToast('Footer banner is disabled', 'info');
+          showToast('Banner is disabled', 'info');
         } else {
-          showToast('Please enter an image URL', 'error');
+          showToast('Please enter a banner image URL', 'error');
         }
         return;
       }
@@ -926,27 +996,81 @@
       preview.style.display = 'block';
     }
     
-    // Load quote footer settings
-    async function loadQuoteFooterSettings() {
-      try {
-        const supabase = await app.waitForSupabase();
-        const { data } = await supabase
-          .from('settings')
-          .select('value')
-          .eq('key', 'quote_footer')
-          .single();
-        
-        if (data && data.value) {
-          const footer = data.value;
-          $('#quote-footer-enabled').checked = footer.enabled !== false;
-          $('#quote-footer-image').value = footer.image_url || '';
-          $('#quote-footer-link').value = footer.link_url || '';
-          $('#quote-footer-title').value = footer.title || '';
-        }
-      } catch (err) {
-        console.log('Quote footer settings not found, using defaults');
+    function previewSlider() {
+      const enabled = $('#quote-footer-slider-enabled').checked;
+      const beforeImage = $('#quote-footer-before-image').value.trim();
+      const afterImage = $('#quote-footer-after-image').value.trim();
+      const sliderTitle = $('#quote-footer-slider-title').value.trim() || 'See the Transformation';
+      const sliderSubtitle = $('#quote-footer-slider-subtitle').value.trim() || 'Drag the slider to reveal';
+      const beforeLabel = $('#quote-footer-before-label').value.trim() || 'Before';
+      const afterLabel = $('#quote-footer-after-label').value.trim() || 'After';
+      const beforeDesc = $('#quote-footer-before-desc').value.trim() || '';
+      const afterDesc = $('#quote-footer-after-desc').value.trim() || '';
+      
+      const preview = $('#quote-footer-preview');
+      const content = $('#quote-footer-preview-content');
+      
+      if (!enabled) {
+        preview.style.display = 'none';
+        showToast('Slider is disabled', 'info');
+        return;
       }
+      
+      if (!beforeImage || !afterImage) {
+        preview.style.display = 'none';
+        showToast('Please enter both before and after image URLs', 'error');
+        return;
+      }
+      
+      const sliderId = 'preview-slider-' + Date.now();
+      
+      content.innerHTML = `
+        <div style="max-width: 600px; margin: 0 auto;">
+          <h3 style="margin-bottom: 5px;">${sliderTitle}</h3>
+          <p style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: 15px;">${sliderSubtitle}</p>
+          <div id="${sliderId}" style="position: relative; height: 300px; cursor: ew-resize; user-select: none; overflow: hidden; border-radius: 12px; box-shadow: var(--shadow-md);">
+            <div class="ba-before" style="position: absolute; inset: 0; background-image: url('${beforeImage}'); background-size: cover; background-position: center;">
+              <div style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,.7); color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${beforeLabel}</div>
+              ${beforeDesc ? `<div style="position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,.6); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px;">${beforeDesc}</div>` : ''}
+            </div>
+            <div class="ba-after" style="position: absolute; inset: 0; background-image: url('${afterImage}'); background-size: cover; background-position: center; clip-path: inset(0 50% 0 0);">
+              <div style="position: absolute; top: 12px; right: 12px; background: var(--color-primary); color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;">${afterLabel}</div>
+              ${afterDesc ? `<div style="position: absolute; bottom: 12px; right: 12px; background: var(--color-primary); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px;">${afterDesc}</div>` : ''}
+            </div>
+            <div class="ba-handle" style="position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 4px; background: white; box-shadow: 0 0 10px rgba(0,0,0,.3); z-index: 10;">
+              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 40px; height: 40px; background: white; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,.2); display: flex; align-items: center; justify-content: center; font-size: 14px; color: #6b7280;">⟷</div>
+            </div>
+          </div>
+        </div>
+      `;
+      preview.style.display = 'block';
+      
+      // Initialize slider interaction
+      setTimeout(() => {
+        const box = document.getElementById(sliderId);
+        if (!box) return;
+        const aft = box.querySelector('.ba-after');
+        const hdl = box.querySelector('.ba-handle');
+        let dragging = false;
+        
+        function update(clientX) {
+          const rect = box.getBoundingClientRect();
+          const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+          const pos = (x / rect.width) * 100;
+          aft.style.clipPath = 'inset(0 ' + (100 - pos) + '% 0 0)';
+          hdl.style.left = pos + '%';
+        }
+        
+        box.addEventListener('mousedown', (e) => { e.preventDefault(); dragging = true; });
+        box.addEventListener('touchstart', (e) => { dragging = true; });
+        document.addEventListener('mouseup', () => { dragging = false; });
+        document.addEventListener('touchend', () => { dragging = false; });
+        document.addEventListener('mousemove', (e) => { if (dragging) update(e.clientX); });
+        document.addEventListener('touchmove', (e) => { if (dragging && e.touches[0]) update(e.touches[0].clientX); });
+      }, 100);
     }
+    
+    // Load quote footer settings - removed separate function, handled in initSettings
     
     // Invoice settings form
     $('#invoice-settings-form').addEventListener('submit', async (e) => {
@@ -2318,10 +2442,21 @@
           // Handle quote_footer specially
           if (s.key === 'quote_footer' && s.value) {
             const footer = s.value;
-            $('#quote-footer-enabled').checked = footer.enabled !== false;
+            // Banner fields
+            $('#quote-footer-enabled').checked = footer.enabled === true;
             $('#quote-footer-image').value = footer.image_url || '';
             $('#quote-footer-link').value = footer.link_url || '';
             $('#quote-footer-title').value = footer.title || '';
+            // Slider fields
+            $('#quote-footer-slider-enabled').checked = footer.slider_enabled === true;
+            $('#quote-footer-slider-title').value = footer.slider_title || 'See the Transformation';
+            $('#quote-footer-slider-subtitle').value = footer.slider_subtitle || 'Drag the slider to reveal';
+            $('#quote-footer-before-image').value = footer.before_image || '';
+            $('#quote-footer-before-label').value = footer.before_label || 'Before';
+            $('#quote-footer-before-desc').value = footer.before_desc || '';
+            $('#quote-footer-after-image').value = footer.after_image || '';
+            $('#quote-footer-after-label').value = footer.after_label || 'After';
+            $('#quote-footer-after-desc').value = footer.after_desc || '';
             return;
           }
           const input = document.getElementById(s.key);

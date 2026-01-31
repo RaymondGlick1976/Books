@@ -951,6 +951,36 @@
             </a>
           </div>
         </div>
+        
+        <!-- Before/After Comparison Slider -->
+        <div id="quote-footer-slider" class="quote-section" style="display: none;">
+          <div class="quote-section-body" style="padding: var(--space-xl);">
+            <div style="text-align: center; margin-bottom: var(--space-lg);">
+              <h3 id="quote-slider-title" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 5px;">See the Transformation</h3>
+              <p id="quote-slider-subtitle" style="color: var(--color-text-light); font-size: 0.9rem;">Drag the slider to reveal</p>
+            </div>
+            <div id="ba-slider-container" style="position: relative; height: 350px; cursor: ew-resize; user-select: none; overflow: hidden; border-radius: 12px; box-shadow: var(--shadow-lg); max-width: 700px; margin: 0 auto;">
+              <div id="ba-before" style="position: absolute; inset: 0; background-size: cover; background-position: center;">
+                <div id="ba-before-label" style="position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,.7); color: white; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;">Before</div>
+                <div id="ba-before-desc" style="position: absolute; bottom: 16px; left: 16px; background: rgba(0,0,0,.6); color: white; padding: 10px 14px; border-radius: 8px; display: none;">
+                  <div style="font-size: 11px; opacity: .8;">Before</div>
+                  <div style="font-weight: 600; font-size: 14px;" id="ba-before-desc-text"></div>
+                </div>
+              </div>
+              <div id="ba-after" style="position: absolute; inset: 0; background-size: cover; background-position: center; clip-path: inset(0 50% 0 0);">
+                <div id="ba-after-label" style="position: absolute; top: 16px; right: 16px; background: var(--color-primary); color: white; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;">After</div>
+                <div id="ba-after-desc" style="position: absolute; bottom: 16px; right: 16px; background: var(--color-primary); color: white; padding: 10px 14px; border-radius: 8px; display: none;">
+                  <div style="font-size: 11px; opacity: .8;">After</div>
+                  <div style="font-weight: 600; font-size: 14px;" id="ba-after-desc-text"></div>
+                </div>
+              </div>
+              <div id="ba-handle" style="position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 4px; background: white; box-shadow: 0 0 10px rgba(0,0,0,.3); z-index: 10;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 44px; height: 44px; background: white; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,.2); display: flex; align-items: center; justify-content: center; font-size: 16px; color: #6b7280;">⟷</div>
+              </div>
+              <div id="ba-hint" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,.7); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; pointer-events: none; transition: opacity .3s;">← Drag to Compare →</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -1091,10 +1121,6 @@
       }
       
       // Check if packages are enabled
-      console.log('Quote packages_enabled:', quote.packages_enabled);
-      console.log('Packages:', packages);
-      console.log('Line items:', lineItems);
-      
       if (quote.packages_enabled && packages && packages.length > 0) {
         // Show packages section
         $('#packages-section').style.display = 'block';
@@ -1104,8 +1130,6 @@
         selectedPackageId = quote.selected_package_id || 
                            packages.find(p => p.is_selected === true || p.is_selected === 'true')?.id || 
                            null;
-        
-        console.log('Selected package ID:', selectedPackageId);
         
         renderPackages();
         
@@ -1394,14 +1418,11 @@
     }
     
     async function loadQuoteFooter() {
-      console.log('=== LOADING QUOTE FOOTER ===');
-      
       let footer = null;
       
       // For public access, use data from API response
       if (isPublicAccess && quoteFooterData) {
         footer = quoteFooterData;
-        console.log('Using footer data from API:', footer);
       } else {
         // For authenticated portal access, fetch from settings
         try {
@@ -1412,24 +1433,20 @@
             .eq('key', 'quote_footer')
             .single();
           
-          console.log('Quote footer data from DB:', data);
-          
           if (data && data.value) {
             footer = data.value;
           }
         } catch (err) {
-          console.log('Quote footer not configured:', err);
+          // Quote footer not configured
         }
       }
       
-      // Display footer if enabled and has image
+      // Display banner if enabled and has image
       if (footer && footer.enabled && footer.image_url) {
         const banner = $('#quote-footer-banner');
         const image = $('#quote-footer-banner-image');
         const link = $('#quote-footer-banner-link');
         const title = $('#quote-footer-banner-title');
-        
-        console.log('Footer settings:', footer);
         
         // Set image
         image.src = footer.image_url;
@@ -1453,9 +1470,70 @@
         
         // Show banner
         banner.style.display = 'block';
-        console.log('Quote footer banner displayed');
-      } else {
-        console.log('Quote footer not enabled or missing image URL');
+      }
+      
+      // Display before/after slider if enabled and has images
+      if (footer && footer.slider_enabled && footer.before_image && footer.after_image) {
+        const slider = $('#quote-footer-slider');
+        const beforeEl = $('#ba-before');
+        const afterEl = $('#ba-after');
+        const handle = $('#ba-handle');
+        const hint = $('#ba-hint');
+        const container = $('#ba-slider-container');
+        
+        // Set title and subtitle
+        $('#quote-slider-title').textContent = footer.slider_title || 'See the Transformation';
+        $('#quote-slider-subtitle').textContent = footer.slider_subtitle || 'Drag the slider to reveal';
+        
+        // Set images
+        beforeEl.style.backgroundImage = `url('${footer.before_image}')`;
+        afterEl.style.backgroundImage = `url('${footer.after_image}')`;
+        
+        // Set labels
+        $('#ba-before-label').textContent = footer.before_label || 'Before';
+        $('#ba-after-label').textContent = footer.after_label || 'After';
+        
+        // Set descriptions if provided
+        if (footer.before_desc) {
+          $('#ba-before-desc').style.display = 'block';
+          $('#ba-before-desc-text').textContent = footer.before_desc;
+        }
+        if (footer.after_desc) {
+          $('#ba-after-desc').style.display = 'block';
+          $('#ba-after-desc-text').textContent = footer.after_desc;
+        }
+        
+        // Show slider
+        slider.style.display = 'block';
+        
+        // Initialize drag interaction
+        let dragging = false;
+        
+        function updateSlider(clientX) {
+          const rect = container.getBoundingClientRect();
+          const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+          const pos = (x / rect.width) * 100;
+          afterEl.style.clipPath = 'inset(0 ' + (100 - pos) + '% 0 0)';
+          handle.style.left = pos + '%';
+        }
+        
+        container.addEventListener('mousedown', (e) => { 
+          e.preventDefault(); 
+          dragging = true; 
+          if (hint) hint.style.opacity = '0';
+        });
+        container.addEventListener('touchstart', () => { 
+          dragging = true; 
+          if (hint) hint.style.opacity = '0';
+        });
+        document.addEventListener('mouseup', () => { dragging = false; });
+        document.addEventListener('touchend', () => { dragging = false; });
+        document.addEventListener('mousemove', (e) => { 
+          if (dragging) updateSlider(e.clientX); 
+        });
+        document.addEventListener('touchmove', (e) => { 
+          if (dragging && e.touches[0]) updateSlider(e.touches[0].clientX); 
+        });
       }
     }
     
@@ -1704,13 +1782,6 @@
       let taxableSubtotalHigh = 0;
       let hasRange = false;
       
-      // DEBUG LOGGING
-      console.log('=== UPDATE TOTALS DEBUG ===');
-      console.log('quote.packages_enabled:', quote.packages_enabled);
-      console.log('packages.length:', packages.length);
-      console.log('selectedPackageId:', selectedPackageId);
-      console.log('All packages:', JSON.stringify(packages.map(p => ({ id: p.id, name: p.name, is_selected: p.is_selected, price: p.price, items: p.items?.length }))));
-      
       // Check if we have packages and a selected one
       // Calculate from packages if: packages exist AND (one is selected OR packages_enabled is true)
       const hasSelectedPackage = selectedPackageId || packages.some(p => p.is_selected === true || p.is_selected === 'true');
@@ -1722,38 +1793,27 @@
         // If not found by ID, check is_selected flag (handle both boolean and string)
         if (!selectedPkg) {
           selectedPkg = packages.find(p => p.is_selected === true || p.is_selected === 'true');
-          console.log('Package found by is_selected flag:', selectedPkg?.name);
         }
-        
-        console.log('Selected package:', selectedPkg?.name, 'Price:', selectedPkg?.price, 'Items:', selectedPkg?.items?.length);
         
         if (selectedPkg) {
           // Sync selectedPackageId if it was found via is_selected flag
           if (!selectedPackageId) {
             selectedPackageId = selectedPkg.id;
-            console.log('Set selectedPackageId to:', selectedPackageId);
           }
           
           // Calculate package total - use price field or sum of items
           let pkgTotal = 0;
           if (selectedPkg.price !== null && selectedPkg.price !== undefined && selectedPkg.price !== '') {
             pkgTotal = parseFloat(selectedPkg.price) || 0;
-            console.log('Using package price field:', pkgTotal);
           } else if (selectedPkg.items && selectedPkg.items.length > 0) {
             pkgTotal = selectedPkg.items
               .filter(i => i.is_included !== false)
               .reduce((sum, item) => {
                 const qty = parseFloat(item.quantity) || 1;
                 const price = parseFloat(item.price) || 0;
-                console.log('  Item:', item.name, 'qty:', qty, 'price:', price, 'included:', item.is_included);
                 return sum + (qty * price);
               }, 0);
-            console.log('Calculated from items:', pkgTotal);
-          } else {
-            console.log('WARNING: Package has no price and no items!');
           }
-          
-          console.log('Final package total:', pkgTotal);
           
           subtotal = pkgTotal;
           subtotalLow = pkgTotal;
@@ -1765,8 +1825,6 @@
             taxableSubtotalLow = pkgTotal;
             taxableSubtotalHigh = pkgTotal;
           }
-        } else {
-          console.log('NO SELECTED PACKAGE FOUND');
         }
         
         // Also add any selected optional line items (add-ons)
