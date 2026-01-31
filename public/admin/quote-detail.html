@@ -135,10 +135,43 @@
                 <a href="#" class="dropdown-item" onclick="createChangeOrder()">Create Change Order</a>
               </div>
             </div>
-            <a href="#" id="customer-view-btn" class="btn btn-primary" target="_blank">👁️ Customer View</a>
+            <div class="dropdown" id="customer-view-dropdown">
+              <button class="btn btn-primary" onclick="toggleDropdown('customer-view-dropdown')">
+                👁️ Customer View ▾
+              </button>
+              <div class="dropdown-menu">
+                <a href="#" class="dropdown-item" onclick="openCustomerPreview('mobile')">📱 Mobile (375px)</a>
+                <a href="#" class="dropdown-item" onclick="openCustomerPreview('tablet')">📱 Tablet (768px)</a>
+                <a href="#" class="dropdown-item" onclick="openCustomerPreview('desktop')">🖥️ Desktop (1200px)</a>
+                <div style="border-top: 1px solid var(--color-border-light); margin: 4px 0;"></div>
+                <a href="#" id="customer-view-newtab" class="dropdown-item" target="_blank">↗️ Open in New Tab</a>
+              </div>
+            </div>
           </div>
         </div>
       </header>
+      
+      <!-- Device Preview Modal -->
+      <div id="preview-modal" class="modal-backdrop" style="display: none;">
+        <div class="modal" style="width: 95vw; max-width: none; height: 90vh; display: flex; flex-direction: column;">
+          <div class="modal-header" style="flex-shrink: 0;">
+            <h3 class="modal-title">Customer Preview</h3>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div class="btn-group" id="preview-device-btns">
+                <button class="btn btn-sm" onclick="setPreviewDevice('mobile')" data-device="mobile">📱 Mobile</button>
+                <button class="btn btn-sm" onclick="setPreviewDevice('tablet')" data-device="tablet">📱 Tablet</button>
+                <button class="btn btn-sm btn-primary" onclick="setPreviewDevice('desktop')" data-device="desktop">🖥️ Desktop</button>
+              </div>
+              <button class="btn btn-sm btn-secondary" onclick="closePreviewModal()">✕ Close</button>
+            </div>
+          </div>
+          <div class="modal-body" style="flex: 1; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; background: #e5e7eb; padding: 20px;">
+            <div id="preview-frame-container" style="background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 8px; overflow: hidden; transition: width 0.3s ease, height 0.3s ease;">
+              <iframe id="preview-iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <div class="app-content">
         <!-- Customer Info -->
@@ -398,26 +431,21 @@
       // Action buttons
       $('#edit-quote-btn').href = `/admin/quote-builder.html?id=${quote.id}`;
       
-      // Customer view button - only show if token exists, otherwise show generate button
-      // Add &preview=1 so view tracking knows it's admin previewing, not customer
-      const customerViewBtn = $('#customer-view-btn');
+      // Customer view - set up the new tab link
+      const newTabLink = $('#customer-view-newtab');
       if (quote.access_token) {
-        customerViewBtn.href = `/portal/quote.html?token=${quote.access_token}&preview=1`;
-        customerViewBtn.textContent = '👁️ Customer View';
+        newTabLink.href = `/portal/quote.html?token=${quote.access_token}&preview=1`;
       } else {
-        customerViewBtn.href = '#';
-        customerViewBtn.textContent = '🔗 Generate Link';
-        customerViewBtn.onclick = async (e) => {
+        newTabLink.href = '#';
+        newTabLink.onclick = async (e) => {
           e.preventDefault();
           try {
             const supabase = await app.waitForSupabase();
             const token = crypto.randomUUID();
             await supabase.from('quotes').update({ access_token: token }).eq('id', quote.id);
             quote.access_token = token;
-            customerViewBtn.href = `/portal/quote.html?token=${token}&preview=1`;
-            customerViewBtn.textContent = '👁️ Customer View';
-            customerViewBtn.onclick = null;
-            customerViewBtn.target = '_blank';
+            newTabLink.href = `/portal/quote.html?token=${token}&preview=1`;
+            newTabLink.onclick = null;
             showToast('Customer link generated!', 'success');
           } catch (err) {
             showToast('Failed to generate link', 'error');
@@ -902,6 +930,112 @@
     function closeDropdowns() {
       $$('.dropdown.open').forEach(d => d.classList.remove('open'));
     }
+    
+    // Device preview sizes
+    const deviceSizes = {
+      mobile: { width: 375, height: 700 },
+      tablet: { width: 768, height: 900 },
+      desktop: { width: 1200, height: 800 }
+    };
+    
+    let currentDevice = 'desktop';
+    
+    async function openCustomerPreview(device) {
+      closeDropdowns();
+      
+      // Generate token if needed
+      if (!quote.access_token) {
+        try {
+          const supabase = await app.waitForSupabase();
+          const token = crypto.randomUUID();
+          await supabase.from('quotes').update({ access_token: token }).eq('id', quote.id);
+          quote.access_token = token;
+          $('#customer-view-newtab').href = `/portal/quote.html?token=${token}&preview=1`;
+        } catch (err) {
+          showToast('Failed to generate preview link', 'error');
+          return;
+        }
+      }
+      
+      const url = `/portal/quote.html?token=${quote.access_token}&preview=1`;
+      const modal = $('#preview-modal');
+      const iframe = $('#preview-iframe');
+      const container = $('#preview-frame-container');
+      
+      // Set device and load iframe
+      currentDevice = device;
+      updatePreviewSize();
+      
+      // Update button states
+      $$('#preview-device-btns .btn').forEach(btn => {
+        btn.classList.toggle('btn-primary', btn.dataset.device === device);
+        btn.classList.toggle('btn-secondary', btn.dataset.device !== device);
+      });
+      
+      iframe.src = url;
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function setPreviewDevice(device) {
+      currentDevice = device;
+      updatePreviewSize();
+      
+      // Update button states
+      $$('#preview-device-btns .btn').forEach(btn => {
+        btn.classList.toggle('btn-primary', btn.dataset.device === device);
+        btn.classList.toggle('btn-secondary', btn.dataset.device !== device);
+      });
+    }
+    
+    function updatePreviewSize() {
+      const container = $('#preview-frame-container');
+      const size = deviceSizes[currentDevice];
+      const modalBody = container.parentElement;
+      const availableHeight = modalBody.clientHeight - 40;
+      const availableWidth = modalBody.clientWidth - 40;
+      
+      // Calculate size to fit within modal while maintaining aspect ratio
+      let width = size.width;
+      let height = size.height;
+      
+      // Scale down if too big
+      if (width > availableWidth) {
+        const scale = availableWidth / width;
+        width = availableWidth;
+        height = height * scale;
+      }
+      if (height > availableHeight) {
+        const scale = availableHeight / height;
+        height = availableHeight;
+        width = width * scale;
+      }
+      
+      container.style.width = width + 'px';
+      container.style.height = height + 'px';
+    }
+    
+    function closePreviewModal() {
+      const modal = $('#preview-modal');
+      const iframe = $('#preview-iframe');
+      modal.style.display = 'none';
+      iframe.src = 'about:blank';
+      document.body.style.overflow = '';
+    }
+    
+    // Close modal on escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && $('#preview-modal').style.display === 'flex') {
+        closePreviewModal();
+      }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      if ($('#preview-modal').style.display === 'flex') {
+        updatePreviewSize();
+      }
+    });
     
     init();
   </script>
