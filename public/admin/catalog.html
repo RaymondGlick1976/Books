@@ -219,6 +219,7 @@
           <td><span class="badge badge-${item.is_active ? 'success' : 'draft'}">${item.is_active ? 'Active' : 'Inactive'}</span></td>
           <td class="table-actions">
             <button class="btn btn-ghost btn-sm" onclick="editItem('${item.id}')">Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="copyItem('${item.id}')" title="Duplicate this item">Copy</button>
             <button class="btn btn-ghost btn-sm" onclick="deleteItem('${item.id}')">Delete</button>
           </td>
         `;
@@ -325,12 +326,24 @@
         className: 'btn btn-secondary',
         textContent: 'Cancel'
       });
+      
+      // Add duplicate button for existing items
+      let duplicateBtn = null;
+      if (isEdit) {
+        duplicateBtn = createElement('button', {
+          type: 'button',
+          className: 'btn btn-ghost',
+          innerHTML: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Duplicate`
+        });
+      }
+      
       const submitBtn = createElement('button', {
         type: 'button',
         className: 'btn btn-primary',
         textContent: isEdit ? 'Save Changes' : 'Add Item'
       });
       footer.appendChild(cancelBtn);
+      if (duplicateBtn) footer.appendChild(duplicateBtn);
       footer.appendChild(submitBtn);
       
       const modal = createModal({
@@ -342,6 +355,14 @@
       
       // Add event listeners AFTER modal is created
       cancelBtn.addEventListener('click', () => closeModal(modal));
+      
+      if (duplicateBtn) {
+        duplicateBtn.addEventListener('click', async () => {
+          closeModal(modal);
+          await copyItem(item.id);
+        });
+      }
+      
       submitBtn.addEventListener('click', async () => {
         // Manual validation check
         const nameInput = content.querySelector('[name="name"]');
@@ -423,6 +444,61 @@
         loadItems();
       } catch (err) {
         showToast('Failed to delete: ' + err.message, 'error');
+      }
+    };
+    
+    window.copyItem = async (id) => {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Create new item with copied data
+        const newItemData = {
+          name: `${item.name} (Copy)`,
+          description: item.description,
+          category: item.category,
+          default_price: item.default_price,
+          price_range_low: item.price_range_low,
+          price_range_high: item.price_range_high,
+          is_taxable: item.is_taxable,
+          is_active: item.is_active
+        };
+        
+        const { data: newItem, error } = await supabase
+          .from('items_catalog')
+          .insert(newItemData)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
+        // Copy attribute mappings
+        const itemAttrs = itemAttributeMap[id] || [];
+        if (itemAttrs.length > 0) {
+          const mappings = itemAttrs.map((attrId, index) => ({
+            item_id: newItem.id,
+            attribute_id: attrId,
+            sort_order: index
+          }));
+          await supabase.from('catalog_item_attributes').insert(mappings);
+        }
+        
+        showToast('Item duplicated successfully', 'success');
+        
+        // Refresh data and open the new item for editing
+        await loadPricingAttributes();
+        await loadItems();
+        
+        // Open the duplicated item in edit mode
+        const copiedItem = items.find(i => i.id === newItem.id);
+        if (copiedItem) {
+          showItemModal(copiedItem);
+        }
+      } catch (err) {
+        console.error('Copy error:', err);
+        showToast('Failed to copy item: ' + err.message, 'error');
       }
     };
     
