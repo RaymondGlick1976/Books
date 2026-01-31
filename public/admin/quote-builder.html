@@ -591,19 +591,8 @@
                 </div>
               </div>
               <div class="card-body">
-                <div class="toggle-row">
-                  <div>
-                    <div class="toggle-label">Enable Bundle Selection</div>
-                    <div class="toggle-description">When enabled, customers must select a bundle instead of seeing individual line items.</div>
-                  </div>
-                  <label class="toggle">
-                    <input type="checkbox" id="packages-enabled" onchange="togglePackagesEnabled()">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-                
-                <div id="packages-disabled-notice" class="text-center text-muted p-lg" style="display: none;">
-                  <p>Bundle selection is disabled. Enable it above to let customers choose a bundle.</p>
+                <div id="packages-auto-notice" class="text-sm text-muted mb-lg" style="background: var(--color-bg-alt); padding: var(--space-md); border-radius: var(--radius-md);">
+                  <strong>💡 Tip:</strong> When bundles exist, customers will choose from them. Without bundles, they see line items only.
                 </div>
                 
                 <div id="empty-packages" class="text-center text-muted p-xl">
@@ -864,20 +853,44 @@
       try {
         const supabase = await app.waitForSupabase();
         
-        // Calculate totals
+        // Calculate totals - use bundles if they exist, otherwise use line items
         let subtotal = 0;
         let taxableSubtotal = 0;
         
-        lineItems.forEach(item => {
-          if (!item.isOptional) {
-            const qty = item.quantity || 1;
-            const lineTotal = (item.unitPrice || 0) * qty;
-            subtotal += lineTotal;
-            if (item.isTaxable) {
-              taxableSubtotal += lineTotal;
+        if (packages.length > 0) {
+          // Use selected package or first package
+          const selectedPkg = packages.find(p => p.is_selected) || packages[0];
+          if (selectedPkg) {
+            if (selectedPkg.price) {
+              subtotal = parseFloat(selectedPkg.price) || 0;
+              if (selectedPkg.apply_tax !== false) {
+                taxableSubtotal = subtotal;
+              }
+            } else {
+              (selectedPkg.items || []).forEach(item => {
+                if (item.is_included) {
+                  const lineTotal = (parseFloat(item.price) || 0) * (item.quantity || 1);
+                  subtotal += lineTotal;
+                  if (selectedPkg.apply_tax !== false) {
+                    taxableSubtotal += lineTotal;
+                  }
+                }
+              });
             }
           }
-        });
+        } else {
+          // Use line items
+          lineItems.forEach(item => {
+            if (!item.isOptional) {
+              const qty = item.quantity || 1;
+              const lineTotal = (item.unitPrice || 0) * qty;
+              subtotal += lineTotal;
+              if (item.isTaxable) {
+                taxableSubtotal += lineTotal;
+              }
+            }
+          });
+        }
         
         const taxAmount = taxableSubtotal * TAX_RATE;
         const validDays = parseInt($('#valid-days').value) || 30;
@@ -904,7 +917,7 @@
           total: subtotal + taxAmount,
           total_low: subtotal + taxAmount,
           total_high: subtotal + taxAmount,
-          packages_enabled: packagesEnabled,
+          packages_enabled: packages.length > 0,
           slider_settings: {
             enabled: $('#slider-enabled').checked,
             title: $('#slider-title').value.trim() || 'See the Transformation',
@@ -1275,8 +1288,7 @@
         attachments = quote.quote_attachments || [];
         
         // Load packages separately (in case table doesn't exist)
-        packagesEnabled = quote.packages_enabled || false;
-        $('#packages-enabled').checked = packagesEnabled;
+        // Note: packagesEnabled is now computed automatically based on packages.length
         
         try {
           const { data: pkgData } = await supabase
@@ -2477,26 +2489,67 @@
       const summaryItems = $('#summary-items');
       const summaryTotals = $('#summary-totals');
       
-      if (lineItems.length === 0) {
-        summaryItems.innerHTML = '<p class="text-muted text-center">Add items to see summary</p>';
-        summaryTotals.style.display = 'none';
-        return;
-      }
+      // Check if bundles exist (automatic - no toggle needed)
+      const bundlesEnabled = packages.length > 0;
       
-      // Calculate totals - separate taxable and non-taxable
+      // If bundles exist, use bundle totals; otherwise use line items
       let subtotal = 0;
       let taxableSubtotal = 0;
       
-      lineItems.forEach(item => {
-        if (!item.isOptional) {
-          const qty = item.quantity || 1;
-          const lineTotal = (item.unitPrice || 0) * qty;
-          subtotal += lineTotal;
-          if (item.isTaxable) {
-            taxableSubtotal += lineTotal;
+      if (bundlesEnabled) {
+        // Find selected package or use the first one for display
+        const selectedPkg = packages.find(p => p.is_selected) || packages[0];
+        
+        if (selectedPkg) {
+          // If package has override price, use that
+          if (selectedPkg.price) {
+            subtotal = parseFloat(selectedPkg.price) || 0;
+            // Check if package applies tax
+            if (selectedPkg.apply_tax !== false) {
+              taxableSubtotal = subtotal;
+            }
+          } else {
+            // Calculate from package items
+            (selectedPkg.items || []).forEach(item => {
+              if (item.is_included) {
+                const lineTotal = (parseFloat(item.price) || 0) * (item.quantity || 1);
+                subtotal += lineTotal;
+                // Package items are taxable by default unless package says no tax
+                if (selectedPkg.apply_tax !== false) {
+                  taxableSubtotal += lineTotal;
+                }
+              }
+            });
           }
         }
-      });
+        
+        if (subtotal === 0 && packages.length > 0) {
+          // No selection, show the first bundle's total as preview
+          summaryItems.innerHTML = '<p class="text-muted text-center" style="font-size: 0.85rem;">Bundle total shown.<br>Select a bundle to finalize.</p>';
+        } else {
+          summaryItems.innerHTML = '';
+        }
+      } else {
+        // Original line items logic
+        if (lineItems.length === 0) {
+          summaryItems.innerHTML = '<p class="text-muted text-center">Add items to see summary</p>';
+          summaryTotals.style.display = 'none';
+          return;
+        }
+        
+        lineItems.forEach(item => {
+          if (!item.isOptional) {
+            const qty = item.quantity || 1;
+            const lineTotal = (item.unitPrice || 0) * qty;
+            subtotal += lineTotal;
+            if (item.isTaxable) {
+              taxableSubtotal += lineTotal;
+            }
+          }
+        });
+        
+        summaryItems.innerHTML = '';
+      }
       
       // Only tax the taxable portion
       const tax = taxableSubtotal * TAX_RATE;
@@ -2521,7 +2574,6 @@
       $('#summary-deposit').textContent = formatCurrency(deposit);
       $('#summary-balance').textContent = formatCurrency(total - deposit);
       
-      summaryItems.innerHTML = '';
       summaryTotals.style.display = 'block';
     }
     
@@ -2758,13 +2810,6 @@
         return;
       }
       
-      // If packages enabled, must have at least one package
-      if (packagesEnabled && packages.length === 0) {
-        showToast('Please add at least one bundle', 'error');
-        isSaving = false;
-        return;
-      }
-      
       const btn = status === 'draft' ? $('#save-draft-btn') : $('#send-quote-btn');
       btn.disabled = true;
       btn.textContent = 'Saving...';
@@ -2772,20 +2817,44 @@
       try {
         const supabase = await app.waitForSupabase();
         
-        // Calculate totals - separate taxable and non-taxable
+        // Calculate totals - use bundles if they exist, otherwise use line items
         let subtotal = 0;
         let taxableSubtotal = 0;
         
-        lineItems.forEach(item => {
-          if (!item.isOptional) {
-            const qty = item.quantity || 1;
-            const lineTotal = (item.unitPrice || 0) * qty;
-            subtotal += lineTotal;
-            if (item.isTaxable) {
-              taxableSubtotal += lineTotal;
+        if (packages.length > 0) {
+          // Use selected package or first package
+          const selectedPkg = packages.find(p => p.is_selected) || packages[0];
+          if (selectedPkg) {
+            if (selectedPkg.price) {
+              subtotal = parseFloat(selectedPkg.price) || 0;
+              if (selectedPkg.apply_tax !== false) {
+                taxableSubtotal = subtotal;
+              }
+            } else {
+              (selectedPkg.items || []).forEach(item => {
+                if (item.is_included) {
+                  const lineTotal = (parseFloat(item.price) || 0) * (item.quantity || 1);
+                  subtotal += lineTotal;
+                  if (selectedPkg.apply_tax !== false) {
+                    taxableSubtotal += lineTotal;
+                  }
+                }
+              });
             }
           }
-        });
+        } else {
+          // Use line items
+          lineItems.forEach(item => {
+            if (!item.isOptional) {
+              const qty = item.quantity || 1;
+              const lineTotal = (item.unitPrice || 0) * qty;
+              subtotal += lineTotal;
+              if (item.isTaxable) {
+                taxableSubtotal += lineTotal;
+              }
+            }
+          });
+        }
         
         // Only tax the taxable portion
         const taxAmount = taxableSubtotal * TAX_RATE;
@@ -2814,7 +2883,7 @@
           total: subtotal + taxAmount,
           total_low: subtotal + taxAmount,
           total_high: subtotal + taxAmount,
-          packages_enabled: packagesEnabled,
+          packages_enabled: packages.length > 0,
           slider_settings: {
             enabled: $('#slider-enabled').checked,
             title: $('#slider-title').value.trim() || 'See the Transformation',
@@ -3006,27 +3075,26 @@
     // ==========================================
     
     let packages = [];
-    let packagesEnabled = false;
-    
-    function togglePackagesEnabled() {
-      packagesEnabled = $('#packages-enabled').checked;
-      updatePackagesUI();
-    }
+    let packagesEnabled = false; // Will be computed automatically based on packages.length
     
     function updatePackagesUI() {
       const emptyNotice = $('#empty-packages');
-      const disabledNotice = $('#packages-disabled-notice');
+      const autoNotice = $('#packages-auto-notice');
       const container = $('#packages-container');
+      
+      // Automatically determine if bundles are enabled based on whether any exist
+      packagesEnabled = packages.length > 0;
       
       if (packages.length === 0) {
         emptyNotice.style.display = 'block';
-        disabledNotice.style.display = 'none';
+        if (autoNotice) autoNotice.style.display = 'block';
       } else {
         emptyNotice.style.display = 'none';
-        disabledNotice.style.display = packagesEnabled ? 'none' : 'block';
+        if (autoNotice) autoNotice.style.display = 'none';
       }
       
       renderPackages();
+      updateSummary(); // Update summary when packages change
       markDirty();
     }
     
@@ -3825,7 +3893,7 @@
           </ul>
           
           <h4>Customer Experience</h4>
-          <p>When "Enable Bundle Selection" is on, customers will see bundle cards side-by-side and must select one before they can approve the quote.</p>
+          <p>When bundles exist, customers will see bundle cards side-by-side and must select one before they can approve the quote. Without bundles, customers see line items instead.</p>
         </div>
       `;
       

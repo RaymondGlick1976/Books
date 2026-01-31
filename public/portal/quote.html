@@ -12,8 +12,8 @@
       const params = new URLSearchParams(window.location.search);
       if (params.get('token')) {
         window.isPublicQuoteAccess = true;
-        // Add style to hide default nav until page loads
-        document.write('<style>.portal-nav{display:none !important;}.portal-header{justify-content:center;}</style>');
+        // Hide nav, disable logo link, center header for public access
+        document.write('<style>.portal-nav{display:none !important;}.portal-header{justify-content:center;}.portal-logo{pointer-events:none;cursor:default;}</style>');
       }
     })();
   </script>
@@ -1130,6 +1130,15 @@
       if (isPublicAccess) {
         const nav = $('#portal-nav');
         const header = $('#portal-header');
+        const logoLink = header?.querySelector('.portal-logo');
+        
+        // Disable logo link for public access (shouldn't go to dashboard)
+        if (logoLink) {
+          logoLink.removeAttribute('href');
+          logoLink.style.pointerEvents = 'none';
+          logoLink.style.cursor = 'default';
+        }
+        
         if (nav) {
           nav.innerHTML = `
             <a href="/portal/login.html" class="portal-nav-link" style="background: rgba(255,255,255,0.1); border-radius: 6px; padding: 8px 16px;">
