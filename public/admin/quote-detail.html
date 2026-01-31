@@ -462,10 +462,10 @@
       // Action buttons
       $('#edit-quote-btn').href = `/admin/quote-builder.html?id=${quote.id}`;
       
-      // Customer view - set up the new tab link
+      // Customer view - set up the new tab link (no preview param - allows real checkout)
       const newTabLink = $('#customer-view-newtab');
       if (quote.access_token) {
-        newTabLink.href = `/portal/quote.html?token=${quote.access_token}&preview=1`;
+        newTabLink.href = `/portal/quote.html?token=${quote.access_token}`;
       } else {
         newTabLink.href = '#';
         newTabLink.onclick = async (e) => {
@@ -475,7 +475,7 @@
             const token = crypto.randomUUID();
             await supabase.from('quotes').update({ access_token: token }).eq('id', quote.id);
             quote.access_token = token;
-            newTabLink.href = `/portal/quote.html?token=${token}&preview=1`;
+            newTabLink.href = `/portal/quote.html?token=${token}`;
             newTabLink.onclick = null;
             showToast('Customer link generated!', 'success');
           } catch (err) {
@@ -1086,7 +1086,7 @@
           const token = crypto.randomUUID();
           await supabase.from('quotes').update({ access_token: token }).eq('id', quote.id);
           quote.access_token = token;
-          $('#customer-view-newtab').href = `/portal/quote.html?token=${token}&preview=1`;
+          $('#customer-view-newtab').href = `/portal/quote.html?token=${token}`;
         } catch (err) {
           showToast('Failed to generate preview link', 'error');
           return;
