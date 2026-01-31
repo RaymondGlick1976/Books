@@ -1186,8 +1186,8 @@
         }
       }
       
-      // Check if packages are enabled
-      if (quote.packages_enabled && packages && packages.length > 0) {
+      // Check if packages exist (automatic - show bundles if they exist)
+      if (packages && packages.length > 0) {
         // Show packages section
         $('#packages-section').style.display = 'block';
         

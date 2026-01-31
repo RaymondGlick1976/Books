@@ -205,8 +205,19 @@
           </div>
         </div>
         
+        <!-- Bundles Section -->
+        <div class="section-card" id="bundles-section" style="display: none;">
+          <div class="section-header">
+            <div class="section-title">📦 Bundles</div>
+            <span class="text-muted text-sm" id="selected-bundle-badge"></span>
+          </div>
+          <div class="section-body" id="bundles-container">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+        
         <!-- Line Items -->
-        <div class="section-card">
+        <div class="section-card" id="line-items-section">
           <div class="section-header">
             <div class="section-title">Line Items</div>
           </div>
@@ -350,6 +361,7 @@
     let quote = null;
     let customer = null;
     let lineItems = [];
+    let packages = [];
     let changeOrders = [];
     let quoteViews = [];
     let coItems = [];
@@ -412,6 +424,19 @@
         } catch (e) {
           console.log('Quote views table may not exist yet');
           quoteViews = [];
+        }
+        
+        // Load packages (bundles)
+        try {
+          const { data: pkgData } = await supabase
+            .from('quote_packages')
+            .select('*, quote_package_items(*)')
+            .eq('quote_id', quoteId)
+            .order('sort_order');
+          packages = pkgData || [];
+        } catch (e) {
+          console.log('Packages table may not exist yet');
+          packages = [];
         }
         
         renderQuote();
@@ -481,10 +506,21 @@
       // Render view activity
       renderViewActivity();
       
-      // Render line items (non-optional only, or selected options)
-      const acceptedItems = lineItems.filter(item => !item.is_optional || item.is_selected);
-      
-      renderLineItems(acceptedItems, '#line-items-body', '#line-items-footer');
+      // Check if we have packages (bundles)
+      if (packages && packages.length > 0) {
+        // Show bundles section, hide line items
+        $('#bundles-section').style.display = 'block';
+        $('#line-items-section').style.display = 'none';
+        renderBundles();
+      } else {
+        // Show line items, hide bundles
+        $('#bundles-section').style.display = 'none';
+        $('#line-items-section').style.display = 'block';
+        
+        // Render line items (non-optional only, or selected options)
+        const acceptedItems = lineItems.filter(item => !item.is_optional || item.is_selected);
+        renderLineItems(acceptedItems, '#line-items-body', '#line-items-footer');
+      }
       
       // Render declined options (only after quote is accepted)
       if (['accepted', 'converted'].includes(quote.status)) {
@@ -578,6 +614,80 @@
         minute: '2-digit',
         hour12: true
       });
+    }
+    
+    function renderBundles() {
+      const container = $('#bundles-container');
+      
+      // Find selected package
+      const selectedPkg = packages.find(p => p.is_selected || p.id === quote.selected_package_id);
+      
+      if (selectedPkg) {
+        $('#selected-bundle-badge').textContent = `Selected: ${selectedPkg.name}`;
+      }
+      
+      // Calculate totals from packages
+      let subtotal = 0;
+      let taxableSubtotal = 0;
+      
+      container.innerHTML = packages.map(pkg => {
+        const isSelected = pkg.is_selected || pkg.id === quote.selected_package_id;
+        let pkgTotal = 0;
+        
+        if (pkg.price !== null && pkg.price !== undefined && pkg.price !== '') {
+          pkgTotal = parseFloat(pkg.price) || 0;
+        } else if (pkg.quote_package_items && pkg.quote_package_items.length > 0) {
+          pkgTotal = pkg.quote_package_items
+            .filter(i => i.is_included !== false)
+            .reduce((sum, item) => sum + ((parseFloat(item.price) || 0) * (item.quantity || 1)), 0);
+        }
+        
+        if (isSelected) {
+          subtotal = pkgTotal;
+          if (pkg.apply_tax !== false) {
+            taxableSubtotal = pkgTotal;
+          }
+        }
+        
+        const items = pkg.quote_package_items || [];
+        const includedItems = items.filter(i => i.is_included !== false);
+        
+        return `
+          <div class="bundle-card ${isSelected ? 'selected' : ''}" style="border: 2px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}; border-radius: var(--radius-lg); padding: var(--space-lg); margin-bottom: var(--space-md); ${isSelected ? 'background: var(--color-primary-light);' : ''}">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-md);">
+              <div>
+                <h4 style="margin: 0; font-size: 1.1rem;">${pkg.name}</h4>
+                ${pkg.description ? `<p style="margin: var(--space-xs) 0 0; color: var(--color-text-muted); font-size: 0.875rem;">${pkg.description}</p>` : ''}
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 1.25rem; font-weight: 600; color: var(--color-primary);">${formatCurrency(pkgTotal)}</div>
+                ${isSelected ? '<span style="display: inline-block; background: var(--color-primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-top: 4px;">SELECTED</span>' : ''}
+                ${pkg.is_recommended ? '<span style="display: inline-block; background: var(--color-success); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-top: 4px; margin-left: 4px;">RECOMMENDED</span>' : ''}
+              </div>
+            </div>
+            ${includedItems.length > 0 ? `
+              <div style="border-top: 1px solid var(--color-border-light); padding-top: var(--space-sm); margin-top: var(--space-sm);">
+                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: var(--space-xs);">INCLUDED ITEMS</div>
+                ${includedItems.map(item => `
+                  <div style="display: flex; justify-content: space-between; padding: var(--space-xs) 0; font-size: 0.875rem;">
+                    <span>${item.name}${item.quantity > 1 ? ` × ${item.quantity}` : ''}</span>
+                    <span>${formatCurrency((parseFloat(item.price) || 0) * (item.quantity || 1))}</span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+      
+      // Update totals section
+      const tax = taxableSubtotal * TAX_RATE;
+      const total = subtotal + tax;
+      
+      // Update the Grand Totals section
+      $('#grand-subtotal').textContent = formatCurrency(subtotal);
+      $('#grand-tax').textContent = formatCurrency(tax);
+      $('#grand-total').innerHTML = `<strong>${formatCurrency(total)}</strong>`;
     }
 
     function renderLineItems(items, bodySelector, footerSelector) {
@@ -729,17 +839,37 @@
     }
     
     function calculateGrandTotals() {
-      // Line items (accepted only)
-      const acceptedItems = lineItems.filter(item => !item.is_optional || item.is_selected);
       let subtotal = 0, tax = 0;
       
-      acceptedItems.forEach(item => {
-        const qty = item.quantity || 1;
-        const price = item.unit_price || 0;
-        const lineSubtotal = price * qty;
-        subtotal += lineSubtotal;
-        if (item.is_taxable) tax += lineSubtotal * TAX_RATE;
-      });
+      // Check if we have packages - if so, use package totals
+      if (packages && packages.length > 0) {
+        const selectedPkg = packages.find(p => p.is_selected || p.id === quote.selected_package_id) || packages[0];
+        
+        if (selectedPkg) {
+          if (selectedPkg.price !== null && selectedPkg.price !== undefined && selectedPkg.price !== '') {
+            subtotal = parseFloat(selectedPkg.price) || 0;
+          } else if (selectedPkg.quote_package_items && selectedPkg.quote_package_items.length > 0) {
+            subtotal = selectedPkg.quote_package_items
+              .filter(i => i.is_included !== false)
+              .reduce((sum, item) => sum + ((parseFloat(item.price) || 0) * (item.quantity || 1)), 0);
+          }
+          
+          if (selectedPkg.apply_tax !== false) {
+            tax = subtotal * TAX_RATE;
+          }
+        }
+      } else {
+        // Line items (accepted only)
+        const acceptedItems = lineItems.filter(item => !item.is_optional || item.is_selected);
+        
+        acceptedItems.forEach(item => {
+          const qty = item.quantity || 1;
+          const price = item.unit_price || 0;
+          const lineSubtotal = price * qty;
+          subtotal += lineSubtotal;
+          if (item.is_taxable) tax += lineSubtotal * TAX_RATE;
+        });
+      }
       
       // Add accepted change orders
       changeOrders.forEach(co => {
