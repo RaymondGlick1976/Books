@@ -25,6 +25,37 @@ exports.handler = async (event) => {
       .neq('status', 'draft')
       .order('created_at', { ascending: false });
     
+    // Get packages for these quotes to calculate display totals
+    let packagesMap = {};
+    if (quotes && quotes.length > 0) {
+      const quoteIds = quotes.map(q => q.id);
+      const { data: packages } = await supabase
+        .from('quote_packages')
+        .select('quote_id, id, name, price, is_selected')
+        .in('quote_id', quoteIds);
+      
+      if (packages) {
+        packages.forEach(pkg => {
+          if (!packagesMap[pkg.quote_id]) {
+            packagesMap[pkg.quote_id] = [];
+          }
+          packagesMap[pkg.quote_id].push(pkg);
+        });
+      }
+    }
+    
+    // Calculate display_total for each quote
+    const quotesWithTotals = (quotes || []).map(quote => {
+      const pkgs = packagesMap[quote.id] || [];
+      if (pkgs.length > 0) {
+        const selectedPkg = pkgs.find(p => p.is_selected) || pkgs[0];
+        quote.display_total = parseFloat(selectedPkg.price) || 0;
+      } else {
+        quote.display_total = quote.total || 0;
+      }
+      return quote;
+    });
+    
     // Get all invoices
     const { data: invoices } = await supabase
       .from('invoices')
@@ -46,7 +77,7 @@ exports.handler = async (event) => {
         name: customer.name,
         email: customer.email,
       },
-      quotes: quotes || [],
+      quotes: quotesWithTotals,
       invoices: invoices || [],
       payments: payments || [],
     });

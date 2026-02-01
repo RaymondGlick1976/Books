@@ -145,7 +145,7 @@
         } else {
           rightSide.appendChild(createElement('div', { 
             className: 'font-bold text-lg',
-            textContent: formatCurrency(quote.total)
+            textContent: formatCurrency(quote.display_total || quote.total)
           }));
         }
         

@@ -170,7 +170,7 @@
           const latestQuote = pendingQuotes[0];
           $('#action-section').style.display = 'block';
           $('#action-title').textContent = `You have a quote ready for review`;
-          $('#action-description').textContent = `${latestQuote.title} - ${formatCurrency(latestQuote.total)}`;
+          $('#action-description').textContent = `${latestQuote.title} - ${formatCurrency(latestQuote.display_total || latestQuote.total)}`;
           $('#action-button').href = `/portal/quote.html?id=${latestQuote.id}`;
         }
         
@@ -191,7 +191,7 @@
         activities.push({
           type: 'quote',
           title: `Quote: ${quote.title}`,
-          subtitle: formatCurrency(quote.total),
+          subtitle: formatCurrency(quote.display_total || quote.total),
           status: quote.status,
           date: quote.updated_at || quote.created_at,
           link: `/portal/quote.html?id=${quote.id}`
