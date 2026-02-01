@@ -189,17 +189,21 @@
     
     .payment-method-btn {
       border: 2px solid var(--color-border);
+      background: white;
       transition: all 0.2s ease;
     }
     
     .payment-method-btn.active {
       border-color: var(--color-primary);
-      background: var(--color-primary-light);
+      background: white;
       color: var(--color-primary);
+      font-weight: 600;
+      box-shadow: 0 0 0 1px var(--color-primary);
     }
     
     .payment-method-btn:hover:not(.active) {
       border-color: var(--color-primary);
+      background: var(--color-bg-soft);
     }
     
     .video-container {
