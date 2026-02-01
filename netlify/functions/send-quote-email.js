@@ -86,9 +86,7 @@ exports.handler = async (event) => {
 
     // Build custom message section if provided
     const customMessageHtml = customMessage ? `
-          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; border-radius: 0 8px 8px 0;">
-            <p style="color: #92400e; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${customMessage}</p>
-          </div>
+          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0; white-space: pre-wrap;">${customMessage}</p>
     ` : '';
 
     const emailHtml = `
