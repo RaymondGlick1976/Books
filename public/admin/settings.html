@@ -262,6 +262,14 @@
                     <input type="text" id="quote-footer-slider-subtitle" class="form-input" placeholder="Drag to compare" value="Drag the slider to reveal">
                   </div>
                 </div>
+                <div class="form-group" style="margin-bottom: var(--space-lg);">
+                  <label class="form-label">Slider Position</label>
+                  <select id="quote-footer-slider-position" class="form-input" style="max-width: 300px;">
+                    <option value="top">Top (after header, before bundles)</option>
+                    <option value="bottom">Bottom (after totals, before footer)</option>
+                  </select>
+                  <p style="color: var(--color-text-light); font-size: 0.8rem; margin-top: 4px;">Where the slider appears on the quote page</p>
+                </div>
                 <div class="grid grid-cols-2 gap-lg">
                   <div>
                     <div class="form-group">
@@ -952,6 +960,7 @@
         slider_enabled: $('#quote-footer-slider-enabled').checked,
         slider_title: $('#quote-footer-slider-title').value.trim(),
         slider_subtitle: $('#quote-footer-slider-subtitle').value.trim(),
+        slider_position: $('#quote-footer-slider-position').value,
         before_image: $('#quote-footer-before-image').value.trim(),
         before_label: $('#quote-footer-before-label').value.trim(),
         before_desc: $('#quote-footer-before-desc').value.trim(),
@@ -2451,6 +2460,7 @@
             $('#quote-footer-slider-enabled').checked = footer.slider_enabled === true;
             $('#quote-footer-slider-title').value = footer.slider_title || 'See the Transformation';
             $('#quote-footer-slider-subtitle').value = footer.slider_subtitle || 'Drag the slider to reveal';
+            $('#quote-footer-slider-position').value = footer.slider_position || 'top';
             $('#quote-footer-before-image').value = footer.before_image || '';
             $('#quote-footer-before-label').value = footer.before_label || 'Before';
             $('#quote-footer-before-desc').value = footer.before_desc || '';
