@@ -596,7 +596,7 @@
     /* Print Styles */
     @media print {
       @page {
-        margin: 0.75in 0.5in;
+        margin: 0.5in;
         size: letter;
       }
       
@@ -604,8 +604,8 @@
         background: white !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-        margin: 0;
-        padding: 0;
+        margin: 0 !important;
+        padding: 0 !important;
       }
       
       .portal-header,
@@ -614,13 +614,20 @@
       .accept-section,
       #accept-btn,
       .line-item-action,
-      .package-select-btn {
+      .package-select-btn,
+      #status-banner {
         display: none !important;
       }
       
       .portal-container {
         padding: 0 !important;
+        margin: 0 !important;
         max-width: none !important;
+      }
+      
+      #quote-content {
+        padding: 0.5in 0.4in !important;
+        margin: 0 !important;
       }
       
       .quote-container {
