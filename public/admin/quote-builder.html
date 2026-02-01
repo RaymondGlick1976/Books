@@ -1383,7 +1383,7 @@
       
       // Save buttons
       $('#save-draft-btn').addEventListener('click', () => saveQuote('draft'));
-      $('#send-quote-btn').addEventListener('click', () => saveQuote('sent'));
+      $('#send-quote-btn').addEventListener('click', () => showEmailPreviewModal());
       
       // New customer button
       $('#new-customer-btn').addEventListener('click', showNewCustomerModal);
@@ -2783,7 +2783,143 @@
       });
     }
     
-    async function saveQuote(status) {
+    function showEmailPreviewModal() {
+      // Validate customer first
+      const customerId = $('#customer-select').value;
+      const title = $('#quote-title').value.trim();
+      
+      if (!customerId) {
+        showToast('Please select a customer', 'error');
+        return;
+      }
+      
+      if (!title) {
+        showToast('Please enter a quote title', 'error');
+        return;
+      }
+      
+      // Get customer info
+      const customer = customers.find(c => c.id === customerId);
+      if (!customer) {
+        showToast('Customer not found', 'error');
+        return;
+      }
+      
+      // Calculate total for preview
+      let totalDisplay = '$0.00';
+      if (packages.length > 0) {
+        const firstPkg = packages[0];
+        const pkgTotal = firstPkg.items?.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0) || 0;
+        totalDisplay = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(pkgTotal);
+      } else if (lineItems.length > 0) {
+        const total = lineItems.reduce((sum, item) => {
+          if (item.is_optional && !item.is_selected) return sum;
+          return sum + (parseFloat(item.total || item.price || 0) * (item.quantity || 1));
+        }, 0);
+        totalDisplay = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(total);
+      }
+      
+      const firstName = customer.name?.split(' ')[0] || 'Customer';
+      
+      const content = createElement('div');
+      content.innerHTML = `
+        <div style="margin-bottom: var(--space-lg);">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
+            <div>
+              <label class="form-label">To:</label>
+              <div style="padding: 8px 12px; background: var(--color-bg-soft); border-radius: var(--radius-md);">${customer.email}</div>
+            </div>
+            <div>
+              <label class="form-label">Subject:</label>
+              <input type="text" id="email-subject" class="form-input" value="Quote: ${title}">
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Personal Message <span style="color: var(--color-text-muted); font-weight: normal;">(optional - appears after greeting)</span></label>
+          <textarea id="email-custom-message" class="form-textarea" rows="3" placeholder="Add a personal note to the customer..."></textarea>
+        </div>
+        
+        <div style="border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; margin-top: var(--space-lg);">
+          <div style="background: var(--color-bg-soft); padding: 8px 12px; border-bottom: 1px solid var(--color-border); font-weight: 600; font-size: 0.9rem;">
+            Email Preview
+          </div>
+          <div style="padding: var(--space-md); background: white; max-height: 300px; overflow-y: auto;">
+            <div style="font-family: Arial, sans-serif; max-width: 500px;">
+              <div style="background: #6366f1; padding: 15px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h2 style="color: white; margin: 0; font-size: 16px;">Homestead Cabinet Design</h2>
+                <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0; font-size: 11px;">Love your kitchen again</p>
+              </div>
+              
+              <div style="padding: 15px; background: #f8fafc;">
+                <p style="margin: 0 0 10px;"><strong>Hi ${firstName},</strong></p>
+                
+                <div id="custom-message-preview" style="background: #fef3c7; padding: 10px; border-radius: 6px; margin-bottom: 10px; display: none; font-style: italic;"></div>
+                
+                <p style="color: #475569; font-size: 13px; margin: 0 0 10px;">
+                  Thank you for your interest! We've prepared a quote for your project:
+                </p>
+                
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin: 10px 0;">
+                  <h4 style="color: #6366f1; margin: 0 0 5px; font-size: 14px;">${title}</h4>
+                  <p style="color: #475569; margin: 0; font-size: 12px;"><strong>Total:</strong> <span style="color: #6366f1;">${totalDisplay}</span></p>
+                </div>
+                
+                <div style="text-align: center; margin: 15px 0;">
+                  <span style="background: #6366f1; color: white; padding: 8px 20px; border-radius: 6px; font-size: 12px; font-weight: 600;">View Quote</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', {
+        type: 'button',
+        className: 'btn btn-secondary',
+        textContent: 'Cancel'
+      });
+      const sendBtn = createElement('button', {
+        type: 'button',
+        className: 'btn btn-primary',
+        innerHTML: '📧 Send Email'
+      });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(sendBtn);
+      
+      const modal = createModal({
+        title: '📧 Send Quote to Customer',
+        content,
+        footer,
+        size: 'lg'
+      });
+      
+      // Live preview of custom message
+      const customMessageInput = content.querySelector('#email-custom-message');
+      const customMessagePreview = content.querySelector('#custom-message-preview');
+      
+      customMessageInput.addEventListener('input', () => {
+        const msg = customMessageInput.value.trim();
+        if (msg) {
+          customMessagePreview.textContent = msg;
+          customMessagePreview.style.display = 'block';
+        } else {
+          customMessagePreview.style.display = 'none';
+        }
+      });
+      
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      sendBtn.addEventListener('click', async () => {
+        const customMessage = customMessageInput.value.trim();
+        const subject = content.querySelector('#email-subject').value.trim();
+        closeModal(modal);
+        await saveQuote('sent', customMessage, subject);
+      });
+    }
+    
+    async function saveQuote(status, customMessage = '', customSubject = '') {
       // Cancel any pending autosave
       if (autosaveTimer) clearTimeout(autosaveTimer);
       isSaving = true;
@@ -3029,7 +3165,11 @@
             const emailResponse = await fetch('/.netlify/functions/send-quote-email', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ quoteId: savedQuote.id })
+              body: JSON.stringify({ 
+                quoteId: savedQuote.id,
+                customMessage: customMessage || '',
+                customSubject: customSubject || ''
+              })
             });
             
             if (!emailResponse.ok) {

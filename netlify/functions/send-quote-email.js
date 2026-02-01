@@ -12,7 +12,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { quoteId } = JSON.parse(event.body);
+    const { quoteId, customMessage, customSubject } = JSON.parse(event.body);
 
     if (!quoteId) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Quote ID required' }) };
@@ -84,6 +84,13 @@ exports.handler = async (event) => {
       return { statusCode: 500, body: JSON.stringify({ error: 'Email service not configured' }) };
     }
 
+    // Build custom message section if provided
+    const customMessageHtml = customMessage ? `
+          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; border-radius: 0 8px 8px 0;">
+            <p style="color: #92400e; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${customMessage}</p>
+          </div>
+    ` : '';
+
     const emailHtml = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #6366f1; padding: 30px; text-align: center;">
@@ -93,6 +100,8 @@ exports.handler = async (event) => {
         
         <div style="padding: 30px; background: #f8fafc;">
           <h2 style="color: #1e293b;">Hi ${customer.name.split(' ')[0]},</h2>
+          
+          ${customMessageHtml}
           
           <p style="color: #475569; font-size: 16px; line-height: 1.6;">
             Thank you for your interest in our services! We've prepared a quote for your project:
@@ -142,6 +151,9 @@ exports.handler = async (event) => {
       </div>
     `;
 
+    // Use custom subject if provided, otherwise default
+    const emailSubject = customSubject || `Quote #${quote.quote_number}: ${quote.title}`;
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -151,7 +163,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         from: 'Homestead Cabinet Design <raymond@homesteadcabinetdesign.com>',
         to: customer.email,
-        subject: `Quote #${quote.quote_number}: ${quote.title}`,
+        subject: emailSubject,
         html: emailHtml
       })
     });
