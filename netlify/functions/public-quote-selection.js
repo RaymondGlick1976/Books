@@ -29,14 +29,18 @@ exports.handler = async (event) => {
       .single();
     
     if (quoteError || !quote) {
+      console.error('Quote lookup error:', quoteError);
       return error('Invalid access token', 401);
     }
     
+    console.log('Quote found:', quote.id, 'Status:', quote.status, 'Accept:', accept_quote, 'Payment:', payment_method);
+    
     // Handle accept quote with check/cash payment
     if (accept_quote && payment_method === 'check') {
-      // Only allow accepting quotes that are sent or viewed
+      // Only allow accepting quotes that are sent or viewed (or draft for testing)
       if (!['sent', 'viewed', 'draft'].includes(quote.status)) {
-        return error('Quote cannot be accepted', 400);
+        console.error('Invalid status for acceptance:', quote.status);
+        return error(`Quote cannot be accepted (status: ${quote.status})`, 400);
       }
       
       // Update selected options if provided
@@ -75,7 +79,10 @@ exports.handler = async (event) => {
         })
         .eq('id', quote.id);
       
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Update error:', updateError);
+        throw updateError;
+      }
       
       return success({ 
         accepted: true, 
@@ -84,9 +91,9 @@ exports.handler = async (event) => {
       });
     }
     
-    // Only allow selection on sent/viewed quotes
-    if (!['sent', 'viewed'].includes(quote.status)) {
-      return error('Quote cannot be modified', 400);
+    // Only allow selection on sent/viewed/draft quotes
+    if (!['sent', 'viewed', 'draft'].includes(quote.status)) {
+      return error(`Quote cannot be modified (status: ${quote.status})`, 400);
     }
     
     // Handle package selection
@@ -183,6 +190,6 @@ exports.handler = async (event) => {
     
   } catch (err) {
     console.error('Selection update error:', err);
-    return error('Failed to update selection', 500);
+    return error(err.message || 'Failed to update selection', 500);
   }
 };
