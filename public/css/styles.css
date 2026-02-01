@@ -657,6 +657,9 @@ a:hover {
 .badge-partial { background: #fef3c7; color: #b45309; }
 .badge-paid { background: #d1fae5; color: #047857; }
 .badge-overdue { background: #fee2e2; color: #b91c1c; }
+.badge-archived { background: #9ca3af; color: #1f2937; }
+.badge-converted { background: #c7d2fe; color: #3730a3; }
+.badge-cancelled { background: #e5e7eb; color: #6b7280; }
 
 /* =============================================
    QUOTE DISPLAY COMPONENTS

@@ -79,7 +79,12 @@
                 <option value="accepted">Accepted</option>
                 <option value="declined">Declined</option>
                 <option value="expired">Expired</option>
+                <option value="archived">Archived</option>
               </select>
+              <label class="form-check" style="margin-left: auto;">
+                <input type="checkbox" id="hide-archived" checked>
+                <span class="form-check-label">Hide archived</span>
+              </label>
             </div>
           </div>
         </div>
@@ -205,6 +210,10 @@
             ${quote.access_token ? `<a href="/portal/quote.html?token=${quote.access_token}" target="_blank" class="btn btn-ghost btn-sm" title="View as customer">👁️</a>` : `<button class="btn btn-ghost btn-sm" onclick="generateToken('${quote.id}')" title="Generate customer link">🔗</button>`}
             <button class="btn btn-ghost btn-sm" onclick="duplicateQuote('${quote.id}')">Duplicate</button>
             ${quote.status === 'accepted' ? `<button class="btn btn-ghost btn-sm" onclick="createInvoice('${quote.id}')">→ Invoice</button>` : ''}
+            ${quote.status === 'archived' 
+              ? `<button class="btn btn-ghost btn-sm" onclick="unarchiveQuote('${quote.id}')" title="Unarchive">📤</button>`
+              : `<button class="btn btn-ghost btn-sm" onclick="archiveQuote('${quote.id}')" title="Archive">📥</button>`}
+            <button class="btn btn-ghost btn-sm text-danger" onclick="deleteQuote('${quote.id}')" title="Delete">🗑️</button>
           </td>
         `;
         tbody.appendChild(row);
@@ -214,12 +223,19 @@
     // Search & Filter
     const searchInput = $('#search-input');
     const statusFilter = $('#status-filter');
+    const hideArchivedCheckbox = $('#hide-archived');
     
     function applyFilters() {
       const query = searchInput.value.toLowerCase();
       const status = statusFilter.value;
+      const hideArchived = hideArchivedCheckbox.checked;
       
       let filtered = quotes;
+      
+      // Hide archived unless specifically filtering for them
+      if (hideArchived && status !== 'archived') {
+        filtered = filtered.filter(q => q.status !== 'archived');
+      }
       
       if (query) {
         filtered = filtered.filter(q => 
@@ -239,6 +255,7 @@
     
     searchInput.addEventListener('input', debounce(applyFilters, 300));
     statusFilter.addEventListener('change', applyFilters);
+    hideArchivedCheckbox.addEventListener('change', applyFilters);
     
     window.duplicateQuote = async (id) => {
       const quote = quotes.find(q => q.id === id);
@@ -444,6 +461,45 @@
         loadQuotes();
       } catch (err) {
         showToast('Failed to approve: ' + err.message, 'error');
+      }
+    };
+    
+    window.archiveQuote = async (id) => {
+      if (!confirm('Archive this quote? It will be hidden from the default view.')) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('quotes').update({ status: 'archived' }).eq('id', id);
+        showToast('Quote archived', 'success');
+        loadQuotes();
+      } catch (err) {
+        showToast('Failed to archive: ' + err.message, 'error');
+      }
+    };
+    
+    window.unarchiveQuote = async (id) => {
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('quotes').update({ status: 'draft' }).eq('id', id);
+        showToast('Quote unarchived', 'success');
+        loadQuotes();
+      } catch (err) {
+        showToast('Failed to unarchive: ' + err.message, 'error');
+      }
+    };
+    
+    window.deleteQuote = async (id) => {
+      const quote = quotes.find(q => q.id === id);
+      if (!confirm(`Permanently delete quote ${quote?.quote_number || ''}? This cannot be undone.`)) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('quotes').delete().eq('id', id);
+        if (error) throw error;
+        showToast('Quote deleted', 'success');
+        loadQuotes();
+      } catch (err) {
+        showToast('Failed to delete: ' + err.message, 'error');
       }
     };
     

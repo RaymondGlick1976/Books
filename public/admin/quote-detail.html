@@ -148,6 +148,17 @@
                 <a href="#" class="dropdown-item" onclick="openCustomerPreview('desktop')">🖥️ Desktop (1200px)</a>
               </div>
             </div>
+            <div class="dropdown" id="more-actions-dropdown">
+              <button class="btn btn-ghost" onclick="toggleDropdown('more-actions-dropdown')">
+                ⋯
+              </button>
+              <div class="dropdown-menu" style="right: 0; left: auto;">
+                <a href="#" class="dropdown-item" onclick="duplicateQuote()">📋 Duplicate Quote</a>
+                <a href="#" class="dropdown-item" id="archive-btn" onclick="archiveQuote()">📥 Archive Quote</a>
+                <div style="border-top: 1px solid var(--color-border-light); margin: 4px 0;"></div>
+                <a href="#" class="dropdown-item" style="color: var(--color-danger);" onclick="deleteQuote()">🗑️ Delete Quote</a>
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -458,6 +469,16 @@
       const statusEl = $('#quote-status');
       statusEl.textContent = quote.status.charAt(0).toUpperCase() + quote.status.slice(1);
       statusEl.className = `status-badge status-${quote.status}`;
+      
+      // Update archive button text based on status
+      const archiveBtn = $('#archive-btn');
+      if (archiveBtn) {
+        if (quote.status === 'archived') {
+          archiveBtn.innerHTML = '📤 Unarchive Quote';
+        } else {
+          archiveBtn.innerHTML = '📥 Archive Quote';
+        }
+      }
       
       // Action buttons
       $('#edit-quote-btn').href = `/admin/quote-builder.html?id=${quote.id}`;
@@ -1065,6 +1086,150 @@
     
     function closeDropdowns() {
       $$('.dropdown.open').forEach(d => d.classList.remove('open'));
+    }
+    
+    async function archiveQuote() {
+      closeDropdowns();
+      if (quote.status === 'archived') {
+        // Unarchive
+        if (!confirm('Unarchive this quote?')) return;
+        try {
+          const supabase = await app.waitForSupabase();
+          await supabase.from('quotes').update({ status: 'draft' }).eq('id', quote.id);
+          showToast('Quote unarchived', 'success');
+          loadQuote(quote.id);
+        } catch (err) {
+          showToast('Failed to unarchive: ' + err.message, 'error');
+        }
+      } else {
+        // Archive
+        if (!confirm('Archive this quote? It will be hidden from the main list.')) return;
+        try {
+          const supabase = await app.waitForSupabase();
+          await supabase.from('quotes').update({ status: 'archived' }).eq('id', quote.id);
+          showToast('Quote archived', 'success');
+          window.location.href = '/admin/quotes.html';
+        } catch (err) {
+          showToast('Failed to archive: ' + err.message, 'error');
+        }
+      }
+    }
+    
+    async function deleteQuote() {
+      closeDropdowns();
+      if (!confirm(`Permanently delete quote ${quote.quote_number}? This cannot be undone.`)) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('quotes').delete().eq('id', quote.id);
+        if (error) throw error;
+        showToast('Quote deleted', 'success');
+        window.location.href = '/admin/quotes.html';
+      } catch (err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+      }
+    }
+    
+    async function duplicateQuote() {
+      closeDropdowns();
+      if (!confirm('Create a duplicate of this quote?')) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Get line items
+        const { data: lineItems } = await supabase
+          .from('quote_line_items')
+          .select('*')
+          .eq('quote_id', quote.id);
+        
+        // Get packages
+        const { data: packages } = await supabase
+          .from('quote_packages')
+          .select('*, quote_package_items(*)')
+          .eq('quote_id', quote.id);
+        
+        // Generate new quote number
+        const { data: quoteNumber } = await supabase.rpc('generate_quote_number');
+        
+        // Create duplicate quote
+        const { data: newQuote, error } = await supabase
+          .from('quotes')
+          .insert({
+            quote_number: quoteNumber,
+            customer_id: quote.customer_id,
+            title: quote.title + ' (Copy)',
+            description: quote.description,
+            status: 'draft',
+            subtotal: quote.subtotal,
+            tax_rate: quote.tax_rate,
+            tax_amount: quote.tax_amount,
+            total: quote.total,
+            deposit_type: quote.deposit_type,
+            deposit_value: quote.deposit_value,
+            notes: quote.notes,
+            internal_notes: quote.internal_notes,
+            valid_days: quote.valid_days
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
+        // Copy line items
+        if (lineItems && lineItems.length > 0) {
+          const newItems = lineItems.map(item => ({
+            quote_id: newQuote.id,
+            description: item.description,
+            details: item.details,
+            quantity: item.quantity,
+            unit: item.unit,
+            unit_price: item.unit_price,
+            line_total: item.line_total,
+            is_taxable: item.is_taxable,
+            is_optional: item.is_optional,
+            is_selected: item.is_selected,
+            sort_order: item.sort_order
+          }));
+          await supabase.from('quote_line_items').insert(newItems);
+        }
+        
+        // Copy packages
+        if (packages && packages.length > 0) {
+          for (const pkg of packages) {
+            const { data: newPkg } = await supabase
+              .from('quote_packages')
+              .insert({
+                quote_id: newQuote.id,
+                name: pkg.name,
+                description: pkg.description,
+                price: pkg.price,
+                is_selected: pkg.is_selected,
+                sort_order: pkg.sort_order
+              })
+              .select()
+              .single();
+            
+            if (newPkg && pkg.quote_package_items && pkg.quote_package_items.length > 0) {
+              const newPkgItems = pkg.quote_package_items.map(item => ({
+                package_id: newPkg.id,
+                description: item.description,
+                details: item.details,
+                quantity: item.quantity,
+                price: item.price,
+                is_included: item.is_included,
+                sort_order: item.sort_order
+              }));
+              await supabase.from('quote_package_items').insert(newPkgItems);
+            }
+          }
+        }
+        
+        showToast('Quote duplicated', 'success');
+        window.location.href = `/admin/quote-builder.html?id=${newQuote.id}`;
+      } catch (err) {
+        showToast('Failed to duplicate: ' + err.message, 'error');
+      }
     }
     
     // Device preview sizes

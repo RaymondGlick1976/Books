@@ -84,6 +84,105 @@ exports.handler = async (event) => {
         throw updateError;
       }
       
+      // Create invoice from quote
+      try {
+        // Calculate total from packages or line items
+        let invoiceTotal = quote.total || 0;
+        let invoiceSubtotal = quote.subtotal || 0;
+        let invoiceTaxAmount = quote.tax_amount || 0;
+        
+        // Check for packages
+        const { data: packages } = await supabase
+          .from('quote_packages')
+          .select('*, quote_package_items(*)')
+          .eq('quote_id', quote.id);
+        
+        if (packages && packages.length > 0) {
+          const selectedPkg = selected_package_id 
+            ? packages.find(p => p.id === selected_package_id)
+            : packages.find(p => p.is_selected) || packages[0];
+          
+          if (selectedPkg) {
+            invoiceSubtotal = parseFloat(selectedPkg.price) || 0;
+            const taxRate = parseFloat(quote.tax_rate) || 0.0625;
+            invoiceTaxAmount = invoiceSubtotal * taxRate;
+            invoiceTotal = invoiceSubtotal + invoiceTaxAmount;
+          }
+        }
+        
+        // Generate invoice number
+        const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
+        
+        // Create invoice
+        const { data: invoice, error: invoiceError } = await supabase
+          .from('invoices')
+          .insert({
+            invoice_number: invoiceNumber || `INV-${Date.now()}`,
+            quote_id: quote.id,
+            customer_id: quote.customer_id,
+            title: quote.title,
+            status: 'sent', // Sent status since they haven't paid yet
+            subtotal: invoiceSubtotal,
+            tax_rate: quote.tax_rate || 0.0625,
+            tax_amount: invoiceTaxAmount,
+            total: invoiceTotal,
+            amount_paid: 0,
+            amount_due: invoiceTotal,
+            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            notes: 'Payment by check/cash',
+          })
+          .select()
+          .single();
+        
+        if (invoice) {
+          // Copy line items to invoice (if using line items, not packages)
+          if (!packages || packages.length === 0) {
+            const { data: quoteItems } = await supabase
+              .from('quote_line_items')
+              .select('*')
+              .eq('quote_id', quote.id)
+              .or('is_optional.eq.false,is_selected.eq.true');
+            
+            if (quoteItems && quoteItems.length > 0) {
+              const invoiceItems = quoteItems.map(item => ({
+                invoice_id: invoice.id,
+                description: item.description,
+                details: item.details,
+                quantity: item.quantity,
+                unit: item.unit,
+                unit_price: item.unit_price,
+                line_total: item.line_total,
+                is_taxable: item.is_taxable,
+                sort_order: item.sort_order,
+              }));
+              
+              await supabase.from('invoice_line_items').insert(invoiceItems);
+            }
+          } else {
+            // For package-based quotes, create a single line item for the package
+            const selectedPkg = packages.find(p => p.is_selected) || packages[0];
+            if (selectedPkg) {
+              await supabase.from('invoice_line_items').insert({
+                invoice_id: invoice.id,
+                description: selectedPkg.name || quote.title,
+                details: selectedPkg.description || '',
+                quantity: 1,
+                unit: 'each',
+                unit_price: parseFloat(selectedPkg.price) || invoiceSubtotal,
+                line_total: parseFloat(selectedPkg.price) || invoiceSubtotal,
+                is_taxable: true,
+                sort_order: 0,
+              });
+            }
+          }
+          
+          console.log('Created invoice:', invoice.invoice_number);
+        }
+      } catch (invoiceErr) {
+        console.error('Failed to create invoice:', invoiceErr);
+        // Don't fail the quote acceptance if invoice creation fails
+      }
+      
       return success({ 
         accepted: true, 
         message: 'Quote accepted. Payment instructions will be provided.',

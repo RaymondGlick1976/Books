@@ -73,7 +73,12 @@
                 <option value="partial">Partial</option>
                 <option value="paid">Paid</option>
                 <option value="overdue">Overdue</option>
+                <option value="archived">Archived</option>
               </select>
+              <label class="form-check" style="margin-left: auto;">
+                <input type="checkbox" id="hide-archived" checked>
+                <span class="form-check-label">Hide archived</span>
+              </label>
             </div>
           </div>
         </div>
@@ -161,6 +166,10 @@
             ${invoice.status === 'draft' ? `<button class="btn btn-ghost btn-sm" onclick="sendInvoice('${invoice.id}')">Send</button>` : ''}
             ${invoice.amount_due > 0 ? `<button class="btn btn-ghost btn-sm" onclick="recordPayment('${invoice.id}')">Record Payment</button>` : ''}
             ${!invoice.qb_invoice_id ? `<button class="btn btn-ghost btn-sm" onclick="syncInvoiceToQB('${invoice.id}').then(loadInvoices)" title="Sync to QuickBooks">QB</button>` : ''}
+            ${invoice.status === 'archived' 
+              ? `<button class="btn btn-ghost btn-sm" onclick="unarchiveInvoice('${invoice.id}')" title="Unarchive">📤</button>`
+              : `<button class="btn btn-ghost btn-sm" onclick="archiveInvoice('${invoice.id}')" title="Archive">📥</button>`}
+            <button class="btn btn-ghost btn-sm text-danger" onclick="deleteInvoice('${invoice.id}')" title="Delete">🗑️</button>
           </td>
         `;
         tbody.appendChild(row);
@@ -170,12 +179,19 @@
     // Search & Filter
     const searchInput = $('#search-input');
     const statusFilter = $('#status-filter');
+    const hideArchivedCheckbox = $('#hide-archived');
     
     function applyFilters() {
       const query = searchInput.value.toLowerCase();
       const status = statusFilter.value;
+      const hideArchived = hideArchivedCheckbox.checked;
       
       let filtered = invoices;
+      
+      // Hide archived unless specifically filtering for them
+      if (hideArchived && status !== 'archived') {
+        filtered = filtered.filter(inv => inv.status !== 'archived');
+      }
       
       if (query) {
         filtered = filtered.filter(inv => 
@@ -195,6 +211,7 @@
     
     searchInput.addEventListener('input', debounce(applyFilters, 300));
     statusFilter.addEventListener('change', applyFilters);
+    hideArchivedCheckbox.addEventListener('change', applyFilters);
     
     window.viewInvoice = async (id) => {
       const invoice = invoices.find(i => i.id === id);
@@ -530,6 +547,45 @@
         return false;
       }
     }
+    
+    window.archiveInvoice = async (id) => {
+      if (!confirm('Archive this invoice? It will be hidden from the default view.')) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('invoices').update({ status: 'archived' }).eq('id', id);
+        showToast('Invoice archived', 'success');
+        loadInvoices();
+      } catch (err) {
+        showToast('Failed to archive: ' + err.message, 'error');
+      }
+    };
+    
+    window.unarchiveInvoice = async (id) => {
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('invoices').update({ status: 'draft' }).eq('id', id);
+        showToast('Invoice unarchived', 'success');
+        loadInvoices();
+      } catch (err) {
+        showToast('Failed to unarchive: ' + err.message, 'error');
+      }
+    };
+    
+    window.deleteInvoice = async (id) => {
+      const invoice = invoices.find(i => i.id === id);
+      if (!confirm(`Permanently delete invoice ${invoice?.invoice_number || ''}? This cannot be undone.`)) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('invoices').delete().eq('id', id);
+        if (error) throw error;
+        showToast('Invoice deleted', 'success');
+        loadInvoices();
+      } catch (err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+      }
+    };
     
     // Initialize
     loadInvoices();
