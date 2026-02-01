@@ -29,7 +29,7 @@ exports.handler = async (event) => {
       const quoteIds = quotes.map(q => q.id);
       const { data: packages } = await supabase
         .from('quote_packages')
-        .select('quote_id, id, name, price, is_selected')
+        .select('quote_id, id, name, price, is_selected, quote_package_items(price, quantity, is_included)')
         .in('quote_id', quoteIds);
       
       if (packages) {
@@ -47,7 +47,18 @@ exports.handler = async (event) => {
       const pkgs = packagesMap[quote.id] || [];
       if (pkgs.length > 0) {
         const selectedPkg = pkgs.find(p => p.is_selected) || pkgs[0];
-        quote.display_total = parseFloat(selectedPkg.price) || 0;
+        
+        // Use package price if set, otherwise calculate from items
+        if (selectedPkg.price !== null && selectedPkg.price !== undefined && selectedPkg.price !== '') {
+          quote.display_total = parseFloat(selectedPkg.price) || 0;
+        } else if (selectedPkg.quote_package_items && selectedPkg.quote_package_items.length > 0) {
+          // Calculate from package items
+          quote.display_total = selectedPkg.quote_package_items
+            .filter(item => item.is_included !== false)
+            .reduce((sum, item) => sum + ((parseFloat(item.price) || 0) * (item.quantity || 1)), 0);
+        } else {
+          quote.display_total = 0;
+        }
       } else {
         quote.display_total = quote.total || 0;
       }

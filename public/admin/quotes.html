@@ -140,7 +140,7 @@
         try {
           const { data: pkgData } = await supabase
             .from('quote_packages')
-            .select('quote_id, id, name, price, is_selected');
+            .select('quote_id, id, name, price, is_selected, quote_package_items(price, quantity, is_included)');
           
           if (pkgData) {
             pkgData.forEach(pkg => {
@@ -161,7 +161,18 @@
           // If quote has packages, use selected package price or first package price
           if (packages.length > 0) {
             const selectedPkg = packages.find(p => p.is_selected) || packages[0];
-            quote.display_total = parseFloat(selectedPkg.price) || 0;
+            
+            // Use package price if set, otherwise calculate from items
+            if (selectedPkg.price !== null && selectedPkg.price !== undefined && selectedPkg.price !== '') {
+              quote.display_total = parseFloat(selectedPkg.price) || 0;
+            } else if (selectedPkg.quote_package_items && selectedPkg.quote_package_items.length > 0) {
+              // Calculate from package items
+              quote.display_total = selectedPkg.quote_package_items
+                .filter(item => item.is_included !== false)
+                .reduce((sum, item) => sum + ((parseFloat(item.price) || 0) * (item.quantity || 1)), 0);
+            } else {
+              quote.display_total = 0;
+            }
           } else {
             // Use stored total for line-item based quotes
             quote.display_total = quote.total || 0;
