@@ -1031,7 +1031,7 @@
               description: item.description,
               quantity: item.quantity,
               price: item.price,
-              base_price: item.basePrice || item.price,
+              base_price: item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : item.price,
               attribute_selections: item.attributeSelections || [],
               is_included: item.is_included,
               sort_order: idx
@@ -1307,17 +1307,29 @@
             apply_tax: pkg.apply_tax,
             tax_rate: pkg.tax_rate,
             hide_non_included: pkg.hide_non_included,
-            items: (pkg.quote_package_items || []).map(item => ({
-              id: item.id,
-              name: item.name,
-              description: item.description,
-              quantity: item.quantity,
-              price: item.price,
-              basePrice: item.base_price,
-              attributeSelections: item.attribute_selections || [],
-              is_included: item.is_included,
-              show_price: item.show_price
-            }))
+            items: (pkg.quote_package_items || []).map(item => {
+              // Calculate basePrice: use stored base_price if available,
+              // otherwise derive from price minus attribute totals
+              let itemBasePrice = item.base_price;
+              if (itemBasePrice === null || itemBasePrice === undefined) {
+                // Derive from price minus stored attribute line totals
+                const attrSelections = item.attribute_selections || [];
+                const storedAttrTotal = attrSelections.reduce((sum, sel) => sum + (parseFloat(sel.line_total) || 0), 0);
+                itemBasePrice = (item.price || 0) - storedAttrTotal;
+              }
+              
+              return {
+                id: item.id,
+                name: item.name,
+                description: item.description,
+                quantity: item.quantity,
+                price: item.price,
+                basePrice: itemBasePrice,
+                attributeSelections: item.attribute_selections || [],
+                is_included: item.is_included,
+                show_price: item.show_price
+              };
+            })
           }));
         } catch (pkgErr) {
           console.log('Packages table may not exist:', pkgErr);
@@ -3135,7 +3147,7 @@
               description: item.description,
               quantity: item.quantity,
               price: item.price,
-              base_price: item.basePrice || item.price,
+              base_price: item.basePrice !== undefined && item.basePrice !== null ? item.basePrice : item.price,
               attribute_selections: item.attributeSelections || [],
               is_included: item.is_included,
               show_price: item.show_price !== false,
@@ -3648,7 +3660,20 @@
     
     function showPackageItemModal(packageIndex, item = null, itemIndex = null) {
       const isEdit = item !== null;
-      const basePrice = item?.basePrice || item?.price || 0;
+      
+      // Calculate the correct base price
+      // If basePrice is stored, use it. Otherwise, derive it from price minus attribute totals.
+      let basePrice = 0;
+      if (item) {
+        if (item.basePrice !== undefined && item.basePrice !== null) {
+          basePrice = item.basePrice;
+        } else if (item.price) {
+          // Derive base price by subtracting stored attribute line totals
+          const storedAttrTotal = (item.attributeSelections || [])
+            .reduce((sum, sel) => sum + (parseFloat(sel.line_total) || 0), 0);
+          basePrice = item.price - storedAttrTotal;
+        }
+      }
       
       // Reconstruct attribute instances from saved selections (like editLineItem)
       let attributeInstances = [];
