@@ -23,6 +23,119 @@
       margin: 0 auto;
     }
     
+    /* Professional Document Header */
+    .quote-document-header {
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      margin-bottom: var(--space-xl);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .document-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: var(--space-lg);
+      border-bottom: 2px solid var(--color-primary);
+      margin-bottom: var(--space-lg);
+    }
+    
+    .company-info h1 {
+      color: var(--color-primary);
+      font-size: 1.75rem;
+      margin: 0 0 var(--space-xs) 0;
+    }
+    
+    .company-info p {
+      color: var(--color-text-muted);
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    
+    .document-type {
+      text-align: right;
+    }
+    
+    .document-type h2 {
+      font-size: 2rem;
+      font-weight: 300;
+      color: var(--color-text);
+      margin: 0 0 var(--space-sm) 0;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    
+    .document-type .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .status-badge.draft { background: #e5e7eb; color: #374151; }
+    .status-badge.sent { background: #dbeafe; color: #1d4ed8; }
+    .status-badge.viewed { background: #fef3c7; color: #92400e; }
+    .status-badge.accepted { background: #d1fae5; color: #047857; }
+    .status-badge.declined { background: #fee2e2; color: #dc2626; }
+    .status-badge.expired { background: #f3f4f6; color: #6b7280; }
+    
+    .document-details-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-lg);
+    }
+    
+    @media (max-width: 768px) {
+      .document-details-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .document-details-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .document-header-top {
+        flex-direction: column;
+        gap: var(--space-md);
+      }
+      
+      .document-type {
+        text-align: left;
+      }
+    }
+    
+    .detail-box {
+      padding: var(--space-sm) 0;
+    }
+    
+    .detail-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    
+    .detail-value {
+      font-weight: 600;
+      color: var(--color-text);
+      font-size: 0.95rem;
+    }
+    
+    .detail-sub {
+      color: var(--color-text-muted);
+      font-size: 0.85rem;
+      margin-top: 2px;
+    }
+    
     .quote-section {
       background: var(--color-bg-card);
       border-radius: var(--radius-lg);
@@ -523,27 +636,50 @@
         print-color-adjust: exact;
       }
       
-      /* Smaller purple banner for print */
-      .quote-header {
-        background: #6366f1 !important;
+      /* Professional document header for print */
+      .quote-document-header {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin-bottom: 20px !important;
+      }
+      
+      .document-header-top {
+        padding-bottom: 10px !important;
+        margin-bottom: 15px !important;
+      }
+      
+      .company-info h1 {
+        font-size: 20px !important;
+      }
+      
+      .company-info p {
+        font-size: 11px !important;
+      }
+      
+      .document-type h2 {
+        font-size: 24px !important;
+      }
+      
+      .document-details-grid {
+        gap: 10px !important;
+      }
+      
+      .detail-label {
+        font-size: 9px !important;
+      }
+      
+      .detail-value {
+        font-size: 12px !important;
+      }
+      
+      .detail-sub {
+        font-size: 10px !important;
+      }
+      
+      .status-badge {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-        padding: 15px 20px !important;
-        min-height: auto !important;
-      }
-      
-      .quote-header .quote-number {
-        font-size: 12px !important;
-        margin-bottom: 4px !important;
-      }
-      
-      .quote-header .quote-title {
-        font-size: 18px !important;
-        margin-bottom: 4px !important;
-      }
-      
-      .quote-header #quote-date {
-        font-size: 12px !important;
       }
       
       /* Show item descriptions in bundle for print */
@@ -554,31 +690,6 @@
       /* Hide info icons in print (descriptions are visible) */
       .info-icon {
         display: none !important;
-      }
-      
-      /* Add company header for print */
-      .print-header {
-        display: block !important;
-        text-align: center;
-        margin-bottom: var(--space-xl);
-        padding-bottom: var(--space-lg);
-        border-bottom: 2px solid #6366f1;
-      }
-      
-      .print-header h1 {
-        color: #6366f1;
-        margin: 0;
-      }
-      
-      .print-header p {
-        color: #666;
-        margin: var(--space-sm) 0 0;
-      }
-    }
-    
-    @media screen {
-      .print-header {
-        display: none;
       }
     }
     
@@ -832,10 +943,41 @@
       
       <!-- Quote Content -->
       <div id="quote-content" style="display: none;">
-        <!-- Print Header (only shows when printing) -->
-        <div class="print-header">
-          <h1>Homestead Cabinet Design</h1>
-          <p>raymond@homesteadcabinetdesign.com</p>
+        <!-- Professional Quote Header -->
+        <div id="quote-document-header" class="quote-document-header">
+          <div class="document-header-top">
+            <div class="company-info">
+              <h1 id="company-name-display">Homestead Cabinet Design</h1>
+              <p id="company-address-display"></p>
+              <p id="company-contact-display"></p>
+            </div>
+            <div class="document-type">
+              <h2>Proposal</h2>
+              <div id="document-status-badge" class="status-badge"></div>
+            </div>
+          </div>
+          
+          <div class="document-details-grid">
+            <div class="detail-box">
+              <div class="detail-label">Customer</div>
+              <div class="detail-value" id="customer-name-display"></div>
+              <div class="detail-sub" id="customer-contact-display"></div>
+            </div>
+            <div class="detail-box">
+              <div class="detail-label">Project</div>
+              <div class="detail-value" id="project-title-display"></div>
+              <div class="detail-sub" id="project-address-display"></div>
+            </div>
+            <div class="detail-box">
+              <div class="detail-label">Proposal #</div>
+              <div class="detail-value" id="proposal-number-display"></div>
+            </div>
+            <div class="detail-box">
+              <div class="detail-label">Date</div>
+              <div class="detail-value" id="proposal-date-display"></div>
+              <div class="detail-sub" id="valid-until-display"></div>
+            </div>
+          </div>
         </div>
         
         <!-- Actions Bar -->
@@ -852,13 +994,6 @@
         
         <!-- Status Banner -->
         <div id="status-banner"></div>
-        
-        <!-- Quote Header -->
-        <div class="quote-header" style="border-radius: var(--radius-lg); margin-bottom: var(--space-xl);">
-          <div class="quote-number" id="quote-number"></div>
-          <h1 class="quote-title" id="quote-title"></h1>
-          <div id="quote-date"></div>
-        </div>
         
         <!-- Packages Section (shown when packages_enabled) -->
         <div id="packages-section" class="packages-section" style="display: none;">
@@ -1103,6 +1238,7 @@
     let accessToken = null;
     let isPublicAccess = false;
     let quoteFooterData = null;
+    let companyData = null;
     
     // Get quote ID or token from URL
     const params = new URLSearchParams(window.location.search);
@@ -1154,6 +1290,7 @@
         payments = response.payments || [];
         packages = response.packages || [];
         quoteFooterData = response.quote_footer || null;
+        companyData = response.company || null;
         
         renderQuote();
         
@@ -1225,9 +1362,7 @@
       }
       
       // Header
-      $('#quote-number').textContent = quote.quote_number;
-      $('#quote-title').textContent = quote.title;
-      $('#quote-date').textContent = `Valid until ${formatDate(quote.expires_at)}`;
+      renderDocumentHeader();
       
       // Video
       if (quote.video_url) {
@@ -1310,6 +1445,58 @@
       
       // Calculate totals
       updateTotals();
+    }
+    
+    function renderDocumentHeader() {
+      // Company info
+      const company = companyData || {};
+      const companyName = company.name || 'Homestead Cabinet Design';
+      const companyAddress = [company.address, company.city, company.state, company.zip]
+        .filter(Boolean).join(', ') || '';
+      const companyContact = [company.phone, company.email].filter(Boolean).join(' • ');
+      
+      $('#company-name-display').textContent = companyName;
+      $('#company-address-display').textContent = companyAddress;
+      $('#company-contact-display').textContent = companyContact;
+      
+      // Status badge
+      const statusBadge = $('#document-status-badge');
+      const statusMap = {
+        draft: 'Draft',
+        sent: 'Pending',
+        viewed: 'Viewed',
+        accepted: 'Accepted',
+        declined: 'Declined',
+        expired: 'Expired',
+        converted: 'Accepted'
+      };
+      statusBadge.textContent = statusMap[quote.status] || quote.status;
+      statusBadge.className = `status-badge ${quote.status}`;
+      
+      // Customer info
+      const customer = quote.customers || {};
+      $('#customer-name-display').textContent = customer.name || 'Customer';
+      const customerContact = [customer.email, customer.phone].filter(Boolean).join(' • ');
+      $('#customer-contact-display').textContent = customerContact;
+      
+      // Project info - use customer address if no job_address
+      $('#project-title-display').textContent = quote.title || '';
+      const jobAddress = quote.job_address || 
+        [customer.address, customer.city, customer.state, customer.zip].filter(Boolean).join(', ') || '';
+      $('#project-address-display').textContent = jobAddress;
+      
+      // Proposal number and date
+      $('#proposal-number-display').textContent = quote.quote_number || '';
+      
+      const createdDate = quote.created_at ? new Date(quote.created_at).toLocaleDateString('en-US', {
+        month: 'numeric',
+        day: 'numeric', 
+        year: 'numeric'
+      }) : '';
+      $('#proposal-date-display').textContent = createdDate;
+      
+      const expiresDate = quote.expires_at ? formatDate(quote.expires_at) : '';
+      $('#valid-until-display').textContent = expiresDate ? `Valid until ${expiresDate}` : '';
     }
     
     function renderDeclinedOptions() {

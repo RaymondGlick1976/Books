@@ -21,10 +21,10 @@ exports.handler = async (event) => {
   const supabase = getSupabase();
   
   try {
-    // Get quote
+    // Get quote with customer info
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
-      .select('*')
+      .select('*, customers(name, email, phone, address, city, state, zip)')
       .eq('id', quoteId)
       .eq('customer_id', customer.id)
       .single();
@@ -77,6 +77,22 @@ exports.handler = async (event) => {
       console.log('Packages table may not exist yet:', e.message);
     }
     
+    // Get company settings for header
+    let companySettings = null;
+    try {
+      const { data: companyData } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'company')
+        .single();
+      
+      if (companyData && companyData.value) {
+        companySettings = companyData.value;
+      }
+    } catch (e) {
+      console.log('Company settings not found');
+    }
+    
     // Log this view
     try {
       await supabase.from('quote_views').insert({
@@ -100,6 +116,7 @@ exports.handler = async (event) => {
       change_orders: changeOrders || [],
       payments: payments || [],
       packages: packages || [],
+      company: companySettings,
     });
     
   } catch (err) {

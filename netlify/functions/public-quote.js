@@ -23,7 +23,7 @@ exports.handler = async (event) => {
     // Get quote by access token
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
-      .select('*, customers(name, email, phone)')
+      .select('*, customers(name, email, phone, address, city, state, zip)')
       .eq('access_token', token)
       .single();
     
@@ -90,6 +90,7 @@ exports.handler = async (event) => {
     
     // Get quote footer settings
     let quoteFooter = null;
+    let companySettings = null;
     try {
       const { data: footerData } = await supabase
         .from('settings')
@@ -102,6 +103,21 @@ exports.handler = async (event) => {
       }
     } catch (e) {
       console.log('Quote footer settings not found');
+    }
+    
+    // Get company settings for header
+    try {
+      const { data: companyData } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'company')
+        .single();
+      
+      if (companyData && companyData.value) {
+        companySettings = companyData.value;
+      }
+    } catch (e) {
+      console.log('Company settings not found');
     }
     
     // Update to viewed if sent (skip for admin preview)
@@ -147,6 +163,7 @@ exports.handler = async (event) => {
       payments: payments || [],
       packages: packages || [],
       quote_footer: quoteFooter,
+      company: companySettings,
     });
     
   } catch (err) {
