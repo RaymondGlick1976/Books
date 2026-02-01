@@ -122,18 +122,40 @@
       try {
         const supabase = await app.waitForSupabase();
         
+        // First get quotes
         const { data, error } = await supabase
           .from('quotes')
-          .select('*, customers(name, email), quote_packages(id, name, price, is_selected)')
+          .select('*, customers(name, email)')
           .order('created_at', { ascending: false });
         
         if (error) throw error;
         
+        // Try to get packages separately (may not exist)
+        let packagesMap = {};
+        try {
+          const { data: pkgData } = await supabase
+            .from('quote_packages')
+            .select('quote_id, id, name, price, is_selected');
+          
+          if (pkgData) {
+            pkgData.forEach(pkg => {
+              if (!packagesMap[pkg.quote_id]) {
+                packagesMap[pkg.quote_id] = [];
+              }
+              packagesMap[pkg.quote_id].push(pkg);
+            });
+          }
+        } catch (e) {
+          console.log('Could not load packages:', e.message);
+        }
+        
         // Calculate display total for each quote
         quotes = (data || []).map(quote => {
+          const packages = packagesMap[quote.id] || [];
+          
           // If quote has packages, use selected package price or first package price
-          if (quote.quote_packages && quote.quote_packages.length > 0) {
-            const selectedPkg = quote.quote_packages.find(p => p.is_selected) || quote.quote_packages[0];
+          if (packages.length > 0) {
+            const selectedPkg = packages.find(p => p.is_selected) || packages[0];
             quote.display_total = parseFloat(selectedPkg.price) || 0;
           } else {
             // Use stored total for line-item based quotes
