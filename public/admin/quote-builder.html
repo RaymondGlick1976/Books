@@ -3482,12 +3482,33 @@
     
     function duplicatePackage(index) {
       const pkg = packages[index];
+      
+      // Deep clone the package with explicit item cloning
       const newPkg = {
-        ...JSON.parse(JSON.stringify(pkg)),
         name: pkg.name + ' (Copy)',
+        description: pkg.description || '',
+        price: pkg.price,
         is_recommended: false,
-        is_selected: false
+        is_selected: false,
+        apply_tax: pkg.apply_tax,
+        tax_rate: pkg.tax_rate,
+        hide_non_included: pkg.hide_non_included,
+        // Explicitly clone items array with new objects
+        items: pkg.items.map(item => ({
+          name: item.name,
+          description: item.description || '',
+          quantity: item.quantity,
+          price: item.price,
+          basePrice: item.basePrice,
+          is_included: item.is_included,
+          show_price: item.show_price,
+          // Deep clone attributeSelections
+          attributeSelections: item.attributeSelections 
+            ? JSON.parse(JSON.stringify(item.attributeSelections))
+            : []
+        }))
       };
+      
       packages.push(newPkg);
       updatePackagesUI();
       showToast('Package duplicated', 'success');

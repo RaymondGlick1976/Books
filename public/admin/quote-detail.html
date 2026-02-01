@@ -154,10 +154,10 @@
                 ⋯
               </button>
               <div class="dropdown-menu" style="right: 0; left: auto;">
-                <a href="#" class="dropdown-item" onclick="duplicateQuote()">📋 Duplicate Quote</a>
-                <a href="#" class="dropdown-item" id="archive-btn" onclick="archiveQuote()">📥 Archive Quote</a>
+                <a href="#" class="dropdown-item" onclick="event.preventDefault(); duplicateQuote()">📋 Duplicate Quote</a>
+                <a href="#" class="dropdown-item" id="archive-btn" onclick="event.preventDefault(); archiveQuote()">📥 Archive Quote</a>
                 <div style="border-top: 1px solid var(--color-border-light); margin: 4px 0;"></div>
-                <a href="#" class="dropdown-item" style="color: var(--color-danger);" onclick="deleteQuote()">🗑️ Delete Quote</a>
+                <a href="#" class="dropdown-item" style="color: var(--color-danger);" onclick="event.preventDefault(); deleteQuote()">🗑️ Delete Quote</a>
               </div>
             </div>
           </div>
