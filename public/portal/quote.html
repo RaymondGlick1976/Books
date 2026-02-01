@@ -595,10 +595,17 @@
     
     /* Print Styles */
     @media print {
+      @page {
+        margin: 0.75in 0.5in;
+        size: letter;
+      }
+      
       body {
         background: white !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+        margin: 0;
+        padding: 0;
       }
       
       .portal-header,
@@ -618,12 +625,14 @@
       
       .quote-container {
         max-width: none !important;
+        padding: 0 !important;
       }
       
       .quote-section {
         break-inside: avoid;
         box-shadow: none !important;
         border: 1px solid #ddd;
+        margin-bottom: 15px !important;
       }
       
       .line-item {
@@ -645,20 +654,20 @@
       }
       
       .document-header-top {
-        padding-bottom: 10px !important;
+        padding-bottom: 12px !important;
         margin-bottom: 15px !important;
       }
       
       .company-info h1 {
-        font-size: 20px !important;
+        font-size: 18px !important;
       }
       
       .company-info p {
-        font-size: 11px !important;
+        font-size: 10px !important;
       }
       
       .document-type h2 {
-        font-size: 24px !important;
+        font-size: 22px !important;
       }
       
       .document-details-grid {
@@ -666,20 +675,22 @@
       }
       
       .detail-label {
-        font-size: 9px !important;
+        font-size: 8px !important;
       }
       
       .detail-value {
-        font-size: 12px !important;
+        font-size: 11px !important;
       }
       
       .detail-sub {
-        font-size: 10px !important;
+        font-size: 9px !important;
       }
       
       .status-badge {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+        font-size: 9px !important;
+        padding: 3px 8px !important;
       }
       
       /* Show item descriptions in bundle for print */
@@ -690,6 +701,41 @@
       /* Hide info icons in print (descriptions are visible) */
       .info-icon {
         display: none !important;
+      }
+      
+      /* Packages section for print */
+      .packages-section {
+        margin-bottom: 15px !important;
+      }
+      
+      .packages-section h2 {
+        font-size: 16px !important;
+        margin-bottom: 8px !important;
+      }
+      
+      .packages-section .packages-subtitle {
+        font-size: 11px !important;
+        margin-bottom: 12px !important;
+      }
+      
+      .package-card {
+        padding: 12px !important;
+      }
+      
+      .package-name {
+        font-size: 14px !important;
+      }
+      
+      .package-description {
+        font-size: 10px !important;
+      }
+      
+      .package-price {
+        font-size: 18px !important;
+      }
+      
+      .package-items {
+        font-size: 10px !important;
       }
     }
     
