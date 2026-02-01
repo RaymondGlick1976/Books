@@ -124,11 +124,24 @@
         
         const { data, error } = await supabase
           .from('quotes')
-          .select('*, customers(name, email)')
+          .select('*, customers(name, email), quote_packages(id, name, price, is_selected)')
           .order('created_at', { ascending: false });
         
         if (error) throw error;
-        quotes = data || [];
+        
+        // Calculate display total for each quote
+        quotes = (data || []).map(quote => {
+          // If quote has packages, use selected package price or first package price
+          if (quote.quote_packages && quote.quote_packages.length > 0) {
+            const selectedPkg = quote.quote_packages.find(p => p.is_selected) || quote.quote_packages[0];
+            quote.display_total = parseFloat(selectedPkg.price) || 0;
+          } else {
+            // Use stored total for line-item based quotes
+            quote.display_total = quote.total || 0;
+          }
+          return quote;
+        });
+        
         renderQuotes(quotes);
       } catch (err) {
         console.error('Load error:', err);
@@ -147,6 +160,10 @@
       
       data.forEach(quote => {
         const hasRange = quote.total_low && quote.total_high && quote.total_low !== quote.total_high;
+        // Use display_total (calculated from packages) or fall back to total
+        const displayAmount = hasRange 
+          ? formatCurrencyRange(quote.total_low, quote.total_high) 
+          : formatCurrency(quote.display_total || quote.total || 0);
         
         const row = createElement('tr');
         row.innerHTML = `
@@ -156,7 +173,7 @@
             <div class="text-sm text-muted">${quote.customers?.email || ''}</div>
           </td>
           <td>${quote.title}</td>
-          <td>${hasRange ? formatCurrencyRange(quote.total_low, quote.total_high) : formatCurrency(quote.total)}</td>
+          <td>${displayAmount}</td>
           <td><span class="badge badge-${quote.status}">${quote.status}</span></td>
           <td>${formatDate(quote.created_at)}</td>
           <td>${quote.expires_at ? formatDate(quote.expires_at) : '—'}</td>

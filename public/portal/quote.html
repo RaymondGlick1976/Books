@@ -609,20 +609,28 @@
       }
       
       .portal-header,
+      #portal-header,
+      header.portal-header,
       .portal-nav,
+      #portal-nav,
       .quote-actions,
       .accept-section,
       #accept-btn,
       .line-item-action,
       .package-select-btn,
-      #status-banner {
+      #status-banner,
+      .no-print {
         display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
       }
       
       .portal-container {
         padding: 0 !important;
         margin: 0 !important;
         max-width: none !important;
+        padding-top: 0 !important;
       }
       
       #quote-content {
