@@ -678,6 +678,13 @@
                     <input type="text" id="slider-subtitle" class="form-input" placeholder="Drag to compare" value="Drag the slider to reveal">
                   </div>
                 </div>
+                <div class="form-group">
+                  <label class="form-label">Slider Position</label>
+                  <select id="slider-position" class="form-input" style="max-width: 300px;">
+                    <option value="top">Top (after header, before bundles)</option>
+                    <option value="bottom">Bottom (after totals, before footer)</option>
+                  </select>
+                </div>
                 <div class="grid grid-cols-2 gap-lg">
                   <div>
                     <div class="form-group">
@@ -922,6 +929,7 @@
             enabled: $('#slider-enabled').checked,
             title: $('#slider-title').value.trim() || 'See the Transformation',
             subtitle: $('#slider-subtitle').value.trim() || 'Drag the slider to reveal',
+            position: $('#slider-position').value || 'top',
             before_image: $('#slider-before-image').value.trim() || null,
             before_label: $('#slider-before-label').value.trim() || 'Before',
             before_desc: $('#slider-before-desc').value.trim() || null,
@@ -1259,6 +1267,7 @@
           $('#slider-options').style.display = slider.enabled ? 'block' : 'none';
           $('#slider-title').value = slider.title || 'See the Transformation';
           $('#slider-subtitle').value = slider.subtitle || 'Drag the slider to reveal';
+          $('#slider-position').value = slider.position || 'top';
           $('#slider-before-image').value = slider.before_image || '';
           $('#slider-before-label').value = slider.before_label || 'Before';
           $('#slider-before-desc').value = slider.before_desc || '';
@@ -3036,6 +3045,7 @@
             enabled: $('#slider-enabled').checked,
             title: $('#slider-title').value.trim() || 'See the Transformation',
             subtitle: $('#slider-subtitle').value.trim() || 'Drag the slider to reveal',
+            position: $('#slider-position').value || 'top',
             before_image: $('#slider-before-image').value.trim() || null,
             before_label: $('#slider-before-label').value.trim() || 'Before',
             before_desc: $('#slider-before-desc').value.trim() || null,
