@@ -13,7 +13,7 @@ exports.handler = async (event) => {
     return error('Method not allowed', 405);
   }
   
-  const { token, selected_options, payment_amount } = parseBody(event);
+  const { token, selected_options, payment_amount, selected_package_id } = parseBody(event);
   
   if (!token) {
     return error('Access token required', 400);
@@ -44,43 +44,96 @@ exports.handler = async (event) => {
       return error('Quote has expired', 400);
     }
     
-    // Update selected options if provided
-    if (selected_options && selected_options.length > 0) {
-      // First reset all optional items to not selected
-      await supabase
-        .from('quote_line_items')
-        .update({ is_selected: false })
-        .eq('quote_id', quote.id)
-        .eq('is_optional', true);
-      
-      // Then mark selected ones
-      await supabase
-        .from('quote_line_items')
-        .update({ is_selected: true })
-        .eq('quote_id', quote.id)
-        .in('id', selected_options);
-    }
-    
-    // Recalculate quote totals
-    const { data: lineItems } = await supabase
-      .from('quote_line_items')
-      .select('*')
-      .eq('quote_id', quote.id);
+    // Check for packages
+    const { data: packages } = await supabase
+      .from('quote_packages')
+      .select('*, quote_package_items(*)')
+      .eq('quote_id', quote.id)
+      .order('sort_order');
     
     let subtotal = 0;
     let taxableSubtotal = 0;
-    lineItems.forEach(item => {
-      if (!item.is_optional || item.is_selected) {
-        const lineTotal = parseFloat(item.line_total || 0);
-        subtotal += lineTotal;
-        if (item.is_taxable) {
-          taxableSubtotal += lineTotal;
+    let total = 0;
+    
+    if (packages && packages.length > 0) {
+      // Use package pricing
+      // Find selected package by ID, or find one with is_selected, or use first
+      let selectedPkg = selected_package_id 
+        ? packages.find(p => p.id === selected_package_id)
+        : packages.find(p => p.is_selected) || packages[0];
+      
+      if (selectedPkg) {
+        // Update selected package in database
+        await supabase
+          .from('quote_packages')
+          .update({ is_selected: false })
+          .eq('quote_id', quote.id);
+        
+        await supabase
+          .from('quote_packages')
+          .update({ is_selected: true })
+          .eq('id', selectedPkg.id);
+        
+        await supabase
+          .from('quotes')
+          .update({ selected_package_id: selectedPkg.id })
+          .eq('id', quote.id);
+        
+        // Calculate package total
+        if (selectedPkg.price !== null && selectedPkg.price !== undefined && selectedPkg.price !== '') {
+          subtotal = parseFloat(selectedPkg.price) || 0;
+        } else if (selectedPkg.quote_package_items && selectedPkg.quote_package_items.length > 0) {
+          subtotal = selectedPkg.quote_package_items
+            .filter(i => i.is_included !== false)
+            .reduce((sum, item) => sum + ((parseFloat(item.price) || 0) * (item.quantity || 1)), 0);
+        }
+        
+        if (selectedPkg.apply_tax !== false) {
+          taxableSubtotal = subtotal;
         }
       }
-    });
-    
-    const taxAmount = taxableSubtotal * parseFloat(quote.tax_rate || 0);
-    const total = subtotal + taxAmount;
+      
+      const taxAmount = taxableSubtotal * parseFloat(quote.tax_rate || 0.0625);
+      total = subtotal + taxAmount;
+      
+    } else {
+      // Use line items pricing
+      // Update selected options if provided
+      if (selected_options && selected_options.length > 0) {
+        // First reset all optional items to not selected
+        await supabase
+          .from('quote_line_items')
+          .update({ is_selected: false })
+          .eq('quote_id', quote.id)
+          .eq('is_optional', true);
+        
+        // Then mark selected ones
+        await supabase
+          .from('quote_line_items')
+          .update({ is_selected: true })
+          .eq('quote_id', quote.id)
+          .in('id', selected_options);
+      }
+      
+      // Recalculate quote totals from line items
+      const { data: lineItems } = await supabase
+        .from('quote_line_items')
+        .select('*')
+        .eq('quote_id', quote.id);
+      
+      lineItems.forEach(item => {
+        if (!item.is_optional || item.is_selected) {
+          const lineTotal = parseFloat(item.line_total || 0);
+          subtotal += lineTotal;
+          if (item.is_taxable) {
+            taxableSubtotal += lineTotal;
+          }
+        }
+      });
+      
+      const taxAmount = taxableSubtotal * parseFloat(quote.tax_rate || 0);
+      total = subtotal + taxAmount;
+    }
     
     // Calculate minimum deposit
     let minDeposit;
@@ -136,6 +189,6 @@ exports.handler = async (event) => {
     
   } catch (err) {
     console.error('Public checkout error:', err);
-    return error('Failed to create checkout session', 500);
+    return error(err.message || 'Failed to create checkout session', 500);
   }
 };

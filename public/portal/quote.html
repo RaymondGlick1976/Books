@@ -2253,6 +2253,7 @@
           body: JSON.stringify({
             token: accessToken,
             selected_options: selectedOptions,
+            selected_package_id: selectedPackageId,
             payment_amount: paymentAmount
           })
         });
@@ -2269,6 +2270,7 @@
           body: JSON.stringify({
             quote_id: quote.id,
             selected_options: selectedOptions,
+            selected_package_id: selectedPackageId,
             payment_amount: paymentAmount
           })
         });
