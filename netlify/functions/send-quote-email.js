@@ -101,7 +101,7 @@ exports.handler = async (event) => {
 
     // Default fallbacks if no template exists
     const defaultSubject = `Quote #{{quote_number}}: {{quote_title}}`;
-    const defaultBody = `Hi {{first_name}},\n\nThank you for requesting a quote!\n\nClick the button below to view the full details and accept your quote.`;
+    const defaultBody = `Hi {{first_name}},\n\nThank you for requesting a quote!`;
 
     const templateSubject = template?.subject || defaultSubject;
     const templateBody = template?.body || defaultBody;
