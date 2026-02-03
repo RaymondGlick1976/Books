@@ -3028,7 +3028,7 @@
         </div>
         
         <div class="form-group">
-          <label class="form-label">Personal Message <span style="color: var(--color-text-muted); font-weight: normal;">(optional - appears before template body)</span></label>
+          <label class="form-label">Personal Message <span style="color: var(--color-text-muted); font-weight: normal;">(optional - replaces template body)</span></label>
           <textarea id="email-custom-message" class="form-textarea" rows="3" placeholder="Add a personal note to the customer..."></textarea>
         </div>
         
@@ -3083,17 +3083,20 @@
         size: 'lg'
       });
       
-      // Live preview of custom message
+      // Live preview of custom message - replaces template body when provided
       const customMessageInput = content.querySelector('#email-custom-message');
       const customMessagePreview = content.querySelector('#custom-message-preview');
+      const templateBodyPreview = content.querySelector('#template-body-preview');
       
       customMessageInput.addEventListener('input', () => {
         const msg = customMessageInput.value.trim();
         if (msg) {
           customMessagePreview.textContent = msg;
           customMessagePreview.style.display = 'block';
+          templateBodyPreview.style.display = 'none';
         } else {
           customMessagePreview.style.display = 'none';
+          templateBodyPreview.style.display = 'block';
         }
       });
       

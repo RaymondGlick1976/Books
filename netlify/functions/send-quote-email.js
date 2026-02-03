@@ -130,14 +130,12 @@ exports.handler = async (event) => {
       return { statusCode: 500, body: JSON.stringify({ error: 'Email service not configured' }) };
     }
 
-    // Build custom message section if provided
-    const customMessageHtml = customMessage ? `
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0; white-space: pre-wrap;">${customMessage}</p>
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;">
-    ` : '';
-
-    // Convert plain text body to HTML paragraphs
-    const bodyHtml = resolvedBody
+    // Build email body HTML
+    // If custom message is provided, use it AS the body (replaces template body)
+    // If no custom message, use the template body
+    const emailBodyText = customMessage || resolvedBody;
+    
+    const bodyHtml = emailBodyText
       .split('\n\n')
       .map(para => para.trim())
       .filter(Boolean)
@@ -152,8 +150,6 @@ exports.handler = async (event) => {
         </div>
         
         <div style="padding: 30px; background: #f8fafc;">
-          ${customMessageHtml}
-          
           ${bodyHtml}
           
           <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
