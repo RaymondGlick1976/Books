@@ -12,7 +12,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { quoteId, customMessage, customSubject } = JSON.parse(event.body);
+    const { quoteId, customMessage, customSubject, cc, bcc } = JSON.parse(event.body);
 
     if (!quoteId) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Quote ID required' }) };
@@ -47,7 +47,6 @@ exports.handler = async (event) => {
       
       if (updateError) {
         console.error('Failed to save access token:', updateError);
-        // If column doesn't exist, the error message will tell us
         return { 
           statusCode: 500, 
           body: JSON.stringify({ 
@@ -78,6 +77,53 @@ exports.handler = async (event) => {
       totalDisplay = formatCurrency(quote.total);
     }
 
+    // Get company settings
+    const { data: settingsData } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'company')
+      .single();
+    
+    const company = settingsData?.value || {};
+    const companyName = company.name || 'Homestead Cabinet Design';
+    const companyEmail = company.email || 'raymond@homesteadcabinetdesign.com';
+    const companyTagline = company.tagline || 'Love your kitchen again';
+    const companyAddress = company.service_area || 'Western MA & Northern CT';
+
+    // Fetch quote email template from database
+    const { data: template } = await supabase
+      .from('email_templates')
+      .select('*')
+      .eq('template_type', 'quote')
+      .eq('is_active', true)
+      .limit(1)
+      .single();
+
+    // Default fallbacks if no template exists
+    const defaultSubject = `Quote #{{quote_number}}: {{quote_title}}`;
+    const defaultBody = `Hi {{first_name}},\n\nThank you for requesting a quote!\n\nClick the button below to view the full details and accept your quote.`;
+
+    const templateSubject = template?.subject || defaultSubject;
+    const templateBody = template?.body || defaultBody;
+
+    // Replace variables in template
+    const firstName = customer.name?.split(' ')[0] || 'Customer';
+    
+    const replaceVars = (text) => {
+      return text
+        .replace(/\{\{first_name\}\}/g, firstName)
+        .replace(/\{\{customer_name\}\}/g, customer.name || '')
+        .replace(/\{\{company_name\}\}/g, companyName)
+        .replace(/\{\{quote_number\}\}/g, quote.quote_number || '')
+        .replace(/\{\{quote_title\}\}/g, quote.title || '')
+        .replace(/\{\{total\}\}/g, totalDisplay)
+        .replace(/\{\{amount_due\}\}/g, totalDisplay)
+        .replace(/\{\{due_date\}\}/g, quote.expires_at ? new Date(quote.expires_at).toLocaleDateString() : '');
+    };
+
+    const resolvedSubject = replaceVars(templateSubject);
+    const resolvedBody = replaceVars(templateBody);
+
     // Send email via Resend
     const resendApiKey = process.env.RESEND_API_KEY;
     if (!resendApiKey) {
@@ -87,23 +133,28 @@ exports.handler = async (event) => {
     // Build custom message section if provided
     const customMessageHtml = customMessage ? `
           <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0; white-space: pre-wrap;">${customMessage}</p>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;">
     ` : '';
+
+    // Convert plain text body to HTML paragraphs
+    const bodyHtml = resolvedBody
+      .split('\n\n')
+      .map(para => para.trim())
+      .filter(Boolean)
+      .map(para => `<p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 15px 0; white-space: pre-wrap;">${para}</p>`)
+      .join('\n          ');
 
     const emailHtml = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #6366f1; padding: 30px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-weight: 600;">Homestead Cabinet Design</h1>
-          <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0; font-size: 14px;">Love your kitchen again</p>
+          <h1 style="color: white; margin: 0; font-weight: 600;">${companyName}</h1>
+          <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0; font-size: 14px;">${companyTagline}</p>
         </div>
         
         <div style="padding: 30px; background: #f8fafc;">
-          <h2 style="color: #1e293b;">Hi ${customer.name.split(' ')[0]},</h2>
-          
           ${customMessageHtml}
           
-          <p style="color: #475569; font-size: 16px; line-height: 1.6;">
-            Thank you for your interest in our services! We've prepared a quote for your project:
-          </p>
+          ${bodyHtml}
           
           <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
             <h3 style="color: #6366f1; margin-top: 0;">${quote.title}</h3>
@@ -111,10 +162,6 @@ exports.handler = async (event) => {
             <p style="color: #475569; margin: 5px 0;"><strong>Total:</strong> <span style="color: #6366f1; font-size: 18px; font-weight: bold;">${totalDisplay}</span></p>
             ${quote.expires_at ? `<p style="color: #94a3b8; margin: 5px 0; font-size: 14px;">Valid until: ${new Date(quote.expires_at).toLocaleDateString()}</p>` : ''}
           </div>
-          
-          <p style="color: #475569; font-size: 16px; line-height: 1.6;">
-            Click the button below to view the full details and accept your quote:
-          </p>
           
           <div style="text-align: center; margin: 30px 0;">
             <a href="${directLink}" style="background: #6366f1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">View Quote</a>
@@ -142,15 +189,15 @@ exports.handler = async (event) => {
         </div>
         
         <div style="padding: 20px; text-align: center; background: #1e293b; color: #94a3b8; font-size: 12px;">
-          <p style="margin: 0;">Homestead Cabinet Design</p>
-          <p style="margin: 5px 0;">Western MA & Northern CT</p>
-          <p style="margin: 5px 0;">raymond@homesteadcabinetdesign.com</p>
+          <p style="margin: 0;">${companyName}</p>
+          <p style="margin: 5px 0;">${companyAddress}</p>
+          <p style="margin: 5px 0;">${companyEmail}</p>
         </div>
       </div>
     `;
 
-    // Use custom subject if provided, otherwise default
-    const emailSubject = customSubject || `Quote #${quote.quote_number}: ${quote.title}`;
+    // Use custom subject if provided, then template subject, then default
+    const emailSubject = customSubject || resolvedSubject;
 
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -159,8 +206,10 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Homestead Cabinet Design <raymond@homesteadcabinetdesign.com>',
+        from: `${companyName} <${companyEmail}>`,
         to: customer.email,
+        ...(cc ? { cc: cc.split(',').map(e => e.trim()).filter(Boolean) } : {}),
+        ...(bcc ? { bcc: bcc.split(',').map(e => e.trim()).filter(Boolean) } : {}),
         subject: emailSubject,
         html: emailHtml
       })
@@ -173,11 +222,28 @@ exports.handler = async (event) => {
       return { statusCode: 500, body: JSON.stringify({ error: 'Failed to send email', details: result }) };
     }
 
-    // Update quote sent_at timestamp
-    await supabase
+    // Log the sent email
+    try {
+      await supabase.from('email_logs').insert({
+        template_id: template?.id || null,
+        customer_id: customer.id,
+        to_email: customer.email,
+        subject: emailSubject,
+        body: resolvedBody + (customMessage ? '\n\n[Personal message]: ' + customMessage : '')
+      });
+    } catch (logErr) {
+      console.error('Failed to log email:', logErr);
+    }
+
+    // Update quote status to sent
+    const { error: updateError } = await supabase
       .from('quotes')
       .update({ sent_at: new Date().toISOString(), status: 'sent' })
       .eq('id', quoteId);
+    
+    if (updateError) {
+      console.error('Failed to update quote status:', updateError);
+    }
 
     return {
       statusCode: 200,

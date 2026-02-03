@@ -1111,7 +1111,7 @@
     }
     
     // Send Email Modal
-    function showSendEmailModal() {
+    async function showSendEmailModal() {
       if (!customer || !customer.email) {
         showToast('Customer email not found', 'error');
         return;
@@ -1137,6 +1137,46 @@
       
       const firstName = customer.name?.split(' ')[0] || 'Customer';
       
+      // Fetch email template from database
+      let templateSubject = `Quote #${quote.quote_number}: ${quote.title}`;
+      let templateBody = `Hi ${firstName},\n\nThank you for requesting a quote!\n\nClick the button below to view the full details and accept your quote.`;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: template } = await supabase
+          .from('email_templates')
+          .select('*')
+          .eq('template_type', 'quote')
+          .eq('is_active', true)
+          .limit(1)
+          .single();
+        
+        if (template) {
+          const replaceVars = (text) => text
+            .replace(/\{\{first_name\}\}/g, firstName)
+            .replace(/\{\{customer_name\}\}/g, customer.name || '')
+            .replace(/\{\{company_name\}\}/g, 'Homestead Cabinet Design')
+            .replace(/\{\{quote_number\}\}/g, quote.quote_number || '')
+            .replace(/\{\{quote_title\}\}/g, quote.title || '')
+            .replace(/\{\{total\}\}/g, totalDisplay)
+            .replace(/\{\{amount_due\}\}/g, totalDisplay)
+            .replace(/\{\{due_date\}\}/g, quote.expires_at ? new Date(quote.expires_at).toLocaleDateString() : '');
+          
+          templateSubject = replaceVars(template.subject);
+          templateBody = replaceVars(template.body);
+        }
+      } catch (e) {
+        console.log('Could not load email template, using defaults');
+      }
+      
+      // Convert body to preview HTML
+      const bodyPreviewHtml = templateBody
+        .split('\n\n')
+        .map(p => p.trim())
+        .filter(Boolean)
+        .map(p => `<p style="color: #475569; font-size: 13px; margin: 0 0 10px; white-space: pre-wrap;">${p}</p>`)
+        .join('');
+      
       const content = createElement('div');
       content.innerHTML = `
         <div style="margin-bottom: var(--space-lg);">
@@ -1147,19 +1187,29 @@
             </div>
             <div>
               <label class="form-label">Subject:</label>
-              <input type="text" id="email-subject" class="form-input" value="Quote: ${quote.title}">
+              <input type="text" id="email-subject" class="form-input" value="${templateSubject.replace(/"/g, '&quot;')}">
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+            <div>
+              <label class="form-label">CC: <span style="color: var(--color-text-muted); font-weight: normal;">(optional)</span></label>
+              <input type="text" id="email-cc" class="form-input" placeholder="email@example.com" value="raymond@homesteadcabinetdesign.com">
+            </div>
+            <div>
+              <label class="form-label">BCC: <span style="color: var(--color-text-muted); font-weight: normal;">(optional)</span></label>
+              <input type="text" id="email-bcc" class="form-input" placeholder="email@example.com">
             </div>
           </div>
         </div>
         
         <div class="form-group">
-          <label class="form-label">Personal Message <span style="color: var(--color-text-muted); font-weight: normal;">(optional - appears after greeting)</span></label>
+          <label class="form-label">Personal Message <span style="color: var(--color-text-muted); font-weight: normal;">(optional - appears before template body)</span></label>
           <textarea id="email-custom-message" class="form-textarea" rows="3" placeholder="Add a personal note to the customer..."></textarea>
         </div>
         
         <div style="border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; margin-top: var(--space-lg);">
           <div style="background: var(--color-bg-soft); padding: 8px 12px; border-bottom: 1px solid var(--color-border); font-weight: 600; font-size: 0.9rem;">
-            Email Preview
+            Email Preview <span style="font-weight: normal; color: var(--color-text-muted); font-size: 0.8rem;">(from Quote Email template)</span>
           </div>
           <div style="padding: var(--space-md); background: white; max-height: 300px; overflow-y: auto;">
             <div style="font-family: Arial, sans-serif; max-width: 500px;">
@@ -1169,13 +1219,9 @@
               </div>
               
               <div style="padding: 15px; background: #f8fafc;">
-                <p style="margin: 0 0 10px;"><strong>Hi ${firstName},</strong></p>
+                <div id="custom-message-preview" style="color: #475569; font-size: 13px; line-height: 1.6; margin-bottom: 10px; display: none; white-space: pre-wrap; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;"></div>
                 
-                <div id="custom-message-preview" style="color: #475569; font-size: 13px; line-height: 1.6; margin-bottom: 10px; display: none; white-space: pre-wrap;"></div>
-                
-                <p style="color: #475569; font-size: 13px; margin: 0 0 10px;">
-                  Thank you for your interest! We've prepared a quote for your project:
-                </p>
+                <div id="template-body-preview">${bodyPreviewHtml}</div>
                 
                 <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin: 10px 0;">
                   <h4 style="color: #6366f1; margin: 0 0 5px; font-size: 14px;">${quote.title}</h4>
@@ -1235,6 +1281,8 @@
         try {
           const customMessage = customMessageInput.value.trim();
           const customSubject = content.querySelector('#email-subject').value.trim();
+          const cc = content.querySelector('#email-cc').value.trim();
+          const bcc = content.querySelector('#email-bcc').value.trim();
           
           const response = await fetch('/.netlify/functions/send-quote-email', {
             method: 'POST',
@@ -1242,9 +1290,16 @@
             body: JSON.stringify({
               quoteId: quote.id,
               customMessage: customMessage || undefined,
-              customSubject: customSubject || undefined
+              customSubject: customSubject || undefined,
+              cc: cc || undefined,
+              bcc: bcc || undefined
             })
           });
+          
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Server error (${response.status})`);
+          }
           
           const result = await response.json();
           
@@ -1252,16 +1307,19 @@
             throw new Error(result.error);
           }
           
-          // Update quote status if it was draft
-          if (quote.status === 'draft') {
+          // Server already updates status, but ensure it's updated client-side too
+          try {
             const supabase = await app.waitForSupabase();
             await supabase.from('quotes').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', quote.id);
+          } catch (e) {
+            console.log('Client-side status update failed (server should have handled it):', e);
           }
           
           showToast('Quote sent to ' + customer.email, 'success');
           closeModal(modal);
           loadQuote(quote.id); // Refresh to show updated status
         } catch (err) {
+          console.error('Send error:', err);
           showToast('Failed to send: ' + err.message, 'error');
           sendBtn.disabled = false;
           sendBtn.innerHTML = '📧 Send Email';

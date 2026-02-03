@@ -1251,6 +1251,7 @@
         }
         
         console.log('Loaded quote:', quote);
+        window._quoteNumber = quote.quote_number || '';
         
         $('#page-title').textContent = `Edit Quote: ${quote.quote_number}`;
         $('#customer-select').value = quote.customer_id;
@@ -2922,7 +2923,7 @@
       });
     }
     
-    function showEmailPreviewModal() {
+    async function showEmailPreviewModal() {
       // Validate customer first
       const customerId = $('#customer-select').value;
       const title = $('#quote-title').value.trim();
@@ -2960,6 +2961,47 @@
       
       const firstName = customer.name?.split(' ')[0] || 'Customer';
       
+      // Fetch email template from database
+      let templateSubject = `Quote: ${title}`;
+      let templateBody = `Hi ${firstName},\n\nThank you for requesting a quote!\n\nClick the button below to view the full details and accept your quote.`;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: template } = await supabase
+          .from('email_templates')
+          .select('*')
+          .eq('template_type', 'quote')
+          .eq('is_active', true)
+          .limit(1)
+          .single();
+        
+        if (template) {
+          const quoteNumber = currentQuoteId ? (window._quoteNumber || '') : 'NEW';
+          const replaceVars = (text) => text
+            .replace(/\{\{first_name\}\}/g, firstName)
+            .replace(/\{\{customer_name\}\}/g, customer.name || '')
+            .replace(/\{\{company_name\}\}/g, 'Homestead Cabinet Design')
+            .replace(/\{\{quote_number\}\}/g, quoteNumber)
+            .replace(/\{\{quote_title\}\}/g, title)
+            .replace(/\{\{total\}\}/g, totalDisplay)
+            .replace(/\{\{amount_due\}\}/g, totalDisplay)
+            .replace(/\{\{due_date\}\}/g, '');
+          
+          templateSubject = replaceVars(template.subject);
+          templateBody = replaceVars(template.body);
+        }
+      } catch (e) {
+        console.log('Could not load email template, using defaults');
+      }
+      
+      // Convert body to preview HTML
+      const bodyPreviewHtml = templateBody
+        .split('\n\n')
+        .map(p => p.trim())
+        .filter(Boolean)
+        .map(p => `<p style="color: #475569; font-size: 13px; margin: 0 0 10px; white-space: pre-wrap;">${p}</p>`)
+        .join('');
+      
       const content = createElement('div');
       content.innerHTML = `
         <div style="margin-bottom: var(--space-lg);">
@@ -2970,19 +3012,29 @@
             </div>
             <div>
               <label class="form-label">Subject:</label>
-              <input type="text" id="email-subject" class="form-input" value="Quote: ${title}">
+              <input type="text" id="email-subject" class="form-input" value="${templateSubject.replace(/"/g, '&quot;')}">
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+            <div>
+              <label class="form-label">CC: <span style="color: var(--color-text-muted); font-weight: normal;">(optional)</span></label>
+              <input type="text" id="email-cc" class="form-input" placeholder="email@example.com" value="raymond@homesteadcabinetdesign.com">
+            </div>
+            <div>
+              <label class="form-label">BCC: <span style="color: var(--color-text-muted); font-weight: normal;">(optional)</span></label>
+              <input type="text" id="email-bcc" class="form-input" placeholder="email@example.com">
             </div>
           </div>
         </div>
         
         <div class="form-group">
-          <label class="form-label">Personal Message <span style="color: var(--color-text-muted); font-weight: normal;">(optional - appears after greeting)</span></label>
+          <label class="form-label">Personal Message <span style="color: var(--color-text-muted); font-weight: normal;">(optional - appears before template body)</span></label>
           <textarea id="email-custom-message" class="form-textarea" rows="3" placeholder="Add a personal note to the customer..."></textarea>
         </div>
         
         <div style="border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; margin-top: var(--space-lg);">
           <div style="background: var(--color-bg-soft); padding: 8px 12px; border-bottom: 1px solid var(--color-border); font-weight: 600; font-size: 0.9rem;">
-            Email Preview
+            Email Preview <span style="font-weight: normal; color: var(--color-text-muted); font-size: 0.8rem;">(from Quote Email template)</span>
           </div>
           <div style="padding: var(--space-md); background: white; max-height: 300px; overflow-y: auto;">
             <div style="font-family: Arial, sans-serif; max-width: 500px;">
@@ -2992,13 +3044,9 @@
               </div>
               
               <div style="padding: 15px; background: #f8fafc;">
-                <p style="margin: 0 0 10px;"><strong>Hi ${firstName},</strong></p>
+                <div id="custom-message-preview" style="color: #475569; font-size: 13px; line-height: 1.6; margin-bottom: 10px; display: none; white-space: pre-wrap; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;"></div>
                 
-                <div id="custom-message-preview" style="color: #475569; font-size: 13px; line-height: 1.6; margin-bottom: 10px; display: none; white-space: pre-wrap;"></div>
-                
-                <p style="color: #475569; font-size: 13px; margin: 0 0 10px;">
-                  Thank you for your interest! We've prepared a quote for your project:
-                </p>
+                <div id="template-body-preview">${bodyPreviewHtml}</div>
                 
                 <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin: 10px 0;">
                   <h4 style="color: #6366f1; margin: 0 0 5px; font-size: 14px;">${title}</h4>
@@ -3053,12 +3101,14 @@
       sendBtn.addEventListener('click', async () => {
         const customMessage = customMessageInput.value.trim();
         const subject = content.querySelector('#email-subject').value.trim();
+        const cc = content.querySelector('#email-cc').value.trim();
+        const bcc = content.querySelector('#email-bcc').value.trim();
         closeModal(modal);
-        await saveQuote('sent', customMessage, subject);
+        await saveQuote('sent', customMessage, subject, cc, bcc);
       });
     }
     
-    async function saveQuote(status, customMessage = '', customSubject = '') {
+    async function saveQuote(status, customMessage = '', customSubject = '', cc = '', bcc = '') {
       // Cancel any pending autosave
       if (autosaveTimer) clearTimeout(autosaveTimer);
       isSaving = true;
@@ -3309,7 +3359,9 @@
               body: JSON.stringify({ 
                 quoteId: savedQuote.id,
                 customMessage: customMessage || '',
-                customSubject: customSubject || ''
+                customSubject: customSubject || '',
+                cc: cc || '',
+                bcc: bcc || ''
               })
             });
             
