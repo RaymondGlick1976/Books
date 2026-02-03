@@ -2641,7 +2641,7 @@
           
           // Upload to storage
           const { error: uploadError } = await supabase.storage
-            .from('uploads')
+            .from('Uploads')
             .upload(filePath, att._file, {
               contentType: att.file_type,
               upsert: false
@@ -2655,7 +2655,7 @@
           
           // Get public URL
           const { data: urlData } = supabase.storage
-            .from('uploads')
+            .from('Uploads')
             .getPublicUrl(filePath);
           
           // Update the attachment with the real URL
