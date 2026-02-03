@@ -1499,14 +1499,31 @@
         $('#attachments-section').style.display = 'block';
         const attachmentList = $('#attachment-list');
         attachments.forEach(att => {
-          const icon = getFileIcon(att.file_type);
-          const item = createElement('a', {
-            className: 'attachment-item',
-            href: att.file_url,
-            target: '_blank',
-            innerHTML: `${icon} ${att.file_name}`
-          });
-          attachmentList.appendChild(item);
+          if (att.file_type?.includes('image')) {
+            // Image attachments - show as thumbnail with link
+            const item = createElement('a', {
+              className: 'attachment-item attachment-image',
+              href: att.file_url,
+              target: '_blank'
+            });
+            item.innerHTML = `
+              <img src="${att.file_url}" alt="${att.file_name}" style="max-width: 100%; max-height: 200px; border-radius: 8px; display: block;">
+              <span style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">${att.file_name}</span>
+            `;
+            item.style.flexDirection = 'column';
+            item.style.maxWidth = '250px';
+            attachmentList.appendChild(item);
+          } else {
+            // Non-image - show as icon + filename link
+            const icon = getFileIcon(att.file_type);
+            const item = createElement('a', {
+              className: 'attachment-item',
+              href: att.file_url,
+              target: '_blank',
+              innerHTML: `${icon} ${att.file_name}`
+            });
+            attachmentList.appendChild(item);
+          }
         });
       }
       

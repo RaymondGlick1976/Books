@@ -1051,6 +1051,9 @@
           packages[i].id = savedPkg.id;
         }
         
+        // Save attachments - upload new files and sync database
+        await saveAttachments(quoteId);
+        
         isDirty = false;
         updateSaveStatus('saved', 'All changes saved');
         
@@ -2605,18 +2608,121 @@
           return;
         }
         
-        // For now, just show locally - actual upload happens on save
+        // Store file object for upload, show preview locally
         const url = URL.createObjectURL(file);
         attachments.push({
-          id: 'new-' + Date.now(),
+          id: 'new-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
           file_name: file.name,
           file_type: file.type,
+          file_size: file.size,
           file_url: url,
-          file: file
+          _file: file,      // Raw file for upload
+          _isNew: true       // Flag for unsaved
         });
       });
       
       renderAttachments();
+      markDirty();
+    }
+    
+    async function saveAttachments(qId) {
+      const supabase = await app.waitForSupabase();
+      
+      // Upload any new files to Supabase Storage
+      for (let i = 0; i < attachments.length; i++) {
+        const att = attachments[i];
+        if (!att._isNew || !att._file) continue;
+        
+        try {
+          // Generate unique path
+          const ext = att.file_name.split('.').pop().toLowerCase();
+          const uniqueName = `${Date.now()}-${Math.random().toString(36).substr(2, 8)}.${ext}`;
+          const filePath = `quote-attachments/${qId}/${uniqueName}`;
+          
+          // Upload to storage
+          const { error: uploadError } = await supabase.storage
+            .from('uploads')
+            .upload(filePath, att._file, {
+              contentType: att.file_type,
+              upsert: false
+            });
+          
+          if (uploadError) {
+            console.error('Upload error for', att.file_name, uploadError);
+            showToast(`Failed to upload ${att.file_name}`, 'error');
+            continue;
+          }
+          
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('uploads')
+            .getPublicUrl(filePath);
+          
+          // Update the attachment with the real URL
+          att.file_url = urlData.publicUrl;
+          delete att._file;
+          delete att._isNew;
+          
+          // Save to database
+          const { data: saved, error: dbError } = await supabase
+            .from('quote_attachments')
+            .insert({
+              quote_id: qId,
+              file_name: att.file_name,
+              file_type: att.file_type,
+              file_size: att.file_size,
+              file_url: att.file_url,
+              display_order: i
+            })
+            .select()
+            .single();
+          
+          if (dbError) {
+            console.error('DB error for attachment:', dbError);
+          } else {
+            att.id = saved.id;
+          }
+        } catch (err) {
+          console.error('Attachment upload error:', err);
+        }
+      }
+      
+      // Remove deleted attachments from database
+      // Get current DB attachment IDs
+      const { data: existingAtts } = await supabase
+        .from('quote_attachments')
+        .select('id')
+        .eq('quote_id', qId);
+      
+      const currentIds = attachments.map(a => a.id).filter(id => !String(id).startsWith('new-'));
+      const toDelete = (existingAtts || []).filter(a => !currentIds.includes(a.id));
+      
+      for (const del of toDelete) {
+        await supabase.from('quote_attachments').delete().eq('id', del.id);
+      }
+      
+      // Update display order for all
+      for (let i = 0; i < attachments.length; i++) {
+        const att = attachments[i];
+        if (!String(att.id).startsWith('new-')) {
+          await supabase.from('quote_attachments')
+            .update({ display_order: i })
+            .eq('id', att.id);
+        }
+      }
+      
+      renderAttachments();
+    }
+    
+    function removeAttachment(index) {
+      const att = attachments[index];
+      // Revoke blob URL if local
+      if (att.file_url?.startsWith('blob:')) {
+        URL.revokeObjectURL(att.file_url);
+      }
+      attachments.splice(index, 1);
+      renderAttachments();
+      markDirty();
     }
     
     function renderAttachments() {
@@ -2628,21 +2734,33 @@
         
         const preview = createElement('div', { className: 'file-card-preview' });
         if (att.file_type?.includes('image')) {
-          preview.appendChild(createElement('img', { src: att.file_url }));
+          const img = createElement('img', { src: att.file_url });
+          img.style.cursor = 'pointer';
+          img.onclick = () => window.open(att.file_url, '_blank');
+          preview.appendChild(img);
         } else {
-          preview.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>';
+          const link = createElement('a', { 
+            href: att.file_url, 
+            target: '_blank',
+            title: 'Open file'
+          });
+          link.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/></svg>';
+          preview.appendChild(link);
         }
         card.appendChild(preview);
         
         const info = createElement('div', { className: 'file-card-info' });
         info.appendChild(createElement('div', { className: 'file-card-name', textContent: att.file_name }));
+        
+        const unsavedBadge = att._isNew ? ' <span style="color: var(--color-warning); font-size: 0.7rem;">(unsaved)</span>' : '';
+        if (unsavedBadge) {
+          info.querySelector('.file-card-name').innerHTML = att.file_name + unsavedBadge;
+        }
+        
         info.appendChild(createElement('button', {
           className: 'btn btn-ghost btn-sm',
           textContent: 'Remove',
-          onClick: () => {
-            attachments.splice(index, 1);
-            renderAttachments();
-          }
+          onClick: () => removeAttachment(index)
         }));
         card.appendChild(info);
         
@@ -3179,7 +3297,8 @@
           await supabase.from('jobs').update({ quote_id: quoteId }).eq('id', linkedDealId);
         }
         
-        // TODO: Handle attachment uploads to Supabase Storage
+        // Save attachments - upload new files and sync database
+        await saveAttachments(quoteId);
         
         // Send email if status is 'sent'
         if (status === 'sent') {
