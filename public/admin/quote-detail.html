@@ -205,19 +205,6 @@
           </div>
         </div>
         
-        <!-- View Activity -->
-        <div class="section-card" id="view-activity-section" style="display: none;">
-          <div class="section-header">
-            <div class="section-title">👁️ View Activity</div>
-            <span class="text-muted text-sm" id="view-count-badge"></span>
-          </div>
-          <div class="section-body">
-            <div id="view-activity-list">
-              <!-- Populated by JS -->
-            </div>
-          </div>
-        </div>
-        
         <!-- Bundles Section -->
         <div class="section-card" id="bundles-section" style="display: none;">
           <div class="section-header">
@@ -540,8 +527,8 @@
         </div>
       `;
       
-      // Render view activity
-      renderViewActivity();
+      // Render activity log
+      renderActivityLog();
       
       // Check if we have packages (bundles)
       if (packages && packages.length > 0) {
@@ -601,47 +588,94 @@
       }
     }
     
-    function renderViewActivity() {
-      const section = $('#view-activity-section');
-      const countBadge = $('#view-count-badge');
-      const list = $('#view-activity-list');
+    function renderActivityLog() {
+      const container = $('#quote-activity');
+      const events = [];
       
-      // Show section if there are views or if quote was viewed
-      if (quoteViews.length > 0 || quote.viewed_at || quote.view_count > 0) {
-        section.style.display = 'block';
-        
-        const viewCount = quote.view_count || quoteViews.length;
-        countBadge.textContent = `${viewCount} view${viewCount !== 1 ? 's' : ''}`;
-        
-        if (quoteViews.length > 0) {
-          list.innerHTML = quoteViews.map(v => {
-            const viewDate = new Date(v.viewed_at);
-            const timeAgo = getTimeAgo(viewDate);
-            const sourceIcon = v.source === 'portal' ? '🔐' : '📧';
-            const sourceLabel = v.source === 'portal' ? 'Customer Portal' : 'Email Link';
-            
-            return `
-              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--color-border-light);">
-                <div>
-                  <span style="font-weight: 500;">${sourceIcon} ${sourceLabel}</span>
-                  <span class="text-muted text-sm" style="margin-left: var(--space-sm);">${timeAgo}</span>
-                </div>
-                <div class="text-muted text-sm">${formatDateTime(v.viewed_at)}</div>
-              </div>
-            `;
-          }).join('');
-        } else if (quote.viewed_at) {
-          // Fallback for quotes viewed before tracking was added
-          list.innerHTML = `
-            <div style="padding: 8px 0;">
-              <span>📧 First viewed</span>
-              <span class="text-muted text-sm" style="margin-left: var(--space-sm);">${formatDateTime(quote.viewed_at)}</span>
-            </div>
-          `;
-        } else {
-          list.innerHTML = '<p class="text-muted">View details will appear here when the quote is viewed.</p>';
-        }
+      // 1. Quote created
+      if (quote.created_at) {
+        events.push({
+          icon: '📝',
+          label: 'Quote created',
+          date: quote.created_at,
+          type: 'lifecycle'
+        });
       }
+      
+      // 2. Quote sent (email)
+      if (quote.sent_at) {
+        events.push({
+          icon: '📧',
+          label: 'Quote emailed to customer',
+          date: quote.sent_at,
+          type: 'lifecycle'
+        });
+      }
+      
+      // 3. Individual view events from quote_views table
+      if (quoteViews.length > 0) {
+        quoteViews.forEach(v => {
+          const sourceLabel = v.source === 'portal' ? 'via Customer Portal' : 'via email link';
+          events.push({
+            icon: '👁️',
+            label: `Customer viewed quote ${sourceLabel}`,
+            date: v.viewed_at || v.created_at,
+            type: 'view'
+          });
+        });
+      } else if (quote.viewed_at) {
+        // Fallback for quotes viewed before detailed tracking
+        events.push({
+          icon: '👁️',
+          label: 'Customer viewed quote',
+          date: quote.viewed_at,
+          type: 'view'
+        });
+      }
+      
+      // 4. Quote accepted
+      if (quote.accepted_at) {
+        events.push({
+          icon: '✅',
+          label: `Quote accepted${quote.payment_method ? ' (' + quote.payment_method + ')' : ''}`,
+          date: quote.accepted_at,
+          type: 'lifecycle'
+        });
+      }
+      
+      // 5. Quote declined
+      if (quote.status === 'declined' && quote.updated_at) {
+        events.push({
+          icon: '❌',
+          label: 'Quote declined by customer',
+          date: quote.updated_at,
+          type: 'lifecycle'
+        });
+      }
+      
+      // Sort by date, newest first
+      events.sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      if (events.length === 0) {
+        container.innerHTML = '<span class="text-muted">No activity yet</span>';
+        return;
+      }
+      
+      container.innerHTML = events.map((evt, i) => {
+        const date = new Date(evt.date);
+        const timeAgo = getTimeAgo(date);
+        const isLast = i === events.length - 1;
+        
+        return `
+          <div style="display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; ${!isLast ? 'border-bottom: 1px solid var(--color-border-light);' : ''}">
+            <div style="font-size: 1.1rem; flex-shrink: 0; margin-top: 1px;">${evt.icon}</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 500; font-size: 0.875rem;">${evt.label}</div>
+              <div class="text-muted" style="font-size: 0.8rem;">${formatDateTime(evt.date)} · ${timeAgo}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
     
     function getTimeAgo(date) {
