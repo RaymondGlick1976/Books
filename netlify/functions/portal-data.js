@@ -49,20 +49,21 @@ exports.handler = async (event) => {
       const pkgs = packagesMap[quote.id] || [];
       if (pkgs.length > 0) {
         const selectedPkg = pkgs.find(p => p.is_selected) || pkgs[0];
+        let subtotal = 0;
         
         // Use package price if set, otherwise calculate from items
         if (selectedPkg.price !== null && selectedPkg.price !== undefined && selectedPkg.price !== '') {
-          quote.display_total = parseFloat(selectedPkg.price) || 0;
+          subtotal = parseFloat(selectedPkg.price) || 0;
         } else if (selectedPkg.quote_package_items && selectedPkg.quote_package_items.length > 0) {
           // Calculate from package items
-          quote.display_total = selectedPkg.quote_package_items
+          subtotal = selectedPkg.quote_package_items
             .filter(item => item.is_included !== false)
             .reduce((sum, item) => sum + ((parseFloat(item.price) || 0) * (item.quantity || 1)), 0);
-        } else {
-          quote.display_total = 0;
         }
+        quote.display_total = subtotal;
       } else {
-        quote.display_total = quote.total || 0;
+        // Use subtotal for consistency (total includes tax)
+        quote.display_total = quote.subtotal || quote.total || 0;
       }
       return quote;
     });
