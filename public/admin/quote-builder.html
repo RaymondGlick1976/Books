@@ -2972,18 +2972,35 @@
         return;
       }
       
-      // Calculate total for preview
+      // Calculate total for preview (must match updateSummary logic)
       let totalDisplay = '$0.00';
+      let subtotal = 0;
+      
       if (packages.length > 0) {
-        const firstPkg = packages[0];
-        const pkgTotal = firstPkg.items?.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0) || 0;
-        totalDisplay = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(pkgTotal);
+        // Use selected package or first one
+        const selectedPkg = packages.find(p => p.is_selected) || packages[0];
+        if (selectedPkg) {
+          if (selectedPkg.price) {
+            // Use override price if set
+            subtotal = parseFloat(selectedPkg.price) || 0;
+          } else {
+            // Calculate from package items
+            (selectedPkg.items || []).forEach(item => {
+              if (item.is_included) {
+                subtotal += (parseFloat(item.price) || 0) * (item.quantity || 1);
+              }
+            });
+          }
+        }
+        totalDisplay = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(subtotal);
       } else if (lineItems.length > 0) {
-        const total = lineItems.reduce((sum, item) => {
-          if (item.is_optional && !item.is_selected) return sum;
-          return sum + (parseFloat(item.total || item.price || 0) * (item.quantity || 1));
-        }, 0);
-        totalDisplay = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(total);
+        // Calculate from line items (non-optional only)
+        lineItems.forEach(item => {
+          if (!item.isOptional) {
+            subtotal += (item.unitPrice || 0) * (item.quantity || 1);
+          }
+        });
+        totalDisplay = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(subtotal);
       }
       
       const firstName = customer.name?.split(' ')[0] || 'Customer';
