@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quote | Customer Portal | Homestead Cabinet Design</title>
-  <link rel="stylesheet" href="/css/styles.css?v=31">
+  <link rel="stylesheet" href="/css/styles.css?v=32">
   <script src="https://js.stripe.com/v3/"></script>
   <script>
     // Early check for public access - runs before body renders
@@ -674,17 +674,9 @@
         break-after: avoid;
       }
       
-      /* Keep individual line items together - this is the key fix */
+      /* Line items can break across pages if needed */
       .line-item {
         grid-template-columns: 60px 1fr auto !important;
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-      
-      /* Keep optional item groups together */
-      .optional-group {
-        break-inside: avoid;
-        page-break-inside: avoid;
       }
       
       /* Totals section should stay together and not break */
