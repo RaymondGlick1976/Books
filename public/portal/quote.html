@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quote | Customer Portal | Homestead Cabinet Design</title>
-  <link rel="stylesheet" href="/css/styles.css?v=30">
+  <link rel="stylesheet" href="/css/styles.css?v=31">
   <script src="https://js.stripe.com/v3/"></script>
   <script>
     // Early check for public access - runs before body renders
@@ -625,20 +625,31 @@
       .line-item-action,
       .package-select-btn,
       #status-banner,
+      #loading-state,
+      .skeleton,
       #quote-slider-top,
+      #quote-slider-top *,
       #quote-slider-bottom,
+      #quote-slider-bottom *,
       #packages-section,
+      #packages-section *,
       .packages-section,
+      .packages-section *,
+      #packages-grid,
+      .packages-grid,
+      .package-card,
+      .package-warning,
       #ba-slider-container-top,
       #ba-slider-container-bottom,
       .no-print {
         display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
-        max-height: 0 !important;
-        overflow: hidden !important;
-        margin: 0 !important;
-        padding: 0 !important;
+      }
+      
+      /* Double-ensure slider/packages sections are hidden with all their content */
+      div[id^="quote-slider"],
+      div[id^="packages"],
+      div[id^="ba-slider"] {
+        display: none !important;
       }
       
       .portal-container {
@@ -656,14 +667,6 @@
       .quote-container {
         max-width: none !important;
         padding: 0 !important;
-      }
-      
-      /* Allow sections to break across pages */
-      .quote-section {
-        box-shadow: none !important;
-        border: 1px solid #ddd;
-        margin-bottom: 15px !important;
-        break-inside: auto;
       }
       
       /* Keep section headers with their content */
@@ -699,8 +702,15 @@
         box-shadow: none !important;
         padding: 0 !important;
         margin-bottom: 15px !important;
-        break-inside: avoid;
-        page-break-inside: avoid;
+      }
+      
+      /* Ensure no forced page breaks before any quote-section */
+      .quote-section {
+        box-shadow: none !important;
+        border: 1px solid #ddd;
+        margin-bottom: 15px !important;
+        margin-top: 0 !important;
+        break-inside: auto;
       }
       
       .document-header-top {
@@ -759,43 +769,6 @@
       /* Hide info icons in print (descriptions are visible) */
       .info-icon {
         display: none !important;
-      }
-      
-      /* Packages section for print */
-      .packages-section {
-        margin-bottom: 15px !important;
-        break-inside: avoid;
-      }
-      
-      .packages-section h2 {
-        font-size: 16px !important;
-        margin-bottom: 8px !important;
-      }
-      
-      .packages-section .packages-subtitle {
-        font-size: 11px !important;
-        margin-bottom: 12px !important;
-      }
-      
-      .package-card {
-        padding: 12px !important;
-        break-inside: avoid;
-      }
-      
-      .package-name {
-        font-size: 14px !important;
-      }
-      
-      .package-description {
-        font-size: 10px !important;
-      }
-      
-      .package-price {
-        font-size: 18px !important;
-      }
-      
-      .package-items {
-        font-size: 10px !important;
       }
       
       /* Keep notes and terms sections together if small */
