@@ -555,19 +555,50 @@
                     <input type="number" id="valid-days" class="form-input" value="30" min="1">
                   </div>
                   <div class="form-group">
-                    <label class="form-label">Deposit Type</label>
-                    <select id="deposit-type" class="form-select">
-                      <option value="percentage">Percentage</option>
-                      <option value="fixed">Fixed Amount</option>
-                    </select>
+                    <label class="form-label">Tax Rate (%)</label>
+                    <input type="number" id="tax-rate" class="form-input" value="6.25" min="0" step="0.01">
                   </div>
                   <div class="form-group">
-                    <label class="form-label">Deposit Amount</label>
-                    <div class="input-group">
-                      <input type="number" id="deposit-value" class="form-input" value="50" min="0">
-                      <span class="input-group-append" id="deposit-suffix">%</span>
-                    </div>
+                    <label class="form-label">Payment Schedule</label>
+                    <select id="payment-template-select" class="form-select">
+                      <option value="">No payment schedule</option>
+                    </select>
                   </div>
+                </div>
+                
+                <!-- Payment Schedule Details -->
+                <div id="payment-schedule-section" style="display: none; margin-top: var(--space-md); padding: var(--space-md); background: var(--color-bg-alt); border-radius: var(--radius-md);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+                    <label class="form-label" style="margin: 0;">Payment Schedule</label>
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="addPaymentItem()">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      Add Payment
+                    </button>
+                  </div>
+                  <div id="payment-schedule-items"></div>
+                  <div id="payment-schedule-total" style="margin-top: var(--space-sm); padding-top: var(--space-sm); border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; font-weight: 600;">
+                    <span>Total Scheduled:</span>
+                    <span id="scheduled-total">$0.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Terms & Conditions -->
+            <div class="card mb-xl">
+              <div class="card-header">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                  <h3 class="card-title" style="margin: 0;">Terms & Conditions</h3>
+                  <label class="form-check" style="margin: 0;">
+                    <input type="checkbox" id="show-terms" checked>
+                    <span class="form-check-label">Show on quote</span>
+                  </label>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="form-group" style="margin: 0;">
+                  <textarea id="quote-terms-text" class="form-textarea" rows="6" placeholder="Enter terms and conditions..."></textarea>
+                  <p class="form-help">These terms will be displayed on the customer quote. Edit as needed for this specific quote.</p>
                 </div>
               </div>
             </div>
@@ -769,13 +800,18 @@
                 </div>
                 
                 <div class="mt-lg p-md" style="background: var(--color-bg-alt); border-radius: var(--radius-md);">
-                  <div class="flex justify-between text-sm mb-xs">
-                    <span>Deposit Required</span>
-                    <span id="summary-deposit">$0.00</span>
+                  <div id="summary-payments-header" class="flex justify-between text-sm mb-xs" style="font-weight: 600;">
+                    <span>Payment Schedule</span>
                   </div>
-                  <div class="flex justify-between text-sm text-muted">
-                    <span>Balance After Deposit</span>
-                    <span id="summary-balance">$0.00</span>
+                  <div id="summary-payments-list">
+                    <div class="flex justify-between text-sm mb-xs">
+                      <span>Deposit Required</span>
+                      <span id="summary-deposit">$0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-muted">
+                      <span>Balance After Deposit</span>
+                      <span id="summary-balance">$0.00</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -798,6 +834,9 @@
     let catalogItemAttributes = {}; // Map: item_id -> [attributes with options]
     let leadSources = [];
     let appUsers = [];
+    let paymentTemplates = [];
+    let paymentSchedule = []; // Current quote's payment schedule
+    let defaultTerms = ''; // Default terms from settings
     
     // Autosave state
     let isDirty = false;
@@ -899,9 +938,18 @@
           });
         }
         
-        const taxAmount = taxableSubtotal * TAX_RATE;
+        const taxRate = (parseFloat($('#tax-rate')?.value) || 6.25) / 100;
+        const taxAmount = taxableSubtotal * taxRate;
         const validDays = parseInt($('#valid-days').value) || 30;
         const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000);
+        
+        // Calculate deposit from first payment in schedule (for backwards compatibility)
+        let depositType = 'percentage';
+        let depositValue = 50;
+        if (paymentSchedule.length > 0) {
+          depositType = paymentSchedule[0].amount_type;
+          depositValue = paymentSchedule[0].amount_value;
+        }
         
         const quoteData = {
           customer_id: customerId || null,
@@ -911,12 +959,14 @@
           status: 'draft', // Autosave always saves as draft
           valid_days: validDays,
           expires_at: expiresAt.toISOString(),
-          deposit_type: $('#deposit-type').value,
-          deposit_value: parseFloat($('#deposit-value').value) || 50,
+          deposit_type: depositType,
+          deposit_value: depositValue,
+          payment_schedule: paymentSchedule,
+          terms_and_conditions: $('#show-terms').checked ? $('#quote-terms-text').value.trim() : null,
           video_url: $('#video-url').value.trim() || null,
           notes: $('#customer-notes').value.trim() || null,
           internal_notes: $('#internal-notes').value.trim() || null,
-          tax_rate: TAX_RATE,
+          tax_rate: taxRate,
           subtotal,
           subtotal_low: subtotal,
           subtotal_high: subtotal,
@@ -1177,6 +1227,28 @@
           appUsers = [];
         }
         
+        // Load payment templates
+        await loadPaymentTemplates();
+        
+        // Load default terms
+        await loadDefaultTerms();
+        
+        // Set up payment template selection listener
+        $('#payment-template-select').addEventListener('change', (e) => {
+          const templateId = e.target.value;
+          if (templateId) {
+            const template = paymentTemplates.find(t => t.id === templateId);
+            applyPaymentTemplate(template);
+          } else {
+            applyPaymentTemplate(null);
+          }
+        });
+        
+        // Set up tax rate change listener
+        $('#tax-rate').addEventListener('input', () => {
+          updateSummary();
+          markDirty();
+        });
         
         // If editing, load quote
         if (quoteId) {
@@ -1258,11 +1330,44 @@
         $('#quote-title').value = quote.title;
         $('#quote-description').value = quote.description || '';
         $('#valid-days').value = quote.valid_days;
-        $('#deposit-type').value = quote.deposit_type;
-        $('#deposit-value').value = quote.deposit_value;
+        $('#tax-rate').value = (quote.tax_rate || 0.0625) * 100; // Convert from decimal to percentage
         $('#video-url').value = quote.video_url || '';
         $('#customer-notes').value = quote.notes || '';
         $('#internal-notes').value = quote.internal_notes || '';
+        
+        // Load payment schedule
+        if (quote.payment_schedule && Array.isArray(quote.payment_schedule)) {
+          paymentSchedule = quote.payment_schedule;
+          $('#payment-template-select').value = ''; // Custom schedule
+          $('#payment-schedule-section').style.display = 'block';
+          renderPaymentScheduleItems();
+        } else if (quote.deposit_type && quote.deposit_value) {
+          // Backwards compatibility: convert old deposit to payment schedule
+          paymentSchedule = [{
+            name: 'Deposit',
+            due_description: 'Due upon acceptance',
+            amount_type: quote.deposit_type,
+            amount_value: quote.deposit_value
+          }];
+          if (quote.deposit_type === 'percentage' && quote.deposit_value < 100) {
+            paymentSchedule.push({
+              name: 'Balance',
+              due_description: 'Due upon completion',
+              amount_type: 'percentage',
+              amount_value: 100 - quote.deposit_value
+            });
+          }
+          $('#payment-schedule-section').style.display = 'block';
+          renderPaymentScheduleItems();
+        }
+        
+        // Load terms
+        if (quote.terms_and_conditions) {
+          $('#quote-terms-text').value = quote.terms_and_conditions;
+          $('#show-terms').checked = true;
+        } else {
+          $('#show-terms').checked = false;
+        }
         
         // Load slider settings
         if (quote.slider_settings) {
@@ -2546,6 +2651,9 @@
       const summaryItems = $('#summary-items');
       const summaryTotals = $('#summary-totals');
       
+      // Get tax rate from input (stored as percentage)
+      const taxRate = (parseFloat($('#tax-rate')?.value) || 6.25) / 100;
+      
       // Check if bundles exist (automatic - no toggle needed)
       const bundlesEnabled = packages.length > 0;
       
@@ -2609,29 +2717,200 @@
       }
       
       // Only tax the taxable portion
-      const tax = taxableSubtotal * TAX_RATE;
+      const tax = taxableSubtotal * taxRate;
       const total = subtotal + tax;
-      
-      // Deposit
-      const depositType = $('#deposit-type').value;
-      const depositValue = parseFloat($('#deposit-value').value) || 0;
-      let deposit;
-      if (depositType === 'percentage') {
-        deposit = total * (depositValue / 100);
-      } else {
-        deposit = depositValue;
-      }
       
       // Update display
       $('#summary-subtotal').textContent = formatCurrency(subtotal);
       $('#summary-tax').textContent = formatCurrency(tax);
       $('#summary-total').textContent = formatCurrency(total);
+      $('#summary-tax-rate').textContent = (taxRate * 100).toFixed(2);
       
-      $('#summary-tax-rate').textContent = (TAX_RATE * 100).toFixed(2);
-      $('#summary-deposit').textContent = formatCurrency(deposit);
-      $('#summary-balance').textContent = formatCurrency(total - deposit);
+      // Update payment schedule display
+      updatePaymentScheduleDisplay(total);
       
       summaryTotals.style.display = 'block';
+    }
+    
+    function updatePaymentScheduleDisplay(total) {
+      const container = $('#summary-payments-list');
+      
+      if (paymentSchedule.length === 0) {
+        // No payment schedule - show simple deposit display
+        container.innerHTML = `
+          <div class="text-muted text-sm text-center">No payment schedule selected</div>
+        `;
+        return;
+      }
+      
+      let html = '';
+      paymentSchedule.forEach((payment, idx) => {
+        const amount = payment.amount_type === 'percentage' 
+          ? total * (payment.amount_value / 100)
+          : payment.amount_value;
+        
+        html += `
+          <div class="flex justify-between text-sm mb-xs ${idx === 0 ? '' : 'text-muted'}">
+            <span>${payment.name}</span>
+            <span>${formatCurrency(amount)}</span>
+          </div>
+        `;
+      });
+      
+      container.innerHTML = html;
+    }
+    
+    // Payment Schedule Management
+    async function loadPaymentTemplates() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase
+          .from('payment_schedule_templates')
+          .select('*, payment_schedule_template_items(*)')
+          .eq('is_active', true)
+          .order('name');
+        
+        if (error) throw error;
+        paymentTemplates = data || [];
+        
+        // Populate template dropdown
+        const select = $('#payment-template-select');
+        select.innerHTML = '<option value="">No payment schedule</option>';
+        
+        paymentTemplates.forEach(template => {
+          const option = document.createElement('option');
+          option.value = template.id;
+          option.textContent = template.name + (template.is_default ? ' (Default)' : '');
+          if (template.is_default) option.selected = true;
+          select.appendChild(option);
+        });
+        
+        // If default template exists, load it
+        const defaultTemplate = paymentTemplates.find(t => t.is_default);
+        if (defaultTemplate && !quoteId) {
+          applyPaymentTemplate(defaultTemplate);
+        }
+        
+      } catch (err) {
+        console.error('Failed to load payment templates:', err);
+      }
+    }
+    
+    function applyPaymentTemplate(template) {
+      if (!template) {
+        paymentSchedule = [];
+        $('#payment-schedule-section').style.display = 'none';
+        renderPaymentScheduleItems();
+        updateSummary();
+        return;
+      }
+      
+      const items = (template.payment_schedule_template_items || []).sort((a, b) => a.sort_order - b.sort_order);
+      paymentSchedule = items.map(item => ({
+        name: item.name,
+        due_description: item.due_description || '',
+        amount_type: item.amount_type,
+        amount_value: parseFloat(item.amount_value) || 0
+      }));
+      
+      $('#payment-schedule-section').style.display = paymentSchedule.length > 0 ? 'block' : 'none';
+      renderPaymentScheduleItems();
+      updateSummary();
+      markDirty();
+    }
+    
+    function renderPaymentScheduleItems() {
+      const container = $('#payment-schedule-items');
+      
+      if (paymentSchedule.length === 0) {
+        container.innerHTML = '<p class="text-muted text-sm text-center">No payments scheduled</p>';
+        updateScheduledTotal();
+        return;
+      }
+      
+      container.innerHTML = paymentSchedule.map((payment, idx) => `
+        <div class="payment-schedule-item" style="display: grid; grid-template-columns: 1fr 1fr 100px 80px auto; gap: 8px; align-items: center; margin-bottom: 8px;">
+          <input type="text" class="form-input form-input-sm" value="${payment.name}" 
+                 onchange="updatePaymentItem(${idx}, 'name', this.value)" placeholder="Payment name">
+          <input type="text" class="form-input form-input-sm" value="${payment.due_description}" 
+                 onchange="updatePaymentItem(${idx}, 'due_description', this.value)" placeholder="Due when">
+          <select class="form-input form-input-sm" onchange="updatePaymentItem(${idx}, 'amount_type', this.value)">
+            <option value="percentage" ${payment.amount_type === 'percentage' ? 'selected' : ''}>%</option>
+            <option value="fixed" ${payment.amount_type === 'fixed' ? 'selected' : ''}>$</option>
+          </select>
+          <input type="number" class="form-input form-input-sm" value="${payment.amount_value}" min="0" step="0.01"
+                 onchange="updatePaymentItem(${idx}, 'amount_value', parseFloat(this.value) || 0)">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="removePaymentItem(${idx})" ${paymentSchedule.length <= 1 ? 'disabled' : ''}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      `).join('');
+      
+      updateScheduledTotal();
+    }
+    
+    function addPaymentItem() {
+      paymentSchedule.push({
+        name: 'Payment ' + (paymentSchedule.length + 1),
+        due_description: '',
+        amount_type: 'percentage',
+        amount_value: 0
+      });
+      renderPaymentScheduleItems();
+      markDirty();
+    }
+    
+    function removePaymentItem(idx) {
+      if (paymentSchedule.length > 1) {
+        paymentSchedule.splice(idx, 1);
+        renderPaymentScheduleItems();
+        updateSummary();
+        markDirty();
+      }
+    }
+    
+    function updatePaymentItem(idx, field, value) {
+      paymentSchedule[idx][field] = value;
+      updateScheduledTotal();
+      updateSummary();
+      markDirty();
+    }
+    
+    function updateScheduledTotal() {
+      const percentItems = paymentSchedule.filter(p => p.amount_type === 'percentage');
+      const percentTotal = percentItems.reduce((sum, p) => sum + (parseFloat(p.amount_value) || 0), 0);
+      
+      const totalEl = $('#scheduled-total');
+      if (percentItems.length > 0) {
+        totalEl.textContent = percentTotal + '% of total';
+        totalEl.style.color = Math.abs(percentTotal - 100) < 0.01 ? 'var(--color-success)' : 'var(--color-warning)';
+      } else {
+        const fixedTotal = paymentSchedule.reduce((sum, p) => sum + (parseFloat(p.amount_value) || 0), 0);
+        totalEl.textContent = formatCurrency(fixedTotal);
+        totalEl.style.color = '';
+      }
+    }
+    
+    // Load default terms
+    async function loadDefaultTerms() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'terms_and_conditions')
+          .single();
+        
+        if (data?.value?.quote) {
+          defaultTerms = data.value.quote;
+          if (!quoteId) {
+            // Only set default for new quotes
+            $('#quote-terms-text').value = defaultTerms;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load default terms:', err);
+      }
     }
     
     function handleAttachmentFiles(fileList) {
@@ -3234,10 +3513,19 @@
         }
         
         // Only tax the taxable portion
-        const taxAmount = taxableSubtotal * TAX_RATE;
+        const taxRate = (parseFloat($('#tax-rate')?.value) || 6.25) / 100;
+        const taxAmount = taxableSubtotal * taxRate;
         
         const validDays = parseInt($('#valid-days').value) || 30;
         const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000);
+        
+        // Calculate deposit from first payment in schedule (for backwards compatibility)
+        let depositType = 'percentage';
+        let depositValue = 50;
+        if (paymentSchedule.length > 0) {
+          depositType = paymentSchedule[0].amount_type;
+          depositValue = paymentSchedule[0].amount_value;
+        }
         
         const quoteData = {
           customer_id: customerId,
@@ -3247,12 +3535,14 @@
           status,
           valid_days: validDays,
           expires_at: expiresAt.toISOString(),
-          deposit_type: $('#deposit-type').value,
-          deposit_value: parseFloat($('#deposit-value').value) || 50,
+          deposit_type: depositType,
+          deposit_value: depositValue,
+          payment_schedule: paymentSchedule,
+          terms_and_conditions: $('#show-terms').checked ? $('#quote-terms-text').value.trim() : null,
           video_url: $('#video-url').value.trim() || null,
           notes: $('#customer-notes').value.trim() || null,
           internal_notes: $('#internal-notes').value.trim() || null,
-          tax_rate: TAX_RATE,
+          tax_rate: taxRate,
           subtotal,
           subtotal_low: subtotal,
           subtotal_high: subtotal,

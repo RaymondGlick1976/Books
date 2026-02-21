@@ -204,6 +204,47 @@
           </div>
         </div>
         
+        <!-- Payment Schedule Templates -->
+        <div class="card mb-xl">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 class="card-title">Payment Schedule Templates</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addPaymentTemplate()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Template
+            </button>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              Create reusable payment schedules for quotes. Each template can have multiple payments (e.g., deposit, progress payment, final payment).
+            </p>
+            <div id="payment-templates-list">
+              <div class="loading-spinner"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Terms & Conditions -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Terms & Conditions</h3>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              Set default terms and conditions that will appear on quotes. Customers must agree to these terms when accepting a quote.
+            </p>
+            <form id="terms-form">
+              <div class="form-group">
+                <label class="form-label">Quote Terms & Conditions</label>
+                <textarea id="quote-terms" class="form-textarea" rows="10" placeholder="Enter your terms and conditions..."></textarea>
+                <div class="form-help">These terms will be displayed on customer quotes and must be agreed to before acceptance.</div>
+              </div>
+              <button type="submit" class="btn btn-primary">Save Terms</button>
+            </form>
+          </div>
+        </div>
+        
         <!-- Quote Footer / Promotional Banner -->
         <div class="card mb-xl">
           <div class="card-header">
@@ -2415,6 +2456,382 @@
       }
     }
     
+    // ==========================================
+    // Payment Schedule Templates
+    // ==========================================
+    let paymentTemplates = [];
+    
+    async function loadPaymentTemplates() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase
+          .from('payment_schedule_templates')
+          .select('*, payment_schedule_template_items(*)')
+          .order('name');
+        
+        if (error) throw error;
+        paymentTemplates = data || [];
+        renderPaymentTemplates();
+      } catch (err) {
+        console.error('Failed to load payment templates:', err);
+        document.getElementById('payment-templates-list').innerHTML = '<p class="text-muted">Failed to load payment templates</p>';
+      }
+    }
+    
+    function renderPaymentTemplates() {
+      const container = document.getElementById('payment-templates-list');
+      
+      if (paymentTemplates.length === 0) {
+        container.innerHTML = '<p class="text-muted">No payment templates yet. Click "Add Template" to create one.</p>';
+        return;
+      }
+      
+      container.innerHTML = paymentTemplates.map(template => {
+        const items = (template.payment_schedule_template_items || []).sort((a, b) => a.sort_order - b.sort_order);
+        const itemsHtml = items.map(item => `
+          <div style="display: flex; justify-content: space-between; padding: 8px 12px; background: var(--color-bg); border-radius: var(--radius-sm); margin-bottom: 4px;">
+            <span><strong>${item.name}</strong> - ${item.due_description || 'No due date specified'}</span>
+            <span style="color: var(--color-primary); font-weight: 600;">${item.amount_type === 'percentage' ? item.amount_value + '%' : '$' + parseFloat(item.amount_value).toFixed(2)}</span>
+          </div>
+        `).join('');
+        
+        return `
+          <div class="list-item" style="margin-bottom: var(--space-md); padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-lg);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+              <div>
+                <span style="font-weight: 600;">${template.name}</span>
+                ${template.is_default ? '<span class="badge badge-primary" style="margin-left: 8px;">Default</span>' : ''}
+                ${!template.is_active ? '<span class="badge badge-secondary" style="margin-left: 8px;">Inactive</span>' : ''}
+              </div>
+              <div style="display: flex; gap: 8px;">
+                ${!template.is_default ? `<button class="btn btn-ghost btn-sm" onclick="setDefaultTemplate('${template.id}')" title="Set as Default">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </button>` : ''}
+                <button class="btn btn-ghost btn-sm" onclick="editPaymentTemplate('${template.id}')" title="Edit">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="btn btn-ghost btn-sm" onclick="deletePaymentTemplate('${template.id}')" title="Delete">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            ${template.description ? `<p style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: var(--space-sm);">${template.description}</p>` : ''}
+            <div style="margin-top: var(--space-sm);">
+              ${itemsHtml || '<p class="text-muted text-sm">No payment items defined</p>'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function addPaymentTemplate() {
+      showPaymentTemplateModal();
+    }
+    
+    function editPaymentTemplate(id) {
+      const template = paymentTemplates.find(t => t.id === id);
+      if (template) {
+        showPaymentTemplateModal(template);
+      }
+    }
+    
+    function showPaymentTemplateModal(template = null) {
+      const isEdit = !!template;
+      const items = template?.payment_schedule_template_items || [];
+      items.sort((a, b) => a.sort_order - b.sort_order);
+      
+      // Initialize with at least one empty item if creating new
+      let paymentItems = isEdit ? items.map(i => ({
+        id: i.id,
+        name: i.name,
+        due_description: i.due_description || '',
+        amount_type: i.amount_type,
+        amount_value: i.amount_value
+      })) : [{ name: 'Deposit', due_description: 'Due upon acceptance', amount_type: 'percentage', amount_value: 50 }];
+      
+      function renderPaymentItems() {
+        return paymentItems.map((item, idx) => `
+          <div class="payment-item" data-idx="${idx}" style="display: grid; grid-template-columns: 1fr 1fr 120px 100px auto; gap: 8px; align-items: end; padding: 12px; background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: 8px;">
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label text-xs">Payment Name</label>
+              <input type="text" class="form-input item-name" value="${item.name}" placeholder="e.g., Deposit">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label text-xs">Due When</label>
+              <input type="text" class="form-input item-due" value="${item.due_description}" placeholder="e.g., Upon acceptance">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label text-xs">Type</label>
+              <select class="form-input item-type">
+                <option value="percentage" ${item.amount_type === 'percentage' ? 'selected' : ''}>Percent %</option>
+                <option value="fixed" ${item.amount_type === 'fixed' ? 'selected' : ''}>Fixed $</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label class="form-label text-xs">Amount</label>
+              <input type="number" class="form-input item-amount" value="${item.amount_value}" min="0" step="0.01">
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm remove-item" style="margin-bottom: 2px;" ${paymentItems.length <= 1 ? 'disabled' : ''}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        `).join('');
+      }
+      
+      const content = document.createElement('div');
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Template Name *</label>
+          <input type="text" id="template-name" class="form-input" value="${template?.name || ''}" placeholder="e.g., Standard 50/50">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description <span class="form-label-optional">(optional)</span></label>
+          <input type="text" id="template-description" class="form-input" value="${template?.description || ''}" placeholder="Brief description of this payment schedule">
+        </div>
+        <div class="form-group">
+          <label class="form-check">
+            <input type="checkbox" id="template-active" ${template?.is_active !== false ? 'checked' : ''}>
+            <span class="form-check-label">Active (available for use in quotes)</span>
+          </label>
+        </div>
+        <hr style="margin: var(--space-lg) 0; border: none; border-top: 1px solid var(--color-border);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+          <label class="form-label" style="margin: 0;">Payment Items</label>
+          <button type="button" class="btn btn-secondary btn-sm" id="add-payment-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Payment
+          </button>
+        </div>
+        <div id="payment-items-container">
+          ${renderPaymentItems()}
+        </div>
+        <div id="total-warning" style="display: none; margin-top: var(--space-sm); padding: 8px 12px; background: #fef3cd; border-radius: var(--radius-sm); color: #856404; font-size: 0.875rem;">
+          ⚠️ Percentage payments should total 100%
+        </div>
+      `;
+      
+      function updateItemsContainer() {
+        content.querySelector('#payment-items-container').innerHTML = renderPaymentItems();
+        attachItemListeners();
+        checkTotals();
+      }
+      
+      function attachItemListeners() {
+        content.querySelectorAll('.payment-item').forEach((el, idx) => {
+          el.querySelector('.item-name').addEventListener('input', e => {
+            paymentItems[idx].name = e.target.value;
+          });
+          el.querySelector('.item-due').addEventListener('input', e => {
+            paymentItems[idx].due_description = e.target.value;
+          });
+          el.querySelector('.item-type').addEventListener('change', e => {
+            paymentItems[idx].amount_type = e.target.value;
+            checkTotals();
+          });
+          el.querySelector('.item-amount').addEventListener('input', e => {
+            paymentItems[idx].amount_value = parseFloat(e.target.value) || 0;
+            checkTotals();
+          });
+          el.querySelector('.remove-item').addEventListener('click', () => {
+            if (paymentItems.length > 1) {
+              paymentItems.splice(idx, 1);
+              updateItemsContainer();
+            }
+          });
+        });
+      }
+      
+      function checkTotals() {
+        const percentItems = paymentItems.filter(i => i.amount_type === 'percentage');
+        const total = percentItems.reduce((sum, i) => sum + (parseFloat(i.amount_value) || 0), 0);
+        const warning = content.querySelector('#total-warning');
+        if (percentItems.length > 0 && Math.abs(total - 100) > 0.01) {
+          warning.style.display = 'block';
+          warning.textContent = `⚠️ Percentage payments total ${total}% (should be 100%)`;
+        } else {
+          warning.style.display = 'none';
+        }
+      }
+      
+      content.querySelector('#add-payment-item').addEventListener('click', () => {
+        paymentItems.push({ name: '', due_description: '', amount_type: 'percentage', amount_value: 0 });
+        updateItemsContainer();
+      });
+      
+      attachItemListeners();
+      checkTotals();
+      
+      const footer = document.createElement('div');
+      footer.className = 'btn-group';
+      footer.innerHTML = `
+        <button type="button" class="btn btn-secondary" id="cancel-template">Cancel</button>
+        <button type="button" class="btn btn-primary" id="save-template">${isEdit ? 'Save Changes' : 'Create Template'}</button>
+      `;
+      
+      const modal = createModal({
+        title: isEdit ? 'Edit Payment Template' : 'New Payment Template',
+        content,
+        footer,
+        size: 'lg'
+      });
+      
+      footer.querySelector('#cancel-template').addEventListener('click', () => closeModal(modal));
+      footer.querySelector('#save-template').addEventListener('click', async () => {
+        const name = content.querySelector('#template-name').value.trim();
+        if (!name) {
+          showToast('Please enter a template name', 'error');
+          return;
+        }
+        
+        // Update paymentItems from current form values
+        content.querySelectorAll('.payment-item').forEach((el, idx) => {
+          paymentItems[idx].name = el.querySelector('.item-name').value.trim();
+          paymentItems[idx].due_description = el.querySelector('.item-due').value.trim();
+          paymentItems[idx].amount_type = el.querySelector('.item-type').value;
+          paymentItems[idx].amount_value = parseFloat(el.querySelector('.item-amount').value) || 0;
+        });
+        
+        // Validate items
+        const validItems = paymentItems.filter(i => i.name && i.amount_value > 0);
+        if (validItems.length === 0) {
+          showToast('Please add at least one payment item', 'error');
+          return;
+        }
+        
+        try {
+          const supabase = await app.waitForSupabase();
+          
+          if (isEdit) {
+            // Update template
+            const { error: updateError } = await supabase
+              .from('payment_schedule_templates')
+              .update({
+                name,
+                description: content.querySelector('#template-description').value.trim() || null,
+                is_active: content.querySelector('#template-active').checked,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', template.id);
+            
+            if (updateError) throw updateError;
+            
+            // Delete existing items and insert new ones
+            await supabase.from('payment_schedule_template_items').delete().eq('template_id', template.id);
+            
+            const itemsToInsert = validItems.map((item, idx) => ({
+              template_id: template.id,
+              name: item.name,
+              due_description: item.due_description || null,
+              amount_type: item.amount_type,
+              amount_value: item.amount_value,
+              sort_order: idx
+            }));
+            
+            const { error: itemsError } = await supabase.from('payment_schedule_template_items').insert(itemsToInsert);
+            if (itemsError) throw itemsError;
+            
+          } else {
+            // Create new template
+            const { data: newTemplate, error: createError } = await supabase
+              .from('payment_schedule_templates')
+              .insert({
+                name,
+                description: content.querySelector('#template-description').value.trim() || null,
+                is_active: content.querySelector('#template-active').checked,
+                is_default: paymentTemplates.length === 0 // First template is default
+              })
+              .select()
+              .single();
+            
+            if (createError) throw createError;
+            
+            // Insert items
+            const itemsToInsert = validItems.map((item, idx) => ({
+              template_id: newTemplate.id,
+              name: item.name,
+              due_description: item.due_description || null,
+              amount_type: item.amount_type,
+              amount_value: item.amount_value,
+              sort_order: idx
+            }));
+            
+            const { error: itemsError } = await supabase.from('payment_schedule_template_items').insert(itemsToInsert);
+            if (itemsError) throw itemsError;
+          }
+          
+          closeModal(modal);
+          showToast(isEdit ? 'Template updated' : 'Template created', 'success');
+          loadPaymentTemplates();
+          
+        } catch (err) {
+          console.error('Save template error:', err);
+          showToast('Failed to save template', 'error');
+        }
+      });
+    }
+    
+    async function setDefaultTemplate(id) {
+      try {
+        const supabase = await app.waitForSupabase();
+        
+        // Remove default from all
+        await supabase.from('payment_schedule_templates').update({ is_default: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+        
+        // Set new default
+        const { error } = await supabase
+          .from('payment_schedule_templates')
+          .update({ is_default: true })
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        showToast('Default template updated', 'success');
+        loadPaymentTemplates();
+      } catch (err) {
+        console.error('Set default error:', err);
+        showToast('Failed to set default', 'error');
+      }
+    }
+    
+    async function deletePaymentTemplate(id) {
+      const template = paymentTemplates.find(t => t.id === id);
+      if (!confirm(`Delete "${template?.name}"? This cannot be undone.`)) return;
+      
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase
+          .from('payment_schedule_templates')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        showToast('Template deleted', 'success');
+        loadPaymentTemplates();
+      } catch (err) {
+        console.error('Delete template error:', err);
+        showToast('Failed to delete template', 'error');
+      }
+    }
+    
+    // Terms form handler
+    document.getElementById('terms-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('settings').upsert({
+          key: 'terms_and_conditions',
+          value: {
+            quote: document.getElementById('quote-terms').value
+          }
+        }, { onConflict: 'key' });
+        showToast('Terms saved', 'success');
+      } catch (err) {
+        console.error('Save terms error:', err);
+        showToast('Failed to save terms', 'error');
+      }
+    });
+    
     // Initialize - load all data in parallel
     async function initSettings() {
       // Handle QB callback params
@@ -2422,6 +2839,9 @@
       
       // Check QB status
       checkQBStatus();
+      
+      // Load payment templates
+      loadPaymentTemplates();
       
       const supabase = await app.waitForSupabase();
       

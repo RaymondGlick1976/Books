@@ -1195,9 +1195,15 @@
             <span>Total</span>
             <span id="grand-total">$0.00</span>
           </div>
-          <div class="deposit-info" id="deposit-info">
-            <div>Deposit required to begin:</div>
-            <div class="deposit-amount" id="deposit-amount">$0.00</div>
+          <div class="deposit-info" id="payment-schedule-info">
+            <div style="font-weight: 600; margin-bottom: var(--space-sm);">Payment Schedule</div>
+            <div id="payment-schedule-display"></div>
+            <div style="margin-top: var(--space-sm); padding-top: var(--space-sm); border-top: 1px solid rgba(255,255,255,0.2);">
+              <div style="display: flex; justify-content: space-between;">
+                <span>Deposit required to begin:</span>
+                <span class="deposit-amount" id="deposit-amount">$0.00</span>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -2369,12 +2375,51 @@
         $('#tax-amount').textContent = hasRange ? formatCurrencyRange(taxAmountLow, taxAmountHigh) : formatCurrency(taxAmount);
       }
       
-      // Deposit calculation (based on lower estimate for ranges)
-      let depositAmount;
-      if (quote.deposit_type === 'percentage') {
-        depositAmount = (hasRange ? grandTotalLow : grandTotal) * (parseFloat(quote.deposit_value) / 100);
+      // Payment schedule and deposit calculation
+      const paymentScheduleDisplay = $('#payment-schedule-display');
+      let depositAmount = 0;
+      
+      if (quote.payment_schedule && Array.isArray(quote.payment_schedule) && quote.payment_schedule.length > 0) {
+        // Display payment schedule
+        let scheduleHtml = '';
+        quote.payment_schedule.forEach((payment, idx) => {
+          const amount = payment.amount_type === 'percentage' 
+            ? (hasRange ? grandTotalLow : grandTotal) * (payment.amount_value / 100)
+            : payment.amount_value;
+          
+          if (idx === 0) depositAmount = amount; // First payment is the deposit
+          
+          scheduleHtml += `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; ${idx > 0 ? 'opacity: 0.8;' : ''}">
+              <span>${payment.name}</span>
+              <span>${formatCurrency(amount)}</span>
+            </div>
+          `;
+          if (payment.due_description) {
+            scheduleHtml += `<div style="font-size: 0.75rem; opacity: 0.7; margin-bottom: 8px; text-align: right;">${payment.due_description}</div>`;
+          }
+        });
+        paymentScheduleDisplay.innerHTML = scheduleHtml;
       } else {
-        depositAmount = parseFloat(quote.deposit_value || 0);
+        // Backwards compatibility: use deposit_type/deposit_value
+        if (quote.deposit_type === 'percentage') {
+          depositAmount = (hasRange ? grandTotalLow : grandTotal) * (parseFloat(quote.deposit_value) / 100);
+        } else {
+          depositAmount = parseFloat(quote.deposit_value || 0);
+        }
+        
+        // Show simple deposit display
+        const balanceAmount = (hasRange ? grandTotalLow : grandTotal) - depositAmount;
+        paymentScheduleDisplay.innerHTML = `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span>Deposit</span>
+            <span>${formatCurrency(depositAmount)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; opacity: 0.8;">
+            <span>Balance</span>
+            <span>${formatCurrency(balanceAmount)}</span>
+          </div>
+        `;
       }
       
       // Store minimum deposit for validation
@@ -2390,6 +2435,12 @@
         if (!paymentInput.dataset.userModified) {
           paymentInput.value = depositAmount.toFixed(2);
         }
+      }
+      
+      // Display terms and conditions if available
+      if (quote.terms_and_conditions) {
+        $('#terms-section').style.display = 'block';
+        $('#terms-content').textContent = quote.terms_and_conditions;
       }
     }
     
