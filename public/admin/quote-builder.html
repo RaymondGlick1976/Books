@@ -1238,8 +1238,10 @@
         if (paymentSelect) {
           paymentSelect.addEventListener('change', (e) => {
             const templateId = e.target.value;
+            console.log('Template selected:', templateId);
             if (templateId) {
               const template = paymentTemplates.find(t => t.id === templateId);
+              console.log('Found template:', template);
               applyPaymentTemplate(template);
             } else {
               applyPaymentTemplate(null);
@@ -1377,7 +1379,12 @@
           if (termsTextarea) termsTextarea.value = quote.terms_and_conditions;
           if (showTermsCheckbox) showTermsCheckbox.checked = true;
         } else {
-          if (showTermsCheckbox) showTermsCheckbox.checked = false;
+          // No saved terms - load defaults if available
+          if (termsTextarea && defaultTerms) {
+            termsTextarea.value = defaultTerms;
+          }
+          // Keep checkbox checked by default so user sees the terms
+          if (showTermsCheckbox) showTermsCheckbox.checked = true;
         }
         
         // Load slider settings
@@ -2812,13 +2819,20 @@
         return;
       }
       
-      const items = (template.payment_schedule_template_items || []).sort((a, b) => a.sort_order - b.sort_order);
+      console.log('Applying template:', template);
+      console.log('Template items:', template.payment_schedule_template_items);
+      
+      const items = (template.payment_schedule_template_items || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      console.log('Sorted items:', items);
+      
       paymentSchedule = items.map(item => ({
         name: item.name,
         due_description: item.due_description || '',
         amount_type: item.amount_type,
         amount_value: parseFloat(item.amount_value) || 0
       }));
+      
+      console.log('Payment schedule after mapping:', paymentSchedule);
       
       if (scheduleSection) scheduleSection.style.display = paymentSchedule.length > 0 ? 'block' : 'none';
       renderPaymentScheduleItems();
@@ -2914,9 +2928,20 @@
         if (data?.value?.quote) {
           defaultTerms = data.value.quote;
           const termsTextarea = $('#quote-terms-text');
+          const showTermsCheckbox = $('#show-terms');
+          
           if (!quoteId && termsTextarea) {
-            // Only set default for new quotes
+            // Set default for new quotes
             termsTextarea.value = defaultTerms;
+          }
+          
+          // Add listener to load default terms when checkbox is checked and textarea is empty
+          if (showTermsCheckbox && termsTextarea) {
+            showTermsCheckbox.addEventListener('change', () => {
+              if (showTermsCheckbox.checked && !termsTextarea.value.trim()) {
+                termsTextarea.value = defaultTerms;
+              }
+            });
           }
         }
       } catch (err) {
