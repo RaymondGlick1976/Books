@@ -2851,6 +2851,13 @@
             $('#quote-footer-after-desc').value = footer.after_desc || '';
             return;
           }
+          // Handle terms_and_conditions specially
+          if (s.key === 'terms_and_conditions' && s.value) {
+            const terms = s.value;
+            if (terms.quote) $('#quote-terms').value = terms.quote;
+            if (terms.invoice) $('#invoice-terms').value = terms.invoice;
+            return;
+          }
           const input = document.getElementById(s.key);
           if (input) {
             if (input.type === 'checkbox') input.checked = s.value === 'true';
