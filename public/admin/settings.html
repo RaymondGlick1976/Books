@@ -225,26 +225,6 @@
           </div>
         </div>
         
-        <!-- Terms & Conditions -->
-        <div class="card mb-xl">
-          <div class="card-header">
-            <h3 class="card-title">Terms & Conditions</h3>
-          </div>
-          <div class="card-body">
-            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
-              Set default terms and conditions that will appear on quotes. Customers must agree to these terms when accepting a quote.
-            </p>
-            <form id="terms-form">
-              <div class="form-group">
-                <label class="form-label">Quote Terms & Conditions</label>
-                <textarea id="quote-terms" class="form-textarea" rows="10" placeholder="Enter your terms and conditions..."></textarea>
-                <div class="form-help">These terms will be displayed on customer quotes and must be agreed to before acceptance.</div>
-              </div>
-              <button type="submit" class="btn btn-primary">Save Terms</button>
-            </form>
-          </div>
-        </div>
-        
         <!-- Quote Footer / Promotional Banner -->
         <div class="card mb-xl">
           <div class="card-header">
@@ -2813,24 +2793,6 @@
         showToast('Failed to delete template', 'error');
       }
     }
-    
-    // Terms form handler
-    document.getElementById('terms-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      try {
-        const supabase = await app.waitForSupabase();
-        await supabase.from('settings').upsert({
-          key: 'terms_and_conditions',
-          value: {
-            quote: document.getElementById('quote-terms').value
-          }
-        }, { onConflict: 'key' });
-        showToast('Terms saved', 'success');
-      } catch (err) {
-        console.error('Save terms error:', err);
-        showToast('Failed to save terms', 'error');
-      }
-    });
     
     // Initialize - load all data in parallel
     async function initSettings() {
