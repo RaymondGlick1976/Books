@@ -1586,9 +1586,10 @@
       });
     }
     
-    function addLineItemDirect(catalogItem, attributeSelections) {
+    function addLineItemDirect(catalogItem, attributeSelections, customBasePrice = null) {
       // Calculate price based on base price + sum of attribute line totals
-      let basePrice = catalogItem?.default_price || 0;
+      // Use customBasePrice if provided, otherwise fall back to catalog default
+      let basePrice = customBasePrice !== null ? customBasePrice : (catalogItem?.default_price || 0);
       let attributeTotal = 0;
       
       // Sum up all attribute line totals
@@ -1932,6 +1933,10 @@
           }
         }
         
+        // Read the current base price directly from the input
+        const basePriceInput = content.querySelector('#custom-base-price');
+        const finalBasePrice = basePriceInput ? parseFloat(basePriceInput.value) || 0 : currentBasePrice;
+        
         // Gather all attribute selections with quantities
         const selections = [];
         
@@ -1941,7 +1946,7 @@
           if (selectedOpt) {
             // Use override price if set, otherwise use option's default price
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
-            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, currentBasePrice);
+            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, finalBasePrice);
             selections.push({
               attribute_id: inst.attrId,
               attribute_name: inst.attrName,
@@ -1963,12 +1968,12 @@
             id: null,
             name: content.querySelector('#custom-item-name').value.trim(),
             description: content.querySelector('#custom-item-desc')?.value.trim() || '',
-            default_price: currentBasePrice,
+            default_price: finalBasePrice,
             is_taxable: true
           };
           addLineItemDirect(customItem, selections);
         } else {
-          addLineItemDirect(catalogItem, selections);
+          addLineItemDirect(catalogItem, selections, finalBasePrice);
         }
       });
     }
