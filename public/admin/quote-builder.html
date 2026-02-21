@@ -1234,21 +1234,27 @@
         await loadDefaultTerms();
         
         // Set up payment template selection listener
-        $('#payment-template-select').addEventListener('change', (e) => {
-          const templateId = e.target.value;
-          if (templateId) {
-            const template = paymentTemplates.find(t => t.id === templateId);
-            applyPaymentTemplate(template);
-          } else {
-            applyPaymentTemplate(null);
-          }
-        });
+        const paymentSelect = $('#payment-template-select');
+        if (paymentSelect) {
+          paymentSelect.addEventListener('change', (e) => {
+            const templateId = e.target.value;
+            if (templateId) {
+              const template = paymentTemplates.find(t => t.id === templateId);
+              applyPaymentTemplate(template);
+            } else {
+              applyPaymentTemplate(null);
+            }
+          });
+        }
         
         // Set up tax rate change listener
-        $('#tax-rate').addEventListener('input', () => {
-          updateSummary();
-          markDirty();
-        });
+        const taxRateInput = $('#tax-rate');
+        if (taxRateInput) {
+          taxRateInput.addEventListener('input', () => {
+            updateSummary();
+            markDirty();
+          });
+        }
         
         // If editing, load quote
         if (quoteId) {
@@ -2773,8 +2779,15 @@
         if (error) throw error;
         paymentTemplates = data || [];
         
+        console.log('Loaded payment templates:', paymentTemplates);
+        
         // Populate template dropdown
         const select = $('#payment-template-select');
+        if (!select) {
+          console.error('Payment template select not found');
+          return;
+        }
+        
         select.innerHTML = '<option value="">No payment schedule</option>';
         
         paymentTemplates.forEach(template => {
@@ -2797,9 +2810,11 @@
     }
     
     function applyPaymentTemplate(template) {
+      const scheduleSection = $('#payment-schedule-section');
+      
       if (!template) {
         paymentSchedule = [];
-        $('#payment-schedule-section').style.display = 'none';
+        if (scheduleSection) scheduleSection.style.display = 'none';
         renderPaymentScheduleItems();
         updateSummary();
         return;
@@ -2813,7 +2828,7 @@
         amount_value: parseFloat(item.amount_value) || 0
       }));
       
-      $('#payment-schedule-section').style.display = paymentSchedule.length > 0 ? 'block' : 'none';
+      if (scheduleSection) scheduleSection.style.display = paymentSchedule.length > 0 ? 'block' : 'none';
       renderPaymentScheduleItems();
       updateSummary();
       markDirty();
@@ -2821,6 +2836,7 @@
     
     function renderPaymentScheduleItems() {
       const container = $('#payment-schedule-items');
+      if (!container) return;
       
       if (paymentSchedule.length === 0) {
         container.innerHTML = '<p class="text-muted text-sm text-center">No payments scheduled</p>';
