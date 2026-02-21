@@ -2769,16 +2769,31 @@
     async function loadPaymentTemplates() {
       try {
         const supabase = await app.waitForSupabase();
-        const { data, error } = await supabase
+        
+        // First load templates
+        const { data: templates, error: templatesError } = await supabase
           .from('payment_schedule_templates')
-          .select('*, payment_schedule_template_items(*)')
+          .select('*')
           .eq('is_active', true)
           .order('name');
         
-        if (error) throw error;
-        paymentTemplates = data || [];
+        if (templatesError) throw templatesError;
         
-        console.log('Loaded payment templates:', paymentTemplates);
+        // Then load all template items
+        const { data: allItems, error: itemsError } = await supabase
+          .from('payment_schedule_template_items')
+          .select('*')
+          .order('sort_order');
+        
+        if (itemsError) throw itemsError;
+        
+        // Combine templates with their items
+        paymentTemplates = (templates || []).map(template => ({
+          ...template,
+          payment_schedule_template_items: (allItems || []).filter(item => item.template_id === template.id)
+        }));
+        
+        console.log('Loaded payment templates with items:', paymentTemplates);
         
         // Populate template dropdown
         const select = $('#payment-template-select');
