@@ -1344,8 +1344,10 @@
         // Load payment schedule
         if (quote.payment_schedule && Array.isArray(quote.payment_schedule)) {
           paymentSchedule = quote.payment_schedule;
-          $('#payment-template-select').value = ''; // Custom schedule
-          $('#payment-schedule-section').style.display = 'block';
+          const templateSelect = $('#payment-template-select');
+          const scheduleSection = $('#payment-schedule-section');
+          if (templateSelect) templateSelect.value = ''; // Custom schedule
+          if (scheduleSection) scheduleSection.style.display = 'block';
           renderPaymentScheduleItems();
         } else if (quote.deposit_type && quote.deposit_value) {
           // Backwards compatibility: convert old deposit to payment schedule
@@ -1363,16 +1365,19 @@
               amount_value: 100 - quote.deposit_value
             });
           }
-          $('#payment-schedule-section').style.display = 'block';
+          const scheduleSection = $('#payment-schedule-section');
+          if (scheduleSection) scheduleSection.style.display = 'block';
           renderPaymentScheduleItems();
         }
         
         // Load terms
+        const termsTextarea = $('#quote-terms-text');
+        const showTermsCheckbox = $('#show-terms');
         if (quote.terms_and_conditions) {
-          $('#quote-terms-text').value = quote.terms_and_conditions;
-          $('#show-terms').checked = true;
+          if (termsTextarea) termsTextarea.value = quote.terms_and_conditions;
+          if (showTermsCheckbox) showTermsCheckbox.checked = true;
         } else {
-          $('#show-terms').checked = false;
+          if (showTermsCheckbox) showTermsCheckbox.checked = false;
         }
         
         // Load slider settings
@@ -1478,19 +1483,6 @@
     }
     
     function setupEventListeners() {
-      // Deposit type change
-      $('#deposit-type').addEventListener('change', (e) => {
-        $('#deposit-suffix').textContent = e.target.value === 'percentage' ? '%' : '$';
-        updateSummary();
-        markDirty();
-      });
-      
-      // Deposit value change
-      $('#deposit-value').addEventListener('input', () => {
-        updateSummary();
-        markDirty();
-      });
-      
       // Add from catalog
       $('#add-from-catalog-btn').addEventListener('click', showCatalogModal);
       
@@ -2893,10 +2885,12 @@
     }
     
     function updateScheduledTotal() {
+      const totalEl = $('#scheduled-total');
+      if (!totalEl) return;
+      
       const percentItems = paymentSchedule.filter(p => p.amount_type === 'percentage');
       const percentTotal = percentItems.reduce((sum, p) => sum + (parseFloat(p.amount_value) || 0), 0);
       
-      const totalEl = $('#scheduled-total');
       if (percentItems.length > 0) {
         totalEl.textContent = percentTotal + '% of total';
         totalEl.style.color = Math.abs(percentTotal - 100) < 0.01 ? 'var(--color-success)' : 'var(--color-warning)';
@@ -2919,9 +2913,10 @@
         
         if (data?.value?.quote) {
           defaultTerms = data.value.quote;
-          if (!quoteId) {
+          const termsTextarea = $('#quote-terms-text');
+          if (!quoteId && termsTextarea) {
             // Only set default for new quotes
-            $('#quote-terms-text').value = defaultTerms;
+            termsTextarea.value = defaultTerms;
           }
         }
       } catch (err) {
