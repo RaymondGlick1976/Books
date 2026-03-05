@@ -1624,10 +1624,12 @@
     }
     
     function addLineItem(catalogItem = null) {
-      // Show attribute configuration modal if ANY pricing attributes exist
-      // All attributes are available for all items
-      if (pricingAttributes.length > 0) {
-        showAttributeConfigModal(catalogItem, pricingAttributes);
+      // Use item-specific attributes if available, otherwise all attributes for custom items
+      const itemAttrs = catalogItem && catalogItemAttributes[catalogItem.id]
+        ? catalogItemAttributes[catalogItem.id]
+        : pricingAttributes;
+      if (itemAttrs.length > 0) {
+        showAttributeConfigModal(catalogItem, itemAttrs);
       } else if (catalogItem) {
         // Catalog item with no attributes - add directly
         addLineItemDirect(catalogItem, []);
