@@ -400,6 +400,7 @@
               <div>
                 <div class="attribute-title">${escapeHtml(attr.name)}</div>
                 ${attr.description ? `<div class="attribute-description">${escapeHtml(attr.description)}</div>` : ''}
+                ${attr.is_public ? '<div class="attribute-description" style="color: var(--color-success); font-weight: 500;">Customer selectable</div>' : ''}
                 ${usageCount > 0 ? `<div class="attribute-description">Used in ${usageCount} catalog item(s)</div>` : ''}
               </div>
               <div class="attribute-actions">
@@ -444,6 +445,13 @@
               <span>Active</span>
             </label>
           </div>
+          <div class="form-group">
+            <label class="form-check">
+              <input type="checkbox" id="attr-public" ${attr?.is_public ? 'checked' : ''}>
+              <span>Customer Selectable</span>
+            </label>
+            <small class="text-muted" style="margin-left: 24px;">Customers can choose between options on their quote and see the price update live</small>
+          </div>
         </form>
       `;
       
@@ -473,7 +481,8 @@
       
       try {
         const supabase = await app.waitForSupabase();
-        const data = { name, description: description || null, is_active: isActive };
+        const isPublic = $('#attr-public').checked;
+        const data = { name, description: description || null, is_active: isActive, is_public: isPublic };
         
         let error;
         if (attributeId) {
@@ -526,7 +535,8 @@
         const newAttrData = {
           name: `Copy of ${attr.name}`,
           description: attr.description || null,
-          is_active: attr.is_active
+          is_active: attr.is_active,
+          is_public: attr.is_public || false
         };
         
         const { data: newAttr, error: attrError } = await supabase

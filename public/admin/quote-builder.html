@@ -1047,13 +1047,14 @@
               is_optional: item.isOptional,
               is_taxable: item.isTaxable,
               sort_order: index,
-              attribute_selections: item.attributeSelections || []
+              attribute_selections: item.attributeSelections || [],
+              base_price: item.basePrice ?? null
             };
           });
-          
+
           await supabase.from('quote_line_items').insert(lineItemsToInsert);
         }
-        
+
         // Save packages - first delete existing items, then packages
         const existingPkgIds = packages.filter(p => p.id).map(p => p.id);
         if (existingPkgIds.length > 0) {
@@ -2057,7 +2058,7 @@
             // Use override price if set, otherwise use option's default price
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, finalBasePrice);
-            selections.push({
+            const selEntry = {
               attribute_id: inst.attrId,
               attribute_name: inst.attrName,
               option_id: inst.optionId,
@@ -2066,12 +2067,26 @@
               pricing_type: selectedOpt.pricing_type || 'each',
               quantity: inst.quantity,
               line_total: lineTotal
-            });
+            };
+            // If attribute is public, embed available options for customer selection
+            const attrObj = pricingAttributes.find(a => a.id === inst.attrId);
+            if (attrObj?.is_public) {
+              selEntry.is_public = true;
+              selEntry.available_options = (attrObj.options || [])
+                .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                .map(opt => ({
+                  option_id: opt.id,
+                  option_name: opt.name,
+                  unit_price: parseFloat(opt.unit_price ?? 0),
+                  pricing_type: opt.pricing_type || 'each'
+                }));
+            }
+            selections.push(selEntry);
           }
         });
-        
+
         closeModal(modal);
-        
+
         // For custom items, create a pseudo catalog item with the form values
         if (isCustomItem) {
           const customItem = {
@@ -2394,7 +2409,7 @@
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, currentBasePrice);
             attributeTotal += lineTotal;
-            selections.push({
+            const selEntry = {
               attribute_id: inst.attrId,
               attribute_name: inst.attrName,
               option_id: inst.optionId,
@@ -2403,10 +2418,23 @@
               pricing_type: selectedOpt.pricing_type || 'each',
               quantity: inst.quantity,
               line_total: lineTotal
-            });
+            };
+            const attrObj = pricingAttributes.find(a => a.id === inst.attrId);
+            if (attrObj?.is_public) {
+              selEntry.is_public = true;
+              selEntry.available_options = (attrObj.options || [])
+                .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                .map(opt => ({
+                  option_id: opt.id,
+                  option_name: opt.name,
+                  unit_price: parseFloat(opt.unit_price ?? 0),
+                  pricing_type: opt.pricing_type || 'each'
+                }));
+            }
+            selections.push(selEntry);
           }
         });
-        
+
         // Update the line item
         const finalPrice = currentBasePrice + attributeTotal;
         lineItems[index].description = content.querySelector('#edit-item-description').value.trim() || lineItems[index].description;
@@ -2538,13 +2566,14 @@
             const qty = sel.quantity || 1;
             const lineTotal = sel.line_total || 0;
             
+            const publicTag = sel.is_public ? ' <span style="color: var(--color-success);">(customer selectable)</span>' : '';
             if (pricingType === 'percentage') {
-              return `${sel.attribute_name}: ${sel.option_name} (${sel.unit_price}%) = ${formatCurrency(lineTotal)}`;
+              return `${sel.attribute_name}: ${sel.option_name}${publicTag} (${sel.unit_price}%) = ${formatCurrency(lineTotal)}`;
             } else if (qty !== 1 || pricingType !== 'each') {
               const unitLabel = PRICING_LABELS[pricingType] ? ` ${PRICING_LABELS[pricingType]}` : '';
-              return `${sel.attribute_name}: ${sel.option_name} (${qty}${unitLabel} × ${formatCurrency(sel.unit_price)}) = ${formatCurrency(lineTotal)}`;
+              return `${sel.attribute_name}: ${sel.option_name}${publicTag} (${qty}${unitLabel} × ${formatCurrency(sel.unit_price)}) = ${formatCurrency(lineTotal)}`;
             } else {
-              return `${sel.attribute_name}: ${sel.option_name} = ${formatCurrency(lineTotal)}`;
+              return `${sel.attribute_name}: ${sel.option_name}${publicTag} = ${formatCurrency(lineTotal)}`;
             }
           });
           
@@ -3670,12 +3699,13 @@
             is_optional: item.isOptional,
             is_taxable: item.isTaxable,
             sort_order: index,
-            attribute_selections: item.attributeSelections || []
+            attribute_selections: item.attributeSelections || [],
+            base_price: item.basePrice ?? null
           };
         });
-        
+
         await supabase.from('quote_line_items').insert(lineItemsToInsert);
-        
+
         // Save packages - first delete existing items, then packages
         const existingPkgIds = packages.filter(p => p.id).map(p => p.id);
         if (existingPkgIds.length > 0) {
@@ -4594,7 +4624,7 @@
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, basePriceVal);
             attributeTotal += lineTotal;
-            selections.push({
+            const selEntry = {
               attribute_id: inst.attrId,
               attribute_name: inst.attrName,
               option_id: inst.optionId,
@@ -4603,10 +4633,23 @@
               pricing_type: selectedOpt.pricing_type || 'each',
               quantity: inst.quantity,
               line_total: lineTotal
-            });
+            };
+            const attrObj = pricingAttributes.find(a => a.id === inst.attrId);
+            if (attrObj?.is_public) {
+              selEntry.is_public = true;
+              selEntry.available_options = (attrObj.options || [])
+                .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                .map(opt => ({
+                  option_id: opt.id,
+                  option_name: opt.name,
+                  unit_price: parseFloat(opt.unit_price ?? 0),
+                  pricing_type: opt.pricing_type || 'each'
+                }));
+            }
+            selections.push(selEntry);
           }
         });
-        
+
         const finalPrice = basePriceVal + attributeTotal;
         
         const newItem = {
