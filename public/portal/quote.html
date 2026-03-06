@@ -2068,17 +2068,18 @@
         
         // Content
         const content = createElement('div', { className: 'line-item-content' });
-        const title = createElement('h4', { textContent: item.description });
+        const title = createElement('h4');
+        title.textContent = item.description;
+        if (item.quantity > 1) {
+          title.innerHTML += ` <span style="color: var(--color-text-light);">(Qty: ${item.quantity})</span>`;
+        }
         if (isOptional) {
           title.innerHTML += '<span class="optional-badge">Optional</span>';
         }
         content.appendChild(title);
-        
+
         if (item.details) {
           content.appendChild(createElement('div', { className: 'line-item-details', textContent: item.details }));
-        }
-        if (item.quantity > 1) {
-          content.appendChild(createElement('div', { className: 'line-item-details', textContent: `Qty: ${item.quantity}` }));
         }
 
         // Render public attribute selectors
