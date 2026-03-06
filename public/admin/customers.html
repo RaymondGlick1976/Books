@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HCD Books">
   <title>Customers | Admin | Homestead Cabinet Design</title>
   <link rel="stylesheet" href="/css/styles.css?v=37">
   <style>
@@ -388,7 +391,7 @@
               </svg>
             </a>
           </td>
-          <td>${formatPhone(customer.phone) || '—'}</td>
+          <td>${customer.phone ? phoneLink(customer.phone) : '—'}</td>
           <td>${customer.city ? `${customer.city}, ${customer.state}` : '—'}</td>
           <td>${customer.lead_source ? `<span class="badge badge-info">${customer.lead_source}</span>` : '—'}</td>
           <td>${quoteCount}</td>

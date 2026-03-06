@@ -181,6 +181,13 @@ function formatPhone(phone) {
   return phone;
 }
 
+function phoneLink(phone) {
+  if (!phone) return '';
+  const cleaned = phone.replace(/\D/g, '');
+  const display = formatPhone(phone);
+  return `<a href="tel:+1${cleaned}" style="color:inherit;text-decoration:none;">${display}</a>`;
+}
+
 // =============================================
 // DOM HELPERS
 // =============================================
@@ -606,6 +613,7 @@ window.app = {
   formatRelativeTime,
   formatFileSize,
   formatPhone,
+  phoneLink,
   $,
   $$,
   createElement,
@@ -639,6 +647,7 @@ window.confirm = confirm;
 window.formatCurrency = formatCurrency;
 window.formatDate = formatDate;
 window.formatPhone = formatPhone;
+window.phoneLink = phoneLink;
 window.debounce = debounce;
 
 // =============================================
