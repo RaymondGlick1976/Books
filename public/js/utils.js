@@ -185,7 +185,7 @@ function phoneLink(phone) {
   if (!phone) return '';
   const cleaned = phone.replace(/\D/g, '');
   const display = formatPhone(phone);
-  return `<a href="tel:+1${cleaned}" style="color:inherit;text-decoration:none;">${display}</a>`;
+  return `<a href="tel:+1${cleaned}">${display}</a>`;
 }
 
 // =============================================
