@@ -258,14 +258,16 @@
     
     @media (max-width: 600px) {
       .quote-container {
-        padding: 0 var(--space-sm);
+        padding: 0;
       }
       .quote-document-header {
         padding: var(--space-md);
         margin-bottom: var(--space-md);
+        border-radius: 0;
       }
       .quote-section {
         margin-bottom: var(--space-md);
+        border-radius: 0;
       }
       .quote-section-body {
         padding: var(--space-sm);
@@ -274,21 +276,29 @@
         padding: var(--space-sm) var(--space-md);
       }
       .line-item {
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: 1fr auto;
         gap: var(--space-sm);
         padding: var(--space-sm);
       }
       .line-item-photo,
       .line-item-photo-placeholder {
-        width: 40px;
-        height: 40px;
+        display: none;
       }
       .line-item-action {
-        min-width: 60px;
+        display: none;
+      }
+      .line-item.optional .line-item-action {
+        display: flex;
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+        min-width: auto;
       }
       .line-item-action .btn {
         font-size: 0.75rem;
         padding: 4px 8px;
+      }
+      .line-item-content {
+        min-width: 0;
       }
       .line-item-content h4 {
         font-size: 0.9rem;
@@ -304,6 +314,7 @@
       }
       .totals-section {
         padding: var(--space-md);
+        border-radius: 0;
       }
     }
 
