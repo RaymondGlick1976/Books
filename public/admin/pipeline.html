@@ -82,6 +82,17 @@
     .event-row, .item-row { display: flex; gap: var(--space-sm); align-items: center; padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-border-light); }
     .event-row:last-child, .item-row:last-child { border-bottom: none; }
     
+    /* Submission section */
+    .form-section.collapsed #submission-content { display: none; }
+    .form-section.collapsed .form-section-title svg { transform: rotate(-90deg); }
+    .submission-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm) var(--space-lg); margin-bottom: var(--space-md); }
+    .submission-field label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-text-muted); font-weight: 600; }
+    .submission-field p { font-size: 0.875rem; color: var(--color-text); margin: 2px 0 0; }
+    .submission-field.full { grid-column: 1 / -1; }
+    .submission-photos { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-sm); }
+    .submission-photos a { display: block; width: 80px; height: 80px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--color-border); }
+    .submission-photos img { width: 100%; height: 100%; object-fit: cover; }
+
     /* Searchable Select */
     .search-select { position: relative; }
     .search-select-input { width: 100%; cursor: text; }
@@ -291,6 +302,13 @@
             <div id="deal-items-container"><p class="text-muted text-sm">No items added.</p></div>
           </div>
           <div class="form-section"><div class="form-group"><label class="form-label">Notes</label><textarea id="deal-notes" class="form-input" rows="3"></textarea></div></div>
+          <div class="form-section" id="submission-section" style="display:none;">
+            <div class="form-section-title" style="cursor:pointer;" onclick="this.parentElement.classList.toggle('collapsed')">
+              <span>📋 Form Submission</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.2s;"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="submission-content"></div>
+          </div>
         </form>
       </div>
       <div class="modal-footer" style="justify-content: space-between;">
@@ -799,11 +817,14 @@
     
     let currentDeal = null; // Track the current deal for email
     
-    function openDealModal(deal = null) {
+    async function openDealModal(deal = null) {
       currentDealEvents = []; currentDealItems = []; currentDealFinishes = []; currentDeal = deal;
+      // Hide submission section by default
+      $('#submission-section').style.display = 'none';
+      $('#submission-content').innerHTML = '';
       if (deal) {
         $('#deal-modal-title').textContent = 'Edit Deal'; $('#delete-deal-btn').style.display = 'block'; $('#deal-id').value = deal.id;
-        $('#deal-name').value = deal.name || ''; 
+        $('#deal-name').value = deal.name || '';
         // Set customer search field
         $('#deal-customer').value = deal.customer_id || '';
         const customer = customers.find(c => c.id === deal.customer_id);
@@ -822,8 +843,10 @@
         const hasEmail = deal.customers?.email;
         $('#email-deal-btn').style.display = hasEmail ? 'block' : 'none';
         $('#print-deal-btn').style.display = 'block';
-      } else { 
-        $('#deal-modal-title').textContent = 'New Deal'; $('#delete-deal-btn').style.display = 'none'; $('#deal-form').reset(); $('#deal-id').value = ''; $('#deal-stage').value = stages[0]?.stage_id || ''; 
+        // Load form submission data
+        loadSubmissionData(deal.id);
+      } else {
+        $('#deal-modal-title').textContent = 'New Deal'; $('#delete-deal-btn').style.display = 'none'; $('#deal-form').reset(); $('#deal-id').value = ''; $('#deal-stage').value = stages[0]?.stage_id || '';
         // Clear customer search
         $('#deal-customer').value = '';
         $('#deal-customer-search').value = '';
@@ -835,7 +858,76 @@
     }
     
     function closeDealModal() { $('#deal-modal').classList.remove('active'); }
-    
+
+    async function loadSubmissionData(dealId) {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: submission } = await supabase
+          .from('booking_submissions')
+          .select('*, form:booking_forms(name)')
+          .eq('deal_id', dealId)
+          .single();
+        if (!submission) return;
+
+        // Load question prompts for custom answers
+        let questionMap = {};
+        if (submission.custom_answers && submission.form_id) {
+          const { data: questions } = await supabase
+            .from('booking_form_questions')
+            .select('id, prompt')
+            .eq('form_id', submission.form_id);
+          (questions || []).forEach(q => { questionMap[q.id] = q.prompt; });
+        }
+
+        let html = '<div class="submission-grid">';
+        if (submission.form?.name) {
+          html += `<div class="submission-field"><label>Form</label><p>${submission.form.name}</p></div>`;
+        }
+        if (submission.how_heard) {
+          html += `<div class="submission-field"><label>Lead Source</label><p>${submission.how_heard}</p></div>`;
+        }
+        if (submission.preferred_date) {
+          let dateStr = formatDate(submission.preferred_date);
+          if (submission.preferred_time) dateStr += ' at ' + submission.preferred_time;
+          html += `<div class="submission-field"><label>Preferred Date/Time</label><p>${dateStr}</p></div>`;
+        }
+        if (submission.sms_consent) {
+          html += `<div class="submission-field"><label>SMS Consent</label><p>Yes</p></div>`;
+        }
+        if (submission.address) {
+          const addr = [submission.address, submission.city, submission.state, submission.zip].filter(Boolean).join(', ');
+          html += `<div class="submission-field"><label>Address</label><p>${addr}</p></div>`;
+        }
+        if (submission.service_details) {
+          html += `<div class="submission-field full"><label>Service Details</label><p>${submission.service_details.replace(/\n/g, '<br>')}</p></div>`;
+        }
+        // Custom answers
+        if (submission.custom_answers && typeof submission.custom_answers === 'object') {
+          for (const [qId, answer] of Object.entries(submission.custom_answers)) {
+            if (!answer) continue;
+            const label = questionMap[qId] || 'Custom Question';
+            const displayVal = Array.isArray(answer) ? answer.join(', ') : String(answer);
+            html += `<div class="submission-field full"><label>${label}</label><p>${displayVal}</p></div>`;
+          }
+        }
+        html += '</div>';
+        // Photos
+        const attachments = submission.attachments;
+        if (Array.isArray(attachments) && attachments.length > 0) {
+          html += '<div style="margin-top:var(--space-sm);"><label style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Attached Photos</label><div class="submission-photos">';
+          attachments.forEach(url => {
+            html += `<a href="${url}" target="_blank"><img src="${url}" alt="Attachment"></a>`;
+          });
+          html += '</div></div>';
+        }
+
+        $('#submission-content').innerHTML = html;
+        $('#submission-section').style.display = '';
+      } catch (err) {
+        // No submission for this deal — that's fine, keep section hidden
+      }
+    }
+
     function printDeal() {
       if (!currentDeal) return;
       
