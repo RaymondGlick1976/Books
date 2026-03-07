@@ -691,10 +691,10 @@
                 Upload Files
                 <input type="file" id="portal-file-input" multiple accept="image/*,.pdf,.doc,.docx" style="display:none;">
               </label>
-              <a href="/portal/login.html" target="_blank" class="btn btn-ghost btn-sm" title="Open customer portal">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="openPortalAsAdmin('${customer.id}')" title="View customer portal as admin">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 Portal
-              </a>
+              </button>
             </div>
           </div>
           <div id="portal-files-list" style="color:var(--color-text-muted);font-size:0.8125rem;">Loading files...</div>
@@ -752,6 +752,24 @@
         if (uploaded > 0) { showToast(`${uploaded} file(s) uploaded`, 'success'); loadPortalFiles(customer.id); }
         e.target.value = '';
       });
+    };
+
+    window.openPortalAsAdmin = async (customerId) => {
+      try {
+        const res = await fetch('/api/admin-portal-access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ customer_id: customerId })
+        });
+        if (!res.ok) throw new Error('Failed to create portal session');
+        // Set the localStorage flag the portal auth checks
+        localStorage.setItem('portal_logged_in', 'true');
+        window.open('/portal/dashboard.html', '_blank');
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to open portal', 'error');
+      }
     };
 
     async function loadPortalFiles(customerId) {
