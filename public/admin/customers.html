@@ -555,8 +555,8 @@
       cancelBtn.addEventListener('click', () => closeModal(modal));
       submitBtn.addEventListener('click', async () => {
         if (content.checkValidity()) {
-          await saveCustomer(new FormData(content), customer?.id);
-          closeModal(modal);
+          const ok = await saveCustomer(new FormData(content), customer?.id);
+          if (ok) closeModal(modal);
         } else {
           content.reportValidity();
         }
@@ -580,11 +580,11 @@
     async function saveCustomer(formData, id = null) {
       try {
         const supabase = await app.waitForSupabase();
-        
+
         const firstName = formData.get('first_name').trim();
         const lastName = formData.get('last_name').trim();
         const fullName = `${firstName} ${lastName}`.trim();
-        
+
         const data = {
           name: fullName,
           first_name: firstName,
@@ -599,18 +599,23 @@
           lead_source: formData.get('lead_source') || null,
           notes: formData.get('notes') || null
         };
-        
+
         if (id) {
-          await supabase.from('customers').update(data).eq('id', id);
+          const { error } = await supabase.from('customers').update(data).eq('id', id);
+          if (error) throw error;
           showToast('Customer updated', 'success');
         } else {
-          await supabase.from('customers').insert(data);
+          const { error } = await supabase.from('customers').insert(data);
+          if (error) throw error;
           showToast('Customer added', 'success');
         }
-        
+
         loadCustomers();
+        return true;
       } catch (err) {
-        showToast('Failed to save: ' + err.message, 'error');
+        console.error('Save customer error:', err);
+        showToast('Failed to save: ' + (err.message || err), 'error');
+        return false;
       }
     }
     
