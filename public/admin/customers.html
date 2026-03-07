@@ -381,7 +381,7 @@
         
         const row = createElement('tr');
         row.innerHTML = `
-          <td><strong>${customer.name}</strong></td>
+          <td><a href="javascript:void(0)" onclick="viewCustomer('${customer.id}')" style="font-weight:600;">${customer.name}</a></td>
           <td>
             <a href="javascript:void(0)" onclick="openEmailCompose('${customer.id}')" style="display: inline-flex; align-items: center; gap: 6px;">
               ${customer.email}
@@ -392,7 +392,7 @@
             </a>
           </td>
           <td>${customer.phone ? phoneLink(customer.phone) : '—'}</td>
-          <td>${customer.city ? `${customer.city}, ${customer.state}` : '—'}</td>
+          <td>${customer.address || customer.city ? [customer.address, customer.city ? `${customer.city}, ${customer.state}` : ''].filter(Boolean).join('<br>') : '—'}</td>
           <td>${customer.lead_source ? `<span class="badge badge-info">${customer.lead_source}</span>` : '—'}</td>
           <td>${quoteCount}</td>
           <td class="table-actions">
@@ -629,7 +629,75 @@
       const customer = customers.find(c => c.id === id);
       if (customer) showCustomerModal(customer);
     };
-    
+
+    function mapsLink(customer) {
+      const parts = [customer.address, customer.city, customer.state, customer.zip].filter(Boolean);
+      if (parts.length === 0) return '—';
+      const display = parts.join(', ');
+      const query = encodeURIComponent(display);
+      return `<a href="https://maps.google.com/?q=${query}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;">${display}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></a>`;
+    }
+
+    window.viewCustomer = (id) => {
+      const customer = customers.find(c => c.id === id);
+      if (!customer) return;
+
+      const quoteCount = customer.quotes?.[0]?.count || 0;
+      const content = createElement('div');
+      content.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md) var(--space-xl);">
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Email</div>
+            <div style="margin-top:2px;">${customer.email ? `<a href="mailto:${customer.email}">${customer.email}</a>` : '—'}</div>
+          </div>
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Phone</div>
+            <div style="margin-top:2px;">${customer.phone ? phoneLink(customer.phone) : '—'}</div>
+          </div>
+          <div style="grid-column:1/-1;">
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Address</div>
+            <div style="margin-top:2px;">${mapsLink(customer)}</div>
+          </div>
+          ${customer.company ? `<div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Company</div>
+            <div style="margin-top:2px;">${customer.company}</div>
+          </div>` : ''}
+          ${customer.lead_source ? `<div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Lead Source</div>
+            <div style="margin-top:2px;"><span class="badge badge-info">${customer.lead_source}</span></div>
+          </div>` : ''}
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Quotes</div>
+            <div style="margin-top:2px;">${quoteCount}</div>
+          </div>
+          ${customer.notes ? `<div style="grid-column:1/-1;">
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Notes</div>
+            <div style="margin-top:2px;white-space:pre-wrap;">${customer.notes}</div>
+          </div>` : ''}
+        </div>
+      `;
+
+      const footer = createElement('div', { className: 'flex justify-between' });
+      const leftBtns = createElement('div', { className: 'btn-group' });
+      const emailBtn = createElement('button', { type: 'button', className: 'btn btn-secondary' });
+      emailBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email';
+      leftBtns.appendChild(emailBtn);
+      footer.appendChild(leftBtns);
+
+      const rightBtns = createElement('div', { className: 'btn-group' });
+      const closeBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Close' });
+      const editBtn = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: 'Edit' });
+      rightBtns.appendChild(closeBtn);
+      rightBtns.appendChild(editBtn);
+      footer.appendChild(rightBtns);
+
+      const modal = createModal({ title: customer.name, content, footer, size: 'lg' });
+
+      closeBtn.addEventListener('click', () => closeModal(modal));
+      editBtn.addEventListener('click', () => { closeModal(modal); showCustomerModal(customer); });
+      emailBtn.addEventListener('click', () => { closeModal(modal); openEmailCompose(customer.id); });
+    };
+
     // ==========================================
     // EMAIL COMPOSE FUNCTIONALITY
     // ==========================================
