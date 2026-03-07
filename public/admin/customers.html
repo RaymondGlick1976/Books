@@ -638,42 +638,61 @@
       return `<a href="https://maps.google.com/?q=${query}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;">${display}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></a>`;
     }
 
-    window.viewCustomer = (id) => {
+    window.viewCustomer = async (id) => {
       const customer = customers.find(c => c.id === id);
       if (!customer) return;
 
       const quoteCount = customer.quotes?.[0]?.count || 0;
       const content = createElement('div');
+      const fieldStyle = 'font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;';
       content.innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md) var(--space-xl);">
           <div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Email</div>
+            <div style="${fieldStyle}">Email</div>
             <div style="margin-top:2px;">${customer.email ? `<a href="mailto:${customer.email}">${customer.email}</a>` : '—'}</div>
           </div>
           <div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Phone</div>
+            <div style="${fieldStyle}">Phone</div>
             <div style="margin-top:2px;">${customer.phone ? phoneLink(customer.phone) : '—'}</div>
           </div>
           <div style="grid-column:1/-1;">
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Address</div>
+            <div style="${fieldStyle}">Address</div>
             <div style="margin-top:2px;">${mapsLink(customer)}</div>
           </div>
           ${customer.company ? `<div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Company</div>
+            <div style="${fieldStyle}">Company</div>
             <div style="margin-top:2px;">${customer.company}</div>
           </div>` : ''}
           ${customer.lead_source ? `<div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Lead Source</div>
+            <div style="${fieldStyle}">Lead Source</div>
             <div style="margin-top:2px;"><span class="badge badge-info">${customer.lead_source}</span></div>
           </div>` : ''}
           <div>
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Quotes</div>
+            <div style="${fieldStyle}">Quotes</div>
             <div style="margin-top:2px;">${quoteCount}</div>
           </div>
           ${customer.notes ? `<div style="grid-column:1/-1;">
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;">Notes</div>
+            <div style="${fieldStyle}">Notes</div>
             <div style="margin-top:2px;white-space:pre-wrap;">${customer.notes}</div>
           </div>` : ''}
+        </div>
+
+        <div style="margin-top:var(--space-lg);padding-top:var(--space-lg);border-top:1px solid var(--color-border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);">
+            <div style="${fieldStyle}margin-bottom:0;">Portal Files</div>
+            <div style="display:flex;gap:var(--space-sm);">
+              <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload Files
+                <input type="file" id="portal-file-input" multiple accept="image/*,.pdf,.doc,.docx" style="display:none;">
+              </label>
+              <a href="/portal/login.html" target="_blank" class="btn btn-ghost btn-sm" title="Open customer portal">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Portal
+              </a>
+            </div>
+          </div>
+          <div id="portal-files-list" style="color:var(--color-text-muted);font-size:0.8125rem;">Loading files...</div>
         </div>
       `;
 
@@ -696,6 +715,103 @@
       closeBtn.addEventListener('click', () => closeModal(modal));
       editBtn.addEventListener('click', () => { closeModal(modal); showCustomerModal(customer); });
       emailBtn.addEventListener('click', () => { closeModal(modal); openEmailCompose(customer.id); });
+
+      // Load portal files
+      loadPortalFiles(customer.id);
+
+      // File upload handler
+      content.querySelector('#portal-file-input').addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        const supabase = await app.waitForSupabase();
+        let uploaded = 0;
+        for (const file of files) {
+          if (file.size > 10 * 1024 * 1024) { showToast(`${file.name} exceeds 10MB limit`, 'error'); continue; }
+          try {
+            const ext = file.name.split('.').pop();
+            const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+            const filePath = `customer-files/${customer.id}/${uniqueName}`;
+            const { error: uploadError } = await supabase.storage.from('Uploads').upload(filePath, file, { contentType: file.type, upsert: false });
+            if (uploadError) throw uploadError;
+            const { data: urlData } = supabase.storage.from('Uploads').getPublicUrl(filePath);
+            await supabase.from('customer_uploads').insert({
+              customer_id: customer.id,
+              file_url: urlData.publicUrl,
+              file_name: file.name,
+              file_type: file.type,
+              file_size: file.size
+            });
+            uploaded++;
+          } catch (err) { console.error('Upload error:', err); showToast(`Failed to upload ${file.name}`, 'error'); }
+        }
+        if (uploaded > 0) { showToast(`${uploaded} file(s) uploaded`, 'success'); loadPortalFiles(customer.id); }
+        e.target.value = '';
+      });
+    };
+
+    async function loadPortalFiles(customerId) {
+      const container = document.getElementById('portal-files-list');
+      if (!container) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: files } = await supabase
+          .from('customer_uploads')
+          .select('*')
+          .eq('customer_id', customerId)
+          .order('uploaded_at', { ascending: false });
+
+        if (!files || files.length === 0) {
+          container.innerHTML = '<div style="color:var(--color-text-muted);font-size:0.8125rem;">No files yet. Use "Upload Files" to add documents to the customer portal.</div>';
+          return;
+        }
+
+        container.innerHTML = files.map(f => {
+          const isImage = f.file_type && f.file_type.startsWith('image/');
+          const isPdf = f.file_type === 'application/pdf';
+          const icon = isImage
+            ? `<img src="${f.file_url}" style="width:40px;height:40px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--color-border);">`
+            : isPdf
+              ? '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>'
+              : '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
+          const size = f.file_size ? formatFileSize(f.file_size) : '';
+          const date = f.uploaded_at ? formatDate(f.uploaded_at) : '';
+          return `<div style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-sm) 0;border-bottom:1px solid var(--color-border-light);">
+            <a href="${f.file_url}" target="_blank" style="flex-shrink:0;">${icon}</a>
+            <div style="flex:1;min-width:0;">
+              <a href="${f.file_url}" target="_blank" style="font-size:0.8125rem;font-weight:500;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.file_name}</a>
+              <div style="font-size:0.7rem;color:var(--color-text-muted);">${[size, date].filter(Boolean).join(' · ')}${f.caption ? ' · ' + f.caption : ''}</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="deletePortalFile('${f.id}','${customerId}')" style="color:var(--color-danger);flex-shrink:0;" title="Delete file">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+          </div>`;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load portal files:', err);
+        container.innerHTML = '<div style="color:var(--color-text-muted);font-size:0.8125rem;">Failed to load files.</div>';
+      }
+    }
+
+    window.deletePortalFile = async (fileId, customerId) => {
+      if (!window.confirm('Delete this file?')) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        // Get file record to delete from storage
+        const { data: file } = await supabase.from('customer_uploads').select('file_url').eq('id', fileId).single();
+        if (file?.file_url) {
+          // Extract storage path from URL
+          const urlParts = file.file_url.split('/storage/v1/object/public/Uploads/');
+          if (urlParts[1]) {
+            await supabase.storage.from('Uploads').remove([decodeURIComponent(urlParts[1])]);
+          }
+        }
+        await supabase.from('customer_uploads').delete().eq('id', fileId);
+        showToast('File deleted', 'success');
+        loadPortalFiles(customerId);
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to delete file', 'error');
+      }
     };
 
     // ==========================================
