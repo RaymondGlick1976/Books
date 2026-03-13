@@ -2157,7 +2157,8 @@
             attr: attr,
             optionId: sel.option_id,
             quantity: sel.quantity || 1,
-            unitPriceOverride: sel.unit_price // Keep the saved price as override
+            unitPriceOverride: sel.unit_price, // Keep the saved price as override
+            hidden: sel.hidden || false
           };
         }).filter(inst => inst.attr); // Filter out any with missing attributes
       }
@@ -2180,14 +2181,20 @@
           const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
           const showQty = selectedOpt && pricingType !== 'percentage';
           const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice) : 0;
-          
+
           return `
             <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
                 <label class="form-label" style="margin: 0;">${attr.name}</label>
-                <button type="button" class="btn btn-ghost btn-sm remove-instance" data-idx="${idx}" title="Remove">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
+                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                  ${attr.is_public ? `<label class="form-check" style="margin: 0; font-size: 0.75rem; white-space: nowrap;" title="Hide this attribute from the customer portal">
+                    <input type="checkbox" class="attr-hidden-check" data-idx="${idx}" ${inst.hidden ? 'checked' : ''}>
+                    <span>Hide from customer</span>
+                  </label>` : ''}
+                  <button type="button" class="btn btn-ghost btn-sm remove-instance" data-idx="${idx}" title="Remove">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
               </div>
               <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${showQty ? '80px' : ''} 90px; gap: var(--space-sm); align-items: end;">
                 <div>
@@ -2203,7 +2210,7 @@
                         priceLabel = ` ($${optPrice.toFixed(2)})`;
                       }
                       return `
-                        <option value="${opt.id}" 
+                        <option value="${opt.id}"
                           data-unit-price="${optPrice}"
                           data-pricing-type="${optType}"
                           data-name="${opt.name}"
@@ -2234,7 +2241,7 @@
             </div>
           `;
         }).join('') : '<p class="text-muted text-center" style="padding: var(--space-lg);">No attributes. Click a button below to add pricing attributes.</p>';
-        
+
         // Buttons to add each attribute type
         const addButtonsHtml = pricingAttributes.map(attr => `
           <button type="button" class="btn btn-secondary btn-sm add-attr-btn" data-attr-id="${attr.id}" style="margin-right: var(--space-sm); margin-bottom: var(--space-sm);">
@@ -2325,6 +2332,14 @@
           });
         });
         
+        // Hide from customer checkboxes
+        content.querySelectorAll('.attr-hidden-check').forEach(cb => {
+          cb.addEventListener('change', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            attributeInstances[idx].hidden = e.target.checked;
+          });
+        });
+
         // Remove instance buttons
         content.querySelectorAll('.remove-instance').forEach(btn => {
           btn.addEventListener('click', (e) => {
@@ -2333,7 +2348,7 @@
             renderAttributeSelectors();
           });
         });
-        
+
         // Add attribute buttons
         content.querySelectorAll('.add-attr-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
@@ -2428,7 +2443,7 @@
         // Gather all attribute selections
         const selections = [];
         let attributeTotal = 0;
-        
+
         attributeInstances.forEach(inst => {
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
@@ -2447,7 +2462,7 @@
               line_total: lineTotal
             };
             const attrObj = pricingAttributes.find(a => a.id === inst.attrId);
-            if (attrObj?.is_public) {
+            if (attrObj?.is_public && !inst.hidden) {
               selEntry.is_public = true;
               selEntry.available_options = (attrObj.options || [])
                 .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
@@ -2458,6 +2473,7 @@
                   pricing_type: opt.pricing_type || 'each'
                 }));
             }
+            if (inst.hidden) selEntry.hidden = true;
             selections.push(selEntry);
           }
         });
@@ -2593,7 +2609,7 @@
             const qty = sel.quantity || 1;
             const lineTotal = sel.line_total || 0;
             
-            const publicTag = sel.is_public ? ' <span style="color: var(--color-success);">(customer selectable)</span>' : '';
+            const publicTag = sel.hidden ? ' <span style="color: var(--color-warning);">(hidden from customer)</span>' : sel.is_public ? ' <span style="color: var(--color-success);">(customer selectable)</span>' : '';
             if (pricingType === 'percentage') {
               return `${sel.attribute_name}: ${sel.option_name}${publicTag} (${sel.unit_price}%) = ${formatCurrency(lineTotal)}`;
             } else if (qty !== 1 || pricingType !== 'each') {
