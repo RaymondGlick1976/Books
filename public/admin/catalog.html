@@ -276,10 +276,12 @@
         </div>
         <div class="form-group">
           <label class="form-label">Category</label>
-          <input type="text" name="category" class="form-input" value="${item?.category || ''}" list="category-list" placeholder="e.g., Cabinet Doors, Hardware">
-          <datalist id="category-list">
-            ${Array.from(categories).map(c => `<option value="${c}">`).join('')}
-          </datalist>
+          <select name="category" class="form-select">
+            <option value="">No category</option>
+            ${Array.from(categories).sort().map(c => `<option value="${c}" ${item?.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+            <option value="__new__">+ New Category...</option>
+          </select>
+          <input type="text" name="category_new" class="form-input mt-sm" placeholder="Enter new category name" style="display:none;">
         </div>
         <div class="form-group">
           <label class="form-label">Base Price</label>
@@ -356,9 +358,17 @@
         size: 'lg'
       });
       
+      // Show/hide new category input
+      const catSelect = content.querySelector('[name="category"]');
+      const catNewInput = content.querySelector('[name="category_new"]');
+      catSelect.addEventListener('change', () => {
+        catNewInput.style.display = catSelect.value === '__new__' ? '' : 'none';
+        if (catSelect.value === '__new__') catNewInput.focus();
+      });
+
       // Add event listeners AFTER modal is created
       cancelBtn.addEventListener('click', () => closeModal(modal));
-      
+
       if (duplicateBtn) {
         duplicateBtn.addEventListener('click', async () => {
           closeModal(modal);
@@ -386,7 +396,9 @@
         const data = {
           name: form.querySelector('[name="name"]').value,
           description: form.querySelector('[name="description"]').value || null,
-          category: form.querySelector('[name="category"]').value || null,
+          category: (form.querySelector('[name="category"]').value === '__new__'
+            ? form.querySelector('[name="category_new"]').value.trim()
+            : form.querySelector('[name="category"]').value) || null,
           default_price: parseFloat(form.querySelector('[name="default_price"]').value) || null,
           is_taxable: form.querySelector('[name="is_taxable"]').checked,
           is_active: form.querySelector('[name="is_active"]').checked
