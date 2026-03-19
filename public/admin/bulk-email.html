@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HCD Books">
+  <title>Bulk Email | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css?v=34">
+  <style>
+    .bulk-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-md); }
+    .bulk-header-left h2 { margin: 0; }
+    .bulk-header-left .recipient-count { font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px; }
+    .bulk-header-right { display: flex; gap: var(--space-sm); align-items: center; }
+
+    .stage-card { background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin-bottom: var(--space-md); overflow: hidden; }
+    .stage-card-header { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); cursor: pointer; user-select: none; }
+    .stage-card-header:hover { background: var(--color-bg-soft); }
+    .stage-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .stage-label { font-weight: 600; flex: 1; }
+    .stage-count { font-size: 0.8rem; color: var(--color-text-muted); margin-right: var(--space-sm); }
+    .stage-actions { display: flex; gap: var(--space-xs); }
+    .stage-actions button { font-size: 0.75rem; padding: 2px 8px; border: 1px solid var(--color-border); background: white; border-radius: var(--radius-sm); cursor: pointer; color: var(--color-text-muted); }
+    .stage-actions button:hover { background: var(--color-bg-soft); color: var(--color-text); }
+    .collapse-arrow { transition: transform 0.2s; color: var(--color-text-muted); flex-shrink: 0; }
+    .stage-card.collapsed .collapse-arrow { transform: rotate(-90deg); }
+    .stage-card.collapsed .stage-card-body { display: none; }
+
+    .stage-card-body { border-top: 1px solid var(--color-border); }
+    .customer-row { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-lg); border-bottom: 1px solid var(--color-border-light); font-size: 0.875rem; }
+    .customer-row:last-child { border-bottom: none; }
+    .customer-row.no-email { opacity: 0.5; }
+    .customer-name { font-weight: 500; min-width: 160px; }
+    .customer-email { color: var(--color-text-muted); flex: 1; }
+    .customer-deal { color: var(--color-text-muted); font-size: 0.8rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .no-email-badge { font-size: 0.7rem; background: var(--color-bg-soft); color: var(--color-text-muted); padding: 1px 6px; border-radius: var(--radius-sm); }
+
+    .loading-state { text-align: center; padding: var(--space-xxl); color: var(--color-text-muted); }
+    .empty-state { text-align: center; padding: var(--space-xxl); color: var(--color-text-muted); }
+
+    /* Compose Modal */
+    .compose-form { display: flex; flex-direction: column; gap: var(--space-md); }
+    .compose-form label { font-weight: 500; font-size: 0.875rem; margin-bottom: 2px; }
+    .compose-form input, .compose-form select, .compose-form textarea { width: 100%; padding: var(--space-sm) var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 0.875rem; font-family: inherit; }
+    .compose-form textarea { min-height: 180px; resize: vertical; }
+    .var-tags { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-top: 4px; }
+    .var-tag { font-size: 0.7rem; padding: 2px 8px; background: var(--color-bg-soft); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; font-family: monospace; }
+    .var-tag:hover { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+    .compose-recipient-count { font-size: 0.875rem; color: var(--color-text-muted); padding: var(--space-sm); background: var(--color-bg-soft); border-radius: var(--radius-md); text-align: center; }
+    .compose-footer { display: flex; justify-content: flex-end; gap: var(--space-sm); padding-top: var(--space-md); border-top: 1px solid var(--color-border); }
+
+    /* Progress */
+    .send-progress { margin-top: var(--space-md); }
+    .progress-bar-track { width: 100%; height: 8px; background: var(--color-bg-soft); border-radius: 4px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--color-primary); border-radius: 4px; transition: width 0.3s; width: 0%; }
+    .progress-text { font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px; text-align: center; }
+  </style>
+</head>
+<body>
+  <script>
+    const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+    if (!user) {
+      window.location.href = '/admin/login.html';
+    } else if (!user.permissions?.can_access_settings) {
+      window.location.href = user.permissions?.can_view_pipeline ? '/admin/pipeline.html' : '/admin/index.html';
+    }
+  </script>
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <img src="/images/logo.gif" alt="Homestead Cabinet Design" style="height: 40px; filter: brightness(0) invert(1);">
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Deals Pipeline</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html?view=calendar" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+        </ul>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Lead Capture</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/booking-forms.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Booking Forms</a></li>
+            <li class="sidebar-nav-item"><a href="/admin/bulk-email.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/><line x1="2" y1="20" x2="8" y2="14"/><line x1="22" y1="20" x2="16" y2="14"/></svg>Bulk Email</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Catalog</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/catalog.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Items Catalog</a></li>
+            <li class="sidebar-nav-item"><a href="/admin/pricing-attributes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Pricing Attributes</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Settings</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/email-templates.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Templates</a></li>
+          </ul>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/settings.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="app-main">
+      <header class="app-header">
+        <div class="bulk-header">
+          <div class="bulk-header-left">
+            <h2>Bulk Email</h2>
+            <div class="recipient-count" id="recipient-count">Loading...</div>
+          </div>
+          <div class="bulk-header-right">
+            <button class="btn btn-primary" id="compose-btn" disabled onclick="openComposeModal()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Compose Email
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="app-content">
+        <div id="loading" class="loading-state">Loading customers...</div>
+        <div id="stages-container"></div>
+        <div id="empty-state" class="empty-state" style="display:none;">No customers with active deals found.</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    let stages = [];
+    let jobs = [];
+    let templates = [];
+    let selectedCustomers = new Map(); // customer_id -> { name, first_name, email, company_name, deal_name, deal_id }
+
+    async function loadData() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const [stagesRes, jobsRes, templatesRes] = await Promise.all([
+          supabase.from('job_stages').select('*').order('sort_order'),
+          supabase.from('jobs').select('*, customers(id, name, first_name, email, company_name)').order('created_at', { ascending: false }),
+          supabase.from('email_templates').select('*').order('name')
+        ]);
+
+        stages = stagesRes.data || [];
+        jobs = jobsRes.data || [];
+        templates = templatesRes.data || [];
+
+        renderStageGroups();
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        showToast('Failed to load data', 'error');
+      } finally {
+        $('#loading').style.display = 'none';
+      }
+    }
+
+    function getCustomersByStage() {
+      // Group customers by their most recent job's stage
+      // Deduplicate: each customer appears only once, under their most recent job
+      const customerMap = new Map();
+
+      for (const job of jobs) {
+        if (!job.customers) continue;
+        const cust = job.customers;
+        // jobs are already sorted by created_at desc, so first occurrence is most recent
+        if (!customerMap.has(cust.id)) {
+          customerMap.set(cust.id, {
+            customer_id: cust.id,
+            name: cust.name || '',
+            first_name: cust.first_name || '',
+            email: cust.email || '',
+            company_name: cust.company_name || '',
+            deal_name: job.title || `Job #${job.job_number || ''}`,
+            deal_id: job.id,
+            stage: job.stage
+          });
+        }
+      }
+
+      // Group by stage
+      const grouped = {};
+      for (const [, entry] of customerMap) {
+        if (!grouped[entry.stage]) grouped[entry.stage] = [];
+        grouped[entry.stage].push(entry);
+      }
+      return grouped;
+    }
+
+    function renderStageGroups() {
+      const container = $('#stages-container');
+      const customersByStage = getCustomersByStage();
+
+      // Filter stages that have customers
+      const activeStages = stages.filter(s => customersByStage[s.stage_id]?.length > 0);
+
+      if (activeStages.length === 0) {
+        container.innerHTML = '';
+        $('#empty-state').style.display = 'block';
+        updateRecipientCount();
+        return;
+      }
+
+      $('#empty-state').style.display = 'none';
+      container.innerHTML = activeStages.map(stage => {
+        const customers = customersByStage[stage.stage_id] || [];
+        const stageSelectedCount = customers.filter(c => c.email && selectedCustomers.has(c.customer_id)).length;
+        const emailCount = customers.filter(c => c.email).length;
+
+        return `
+          <div class="stage-card" data-stage="${stage.stage_id}">
+            <div class="stage-card-header" onclick="toggleStage('${stage.stage_id}')">
+              <svg class="collapse-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              <span class="stage-dot" style="background: ${stage.color || '#6366f1'}"></span>
+              <span class="stage-label">${stage.label}</span>
+              <span class="stage-count">${stageSelectedCount}/${emailCount} selected</span>
+              <div class="stage-actions" onclick="event.stopPropagation()">
+                <button onclick="selectAllStage('${stage.stage_id}')">Select All</button>
+                <button onclick="deselectAllStage('${stage.stage_id}')">Deselect All</button>
+              </div>
+            </div>
+            <div class="stage-card-body">
+              ${customers.map(c => {
+                const hasEmail = !!c.email;
+                const checked = hasEmail && selectedCustomers.has(c.customer_id) ? 'checked' : '';
+                return `
+                  <div class="customer-row ${hasEmail ? '' : 'no-email'}">
+                    <input type="checkbox" ${checked} ${hasEmail ? '' : 'disabled'}
+                      onchange="toggleCustomer('${c.customer_id}', this.checked)"
+                      data-stage="${stage.stage_id}" data-customer="${c.customer_id}">
+                    <span class="customer-name">${c.name}</span>
+                    <span class="customer-email">${hasEmail ? c.email : '<span class="no-email-badge">No email</span>'}</span>
+                    <span class="customer-deal">${c.deal_name}</span>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }).join('');
+
+      updateRecipientCount();
+    }
+
+    function toggleStage(stageId) {
+      const card = $(`.stage-card[data-stage="${stageId}"]`);
+      if (card) card.classList.toggle('collapsed');
+    }
+
+    function toggleCustomer(customerId, checked) {
+      const customersByStage = getCustomersByStage();
+      // Find the customer entry
+      for (const customers of Object.values(customersByStage)) {
+        const c = customers.find(c => c.customer_id === customerId);
+        if (c && c.email) {
+          if (checked) {
+            selectedCustomers.set(customerId, c);
+          } else {
+            selectedCustomers.delete(customerId);
+          }
+          break;
+        }
+      }
+      updateRecipientCount();
+      updateStageCounts();
+    }
+
+    function selectAllStage(stageId) {
+      const customersByStage = getCustomersByStage();
+      const customers = customersByStage[stageId] || [];
+      customers.forEach(c => {
+        if (c.email) selectedCustomers.set(c.customer_id, c);
+      });
+      renderStageGroups();
+    }
+
+    function deselectAllStage(stageId) {
+      const customersByStage = getCustomersByStage();
+      const customers = customersByStage[stageId] || [];
+      customers.forEach(c => selectedCustomers.delete(c.customer_id));
+      renderStageGroups();
+    }
+
+    function updateStageCounts() {
+      const customersByStage = getCustomersByStage();
+      $$('.stage-card').forEach(card => {
+        const stageId = card.dataset.stage;
+        const customers = customersByStage[stageId] || [];
+        const emailCount = customers.filter(c => c.email).length;
+        const stageSelectedCount = customers.filter(c => c.email && selectedCustomers.has(c.customer_id)).length;
+        const countEl = card.querySelector('.stage-count');
+        if (countEl) countEl.textContent = `${stageSelectedCount}/${emailCount} selected`;
+      });
+    }
+
+    function updateRecipientCount() {
+      const count = selectedCustomers.size;
+      $('#recipient-count').textContent = `${count} recipient${count !== 1 ? 's' : ''} selected`;
+      $('#compose-btn').disabled = count === 0;
+    }
+
+    function openComposeModal() {
+      const count = selectedCustomers.size;
+      if (count === 0) return;
+
+      const content = document.createElement('div');
+      content.innerHTML = `
+        <div class="compose-form">
+          <div class="compose-recipient-count">${count} recipient${count !== 1 ? 's' : ''} will receive this email</div>
+
+          <div>
+            <label for="compose-template">Template (optional)</label>
+            <select id="compose-template" onchange="applyTemplate(this.value)">
+              <option value="">-- No template --</option>
+              ${templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+            </select>
+          </div>
+
+          <div>
+            <label for="compose-subject">Subject</label>
+            <input type="text" id="compose-subject" placeholder="Email subject...">
+          </div>
+
+          <div>
+            <label for="compose-body">Body</label>
+            <textarea id="compose-body" placeholder="Email body..."></textarea>
+            <div class="var-tags">
+              <span class="var-tag" onclick="insertVar('first_name')">{{first_name}}</span>
+              <span class="var-tag" onclick="insertVar('customer_name')">{{customer_name}}</span>
+              <span class="var-tag" onclick="insertVar('company_name')">{{company_name}}</span>
+              <span class="var-tag" onclick="insertVar('deal_name')">{{deal_name}}</span>
+            </div>
+          </div>
+
+          <div class="send-progress" id="send-progress" style="display:none;">
+            <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div>
+            <div class="progress-text" id="progress-text">Sending...</div>
+          </div>
+        </div>`;
+
+      const footer = document.createElement('div');
+      footer.className = 'compose-footer';
+      footer.innerHTML = `
+        <button class="btn" onclick="closeModal(this.closest('.modal-overlay'))">Cancel</button>
+        <button class="btn btn-primary" id="send-btn" onclick="sendBulkEmail()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Send to ${count} Recipient${count !== 1 ? 's' : ''}
+        </button>`;
+
+      createModal({ title: 'Compose Bulk Email', content, footer, size: 'lg' });
+    }
+
+    function applyTemplate(templateId) {
+      if (!templateId) {
+        $('#compose-subject').value = '';
+        $('#compose-body').value = '';
+        return;
+      }
+      const tpl = templates.find(t => t.id === templateId);
+      if (tpl) {
+        $('#compose-subject').value = tpl.subject || '';
+        $('#compose-body').value = tpl.body || '';
+      }
+    }
+
+    function insertVar(varName) {
+      const textarea = $('#compose-body');
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      const tag = `{{${varName}}}`;
+      textarea.value = text.substring(0, start) + tag + text.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+      textarea.focus();
+    }
+
+    function replaceVars(text, customer) {
+      return text
+        .replace(/\{\{first_name\}\}/g, customer.first_name || customer.name?.split(' ')[0] || '')
+        .replace(/\{\{customer_name\}\}/g, customer.name || '')
+        .replace(/\{\{company_name\}\}/g, customer.company_name || '')
+        .replace(/\{\{deal_name\}\}/g, customer.deal_name || '');
+    }
+
+    async function sendBulkEmail() {
+      const subject = $('#compose-subject')?.value?.trim();
+      const body = $('#compose-body')?.value?.trim();
+
+      if (!subject || !body) {
+        showToast('Subject and body are required', 'error');
+        return;
+      }
+
+      const recipients = Array.from(selectedCustomers.values());
+      if (recipients.length === 0) return;
+
+      const sendBtn = $('#send-btn');
+      const progressDiv = $('#send-progress');
+      const progressFill = $('#progress-fill');
+      const progressText = $('#progress-text');
+
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Sending...';
+      progressDiv.style.display = 'block';
+
+      const templateSelect = $('#compose-template');
+      const templateId = templateSelect?.value || null;
+      const batchSize = 5;
+      let sent = 0;
+      let failed = 0;
+
+      for (let i = 0; i < recipients.length; i += batchSize) {
+        const batch = recipients.slice(i, i + batchSize);
+
+        await Promise.all(batch.map(async (cust) => {
+          try {
+            const personalizedSubject = replaceVars(subject, cust);
+            const personalizedBody = replaceVars(body, cust);
+
+            const res = await fetch('/.netlify/functions/send-template-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to_email: cust.email,
+                subject: personalizedSubject,
+                body: personalizedBody,
+                template_id: templateId,
+                customer_id: cust.customer_id,
+                deal_id: cust.deal_id,
+                sent_by: user?.name || user?.email || 'admin'
+              })
+            });
+
+            if (res.ok) {
+              sent++;
+            } else {
+              failed++;
+              console.error(`Failed to send to ${cust.email}:`, await res.text());
+            }
+          } catch (err) {
+            failed++;
+            console.error(`Error sending to ${cust.email}:`, err);
+          }
+        }));
+
+        const progress = Math.min(100, Math.round(((i + batch.length) / recipients.length) * 100));
+        progressFill.style.width = progress + '%';
+        progressText.textContent = `Sent ${sent} of ${recipients.length}${failed > 0 ? ` (${failed} failed)` : ''}`;
+
+        // Delay between batches (skip after last batch)
+        if (i + batchSize < recipients.length) {
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+
+      progressFill.style.width = '100%';
+      progressText.textContent = `Done! ${sent} sent${failed > 0 ? `, ${failed} failed` : ''}`;
+      sendBtn.textContent = 'Done';
+
+      if (failed === 0) {
+        showToast(`${sent} email${sent !== 1 ? 's' : ''} sent successfully`, 'success');
+      } else {
+        showToast(`${sent} sent, ${failed} failed`, 'warning');
+      }
+
+      // Reset selections after successful send
+      setTimeout(() => {
+        const overlay = document.querySelector('.modal-overlay');
+        if (overlay) closeModal(overlay);
+        selectedCustomers.clear();
+        renderStageGroups();
+      }, 2000);
+    }
+
+    // Initialize
+    loadData();
+  </script>
+</body>
+</html>
