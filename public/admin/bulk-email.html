@@ -142,7 +142,7 @@
         const supabase = await app.waitForSupabase();
         const [stagesRes, jobsRes, templatesRes] = await Promise.all([
           supabase.from('job_stages').select('*').order('sort_order'),
-          supabase.from('jobs').select('*, customers(id, name, first_name, email, company_name)').order('created_at', { ascending: false }),
+          supabase.from('jobs').select('*, customers(id, name, first_name, email, company)').order('created_at', { ascending: false }),
           supabase.from('email_templates').select('*').order('name')
         ]);
 
@@ -174,7 +174,7 @@
             name: cust.name || '',
             first_name: cust.first_name || '',
             email: cust.email || '',
-            company_name: cust.company_name || '',
+            company_name: cust.company || '',
             deal_name: job.title || `Job #${job.job_number || ''}`,
             deal_id: job.id,
             stage: job.stage
