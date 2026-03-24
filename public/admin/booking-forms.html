@@ -707,6 +707,15 @@
         `;
       }
       
+      if ($('#show-datetime').checked) {
+        html += `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div><label style="font-size:0.8rem;color:#666;">Preferred Date</label><input type="date" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;"></div>
+            <div><label style="font-size:0.8rem;color:#666;">Preferred Time</label><input type="time" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;"></div>
+          </div>
+        `;
+      }
+
       if ($('#show-sms').checked) {
         html += `
           <div style="margin-bottom:16px;padding:12px;background:#f9f9f9;border-radius:8px;font-size:0.75rem;color:#666;">
@@ -714,9 +723,20 @@
           </div>
         `;
       }
-      
+
       html += `<button type="button" style="width:100%;background:${$('#form-color').value};color:white;border:none;padding:12px;border-radius:4px;font-size:1rem;cursor:pointer;">Submit Request</button>`;
-      
+
+      if ($('#show-scheduler').checked) {
+        html += `
+          <div style="margin-top:20px;text-align:center;">
+            <p style="font-size:0.95rem;color:#333;font-weight:500;margin-bottom:12px;">Or schedule an appointment online:</p>
+            <div style="border:2px dashed #ddd;border-radius:8px;padding:32px;color:#999;font-size:0.85rem;">
+              Online Scheduler will appear here
+            </div>
+          </div>
+        `;
+      }
+
       $('#preview-form').innerHTML = html;
     }
     
@@ -733,7 +753,7 @@
       });
       
       // Live preview updates
-      ['form-header-title', 'form-header-desc', 'form-color', 'show-address', 'show-service', 'show-how-heard', 'show-datetime', 'allow-attachments', 'show-sms'].forEach(id => {
+      ['form-header-title', 'form-header-desc', 'form-color', 'show-address', 'show-service', 'show-how-heard', 'show-datetime', 'allow-attachments', 'show-sms', 'show-scheduler'].forEach(id => {
         const el = $('#' + id);
         if (el) el.addEventListener('change', updatePreview);
         if (el) el.addEventListener('input', updatePreview);
