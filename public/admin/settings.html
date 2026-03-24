@@ -37,6 +37,7 @@
           <div class="sidebar-section-title">Lead Capture</div>
           <ul class="sidebar-nav">
             <li class="sidebar-nav-item"><a href="/admin/booking-forms.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Booking Forms</a></li>
+            <li class="sidebar-nav-item"><a href="/schedule" target="_blank" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Online Scheduling</a></li>
             <li class="sidebar-nav-item"><a href="/admin/bulk-email.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/><line x1="2" y1="20" x2="8" y2="14"/><line x1="22" y1="20" x2="16" y2="14"/></svg>Bulk Email</a></li>
           </ul>
         </div>
@@ -418,6 +419,35 @@
             <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
               Let customers book appointments online. Enable types below and configure availability windows.
             </p>
+
+            <!-- Share & Embed -->
+            <div style="margin-bottom: var(--space-xl); padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-soft);">
+              <label class="form-label" style="font-weight: 600; margin-bottom: var(--space-md);">Share & Embed</label>
+
+              <div class="form-group" style="margin-bottom: var(--space-md);">
+                <label class="form-label" style="font-size: 0.85rem;">Direct Link</label>
+                <div style="display: flex; gap: var(--space-sm);">
+                  <input type="text" id="schedule-link" class="form-input" readonly style="flex:1;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyScheduleText('schedule-link')">Copy</button>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: var(--space-md);">
+                <label class="form-label" style="font-size: 0.85rem;">Text Message</label>
+                <div style="display: flex; gap: var(--space-sm);">
+                  <input type="text" id="schedule-sms" class="form-input" readonly style="flex:1;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyScheduleText('schedule-sms')">Copy</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.85rem;">Iframe Embed Code</label>
+                <div style="display: flex; gap: var(--space-sm);">
+                  <input type="text" id="schedule-iframe" class="form-input" readonly style="flex:1; font-family: monospace; font-size: 0.8rem;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyScheduleText('schedule-iframe')">Copy</button>
+                </div>
+              </div>
+            </div>
 
             <!-- Blocked Dates -->
             <div style="margin-bottom: var(--space-xl);">
@@ -853,7 +883,20 @@
       document.execCommand('copy');
       showToast('Portal link copied to clipboard', 'success');
     }
-    
+
+    // Scheduling share fields
+    const scheduleUrl = siteUrl + '/schedule';
+    document.getElementById('schedule-link').value = scheduleUrl;
+    document.getElementById('schedule-sms').value = 'Book an appointment online at your convenience: ' + scheduleUrl;
+    document.getElementById('schedule-iframe').value = '<iframe src="' + scheduleUrl + '" width="100%" height="700" frameborder="0"></iframe>';
+
+    function copyScheduleText(elementId) {
+      const el = document.getElementById(elementId);
+      el.select();
+      document.execCommand('copy');
+      showToast('Copied to clipboard', 'success');
+    }
+
     // Logo upload handling
     document.getElementById('logo-upload').addEventListener('change', async function(e) {
       const file = e.target.files[0];
