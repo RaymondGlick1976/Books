@@ -136,6 +136,13 @@
       .calendar-day-number { width: 18px; height: 18px; font-size: 0.6rem; }
       .pipeline-column { flex: 0 0 92vw; }
     }
+
+    /* Deal View Modal */
+    .deal-view-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm) var(--space-lg); margin-bottom: var(--space-lg); }
+    .deal-view-field label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-text-muted); font-weight: 600; display: block; }
+    .deal-view-field p { font-size: 0.875rem; color: var(--color-text); margin: 2px 0 0; }
+    .deal-view-section { margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: 1px solid var(--color-border); }
+    .deal-view-section-title { font-weight: 600; font-size: 0.9rem; color: var(--color-text); margin-bottom: var(--space-md); }
   </style>
 </head>
 <body>
@@ -335,6 +342,52 @@
     </div>
   </div>
   
+  <!-- Deal View Modal -->
+  <div id="deal-view-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="deal-view-title">Deal Details</h3>
+        <button class="modal-close" onclick="closeDealView()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="deal-view-grid" id="deal-view-info"></div>
+        <div id="deal-view-events" class="deal-view-section" style="display:none;">
+          <div class="deal-view-section-title">Scheduled Dates</div>
+          <div id="deal-view-events-list"></div>
+        </div>
+        <div id="deal-view-finishes" class="deal-view-section" style="display:none;">
+          <div class="deal-view-section-title">Finishes</div>
+          <div id="deal-view-finishes-list"></div>
+        </div>
+        <div id="deal-view-items" class="deal-view-section" style="display:none;">
+          <div class="deal-view-section-title">Deal Items</div>
+          <div id="deal-view-items-list"></div>
+        </div>
+        <div id="deal-view-notes" class="deal-view-section" style="display:none;">
+          <div class="deal-view-section-title">Notes</div>
+          <div id="deal-view-notes-content" style="white-space:pre-wrap;font-size:0.875rem;color:var(--color-text);"></div>
+        </div>
+        <div id="view-submission-section" class="deal-view-section" style="display:none;">
+          <div class="deal-view-section-title">Form Submission</div>
+          <div id="view-submission-content"></div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <div style="display: flex; gap: var(--space-sm);">
+          <button type="button" class="btn btn-secondary" id="view-print-btn" onclick="printDeal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print
+          </button>
+          <button type="button" class="btn btn-secondary" id="view-email-btn" style="display:none;" onclick="openDealEmailModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Send Email
+          </button>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="editFromView()">Edit</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Appointment Modal -->
   <div id="appt-modal" class="modal-overlay">
     <div class="modal">
@@ -786,8 +839,8 @@
           draggedDeal = null;
           isDragging = false;
         } else {
-          // It was a tap, not a drag - open the modal
-          openDealModal(deal);
+          // It was a tap, not a drag - open the view modal
+          openDealView(deal);
         }
       });
       
@@ -807,7 +860,7 @@
       card.addEventListener('click', (e) => {
         // Only handle click if it wasn't a touch event
         if (e.pointerType !== 'touch') {
-          openDealModal(deal);
+          openDealView(deal);
         }
       });
       
@@ -863,7 +916,116 @@
     
     function closeDealModal() { $('#deal-modal').classList.remove('active'); }
 
-    async function loadSubmissionData(dealId) {
+    function openDealView(deal) {
+      currentDeal = deal;
+
+      // Populate arrays for print/email
+      currentDealEvents = dealEvents.filter(e => e.job_id === deal.id).map(e => ({
+        id: e.id, event_type_id: e.event_type_id, event_date: e.event_date,
+        event_end_date: e.event_end_date || '', event_name: e.event_name || '',
+        event_color: e.event_color || '', notes: e.notes || '', isExisting: true
+      }));
+      currentDealItems = deal.job_items || [];
+      currentDealFinishes = deal.job_finishes || [];
+
+      const customer = deal.customers;
+      const stage = stages.find(s => s.stage_id === deal.stage);
+      const quote = quotes.find(q => q.id === deal.quote_id);
+
+      // Title
+      $('#deal-view-title').textContent = deal.name || 'Untitled Deal';
+
+      // Info grid
+      let infoHtml = '';
+      if (deal.job_number) {
+        infoHtml += `<div class="deal-view-field"><label>Job Number</label><p>${deal.job_number}</p></div>`;
+      }
+      infoHtml += `<div class="deal-view-field"><label>Customer</label><p>${customer ? `<a href="/admin/customers.html?id=${deal.customer_id}" style="color:var(--color-primary);text-decoration:none;font-weight:500;">${customer.name}</a>` : '<span class="text-muted">—</span>'}</p></div>`;
+      infoHtml += `<div class="deal-view-field"><label>Stage</label><p><span class="badge" style="background:${stage?.color || '#666'};color:white;">${stage?.label || deal.stage}</span></p></div>`;
+      if (deal.estimated_value) {
+        infoHtml += `<div class="deal-view-field"><label>Estimated Value</label><p style="font-weight:600;color:var(--color-primary);">${formatCurrency(deal.estimated_value)}</p></div>`;
+      }
+      if (quote) {
+        infoHtml += `<div class="deal-view-field"><label>Linked Quote</label><p><a href="/admin/quote-builder.html?id=${quote.id}" style="color:var(--color-primary);text-decoration:none;">${quote.quote_number} - ${quote.title}</a></p></div>`;
+      }
+      $('#deal-view-info').innerHTML = infoHtml;
+
+      // Events
+      if (currentDealEvents.length > 0) {
+        $('#deal-view-events').style.display = '';
+        $('#deal-view-events-list').innerHTML = currentDealEvents.map(e => {
+          const et = eventTypes.find(t => t.id === e.event_type_id);
+          const eventColor = e.event_color || et?.color || '#6366f1';
+          const eventLabel = e.event_name || et?.name || 'Event';
+          const dateDisplay = e.event_end_date && e.event_end_date !== e.event_date
+            ? `${formatDate(e.event_date)} - ${formatDate(e.event_end_date)}`
+            : formatDate(e.event_date);
+          return `<div style="border-left: 3px solid ${eventColor}; padding: var(--space-xs) var(--space-sm); margin-bottom: var(--space-xs);">
+            <span style="font-weight:600;color:${eventColor};">${et?.icon || '📅'} ${eventLabel}</span>
+            <span class="text-muted" style="margin-left:var(--space-sm);">${dateDisplay}</span>
+          </div>`;
+        }).join('');
+      } else {
+        $('#deal-view-events').style.display = 'none';
+      }
+
+      // Finishes
+      if (currentDealFinishes.length > 0) {
+        $('#deal-view-finishes').style.display = '';
+        $('#deal-view-finishes-list').innerHTML = currentDealFinishes.map(f => {
+          const details = [f.color, f.sheen, f.vendor].filter(Boolean).join(' / ');
+          return `<div style="background:var(--color-bg-soft);border-radius:var(--radius-md);padding:var(--space-sm);margin-bottom:var(--space-xs);">
+            <span style="font-weight:600;">${f.name || 'Unnamed'}</span>
+            ${details ? `<span class="text-muted" style="margin-left:var(--space-sm);">${details}</span>` : ''}
+          </div>`;
+        }).join('');
+      } else {
+        $('#deal-view-finishes').style.display = 'none';
+      }
+
+      // Items
+      if (currentDealItems.length > 0) {
+        $('#deal-view-items').style.display = '';
+        $('#deal-view-items-list').innerHTML = currentDealItems.map(i => {
+          return `<div style="display:flex;justify-content:space-between;padding:var(--space-xs) 0;border-bottom:1px solid var(--color-border-light);">
+            <span>${i.name || 'Unnamed'}</span>
+            ${i.quantity ? `<span class="text-muted">Qty: ${i.quantity}</span>` : ''}
+          </div>`;
+        }).join('');
+      } else {
+        $('#deal-view-items').style.display = 'none';
+      }
+
+      // Notes
+      if (deal.notes) {
+        $('#deal-view-notes').style.display = '';
+        $('#deal-view-notes-content').textContent = deal.notes;
+      } else {
+        $('#deal-view-notes').style.display = 'none';
+      }
+
+      // Email button
+      $('#view-email-btn').style.display = customer?.email ? 'block' : 'none';
+
+      // Submission data
+      $('#view-submission-section').style.display = 'none';
+      $('#view-submission-content').innerHTML = '';
+      loadSubmissionData(deal.id, '#view-submission-content', '#view-submission-section');
+
+      // Open modal
+      $('#deal-view-modal').classList.add('active');
+    }
+
+    function closeDealView() { $('#deal-view-modal').classList.remove('active'); }
+
+    function editFromView() {
+      closeDealView();
+      openDealModal(currentDeal);
+    }
+
+    async function loadSubmissionData(dealId, contentSel, sectionSel) {
+      if (!contentSel) contentSel = '#submission-content';
+      if (!sectionSel) sectionSel = '#submission-section';
       try {
         const supabase = await app.waitForSupabase();
         const { data: submission } = await supabase
@@ -925,8 +1087,8 @@
           html += '</div></div>';
         }
 
-        $('#submission-content').innerHTML = html;
-        $('#submission-section').style.display = '';
+        $(contentSel).innerHTML = html;
+        $(sectionSel).style.display = '';
       } catch (err) {
         // No submission for this deal — that's fine, keep section hidden
       }
@@ -1566,7 +1728,7 @@
       const maxVisible = 3;
       let html = dayEvents.slice(0, maxVisible).map(e => {
         const bgColor = hexToRgba(e.color, 0.2);
-        const onclick = e.type === 'appointment' ? `openApptModal(null, appointments.find(a => a.id === '${e.data.id}'))` : `openDealModal(deals.find(d => d.id === '${e.data.deal.id}'))`;
+        const onclick = e.type === 'appointment' ? `openApptModal(null, appointments.find(a => a.id === '${e.data.id}'))` : `openDealView(deals.find(d => d.id === '${e.data.deal.id}'))`;
         // For range events, show icon on start, just label on middle/end
         const showIcon = !e.isRange || e.isStart;
         const displayLabel = showIcon ? `${e.icon} ${e.label}` : e.label;
@@ -1583,7 +1745,7 @@
       $('#deals-table-body').innerHTML = filteredDeals.map(d => {
         const stage = stages.find(s => s.stage_id === d.stage), thisEvents = dealEvents.filter(e => e.job_id === d.id);
         const nextEvent = thisEvents.sort((a,b) => new Date(a.event_date) - new Date(b.event_date))[0];
-        return `<tr><td><strong>${d.name}</strong>${d.job_number ? `<br><span class="text-muted text-sm">${d.job_number}</span>` : ''}</td><td>${d.customers?.name || '—'}</td><td><span class="badge" style="background:${stage?.color || '#666'};color:white;">${stage?.label || d.stage}</span></td><td>${nextEvent ? formatDate(nextEvent.event_date) : '—'}</td><td>${d.estimated_value ? formatCurrency(d.estimated_value) : '—'}</td><td><button class="btn btn-sm btn-secondary" onclick="openDealModal(deals.find(x => x.id === '${d.id}'))">Edit</button></td></tr>`;
+        return `<tr><td><strong>${d.name}</strong>${d.job_number ? `<br><span class="text-muted text-sm">${d.job_number}</span>` : ''}</td><td>${d.customers?.name || '—'}</td><td><span class="badge" style="background:${stage?.color || '#666'};color:white;">${stage?.label || d.stage}</span></td><td>${nextEvent ? formatDate(nextEvent.event_date) : '—'}</td><td>${d.estimated_value ? formatCurrency(d.estimated_value) : '—'}</td><td><button class="btn btn-sm btn-secondary" onclick="openDealView(deals.find(x => x.id === '${d.id}'))">View</button></td></tr>`;
       }).join('');
     }
     
@@ -1622,7 +1784,7 @@
     function openDealEmailModal() {
       if (!currentDeal) return;
       
-      const stage = $('#deal-stage').value;
+      const stage = $('#deal-modal').classList.contains('active') ? $('#deal-stage').value : currentDeal.stage;
       const template = emailTemplates.find(t => t.template_type === 'deal_stage' && t.stage_id === stage);
       
       if (!template) {
