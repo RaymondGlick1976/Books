@@ -28,6 +28,17 @@
   to = "/book.html"
   status = 200
 
+# Online scheduling
+[[redirects]]
+  from = "/schedule"
+  to = "/schedule.html"
+  status = 200
+
+[[redirects]]
+  from = "/schedule/*"
+  to = "/schedule.html"
+  status = 200
+
 # CORS headers for API functions (cross-origin embeds)
 [[headers]]
   for = "/.netlify/functions/*"

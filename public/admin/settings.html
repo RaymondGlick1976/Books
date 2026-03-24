@@ -408,6 +408,37 @@
           </div>
         </div>
         
+        <!-- Online Scheduling -->
+        <div class="card mb-xl">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 class="card-title">Online Scheduling</h3>
+            <a href="/schedule" target="_blank" class="btn btn-secondary btn-sm">Preview Page</a>
+          </div>
+          <div class="card-body">
+            <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
+              Let customers book appointments online. Enable types below and configure availability windows.
+            </p>
+
+            <!-- Blocked Dates -->
+            <div style="margin-bottom: var(--space-xl);">
+              <label class="form-label" style="font-weight: 600;">Blocked Dates</label>
+              <p style="color: var(--color-text-muted); font-size: 0.8rem; margin-bottom: var(--space-sm);">Days when no online bookings are allowed (holidays, vacations, etc.)</p>
+              <div style="display: flex; gap: var(--space-sm); align-items: center; margin-bottom: var(--space-sm);">
+                <input type="date" id="scheduling-blocked-date-input" class="form-input" style="width: auto;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addBlockedDate()">Add</button>
+              </div>
+              <div id="scheduling-blocked-dates" style="display: flex; flex-wrap: wrap; gap: var(--space-xs);"></div>
+            </div>
+
+            <!-- Per-type config -->
+            <div id="scheduling-types-list">
+              <div class="loading-spinner"></div>
+            </div>
+
+            <button type="button" class="btn btn-primary" onclick="saveSchedulingConfig()" style="margin-top: var(--space-lg);">Save Scheduling Settings</button>
+          </div>
+        </div>
+
         <!-- Scheduled Date Types (Job Event Types) -->
         <div class="card mb-xl">
           <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -1521,6 +1552,161 @@
       }
     };
     
+    // ==========================================
+    // ONLINE SCHEDULING CONFIG
+    // ==========================================
+    let schedulingConfig = { blocked_dates: [], types: {} };
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    function loadSchedulingConfig(settingsData) {
+      const sched = settingsData?.find(s => s.key === 'scheduling');
+      if (sched?.value) {
+        schedulingConfig = sched.value;
+        if (!schedulingConfig.blocked_dates) schedulingConfig.blocked_dates = [];
+        if (!schedulingConfig.types) schedulingConfig.types = {};
+      }
+      renderBlockedDates();
+      renderSchedulingTypes();
+    }
+
+    function renderBlockedDates() {
+      const container = $('#scheduling-blocked-dates');
+      if (!schedulingConfig.blocked_dates.length) {
+        container.innerHTML = '<span style="color: var(--color-text-muted); font-size: 0.8rem;">No blocked dates</span>';
+        return;
+      }
+      container.innerHTML = schedulingConfig.blocked_dates
+        .sort()
+        .map((d, i) => `<span style="display: inline-flex; align-items: center; gap: 4px; background: var(--color-bg-soft); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem;">${d}<button type="button" onclick="removeBlockedDate(${i})" style="background: none; border: none; cursor: pointer; color: var(--color-text-muted); font-size: 1rem; line-height: 1; padding: 0 0 0 4px;">&times;</button></span>`)
+        .join('');
+    }
+
+    window.addBlockedDate = () => {
+      const input = $('#scheduling-blocked-date-input');
+      const val = input.value;
+      if (!val) return;
+      if (!schedulingConfig.blocked_dates.includes(val)) {
+        schedulingConfig.blocked_dates.push(val);
+        renderBlockedDates();
+      }
+      input.value = '';
+    };
+
+    window.removeBlockedDate = (idx) => {
+      schedulingConfig.blocked_dates.splice(idx, 1);
+      renderBlockedDates();
+    };
+
+    function renderSchedulingTypes() {
+      const container = $('#scheduling-types-list');
+      if (!appointmentTypes.length) {
+        container.innerHTML = '<p class="text-muted">No appointment types defined. Create appointment types above first.</p>';
+        return;
+      }
+      container.innerHTML = appointmentTypes.map(at => {
+        const cfg = schedulingConfig.types[at.id] || {};
+        const enabled = cfg.enabled || false;
+        const days = cfg.days || [1,2,3,4,5];
+        const startTime = cfg.start_time || '09:00';
+        const endTime = cfg.end_time || '17:00';
+        const slotDuration = cfg.slot_duration || 60;
+        const buffer = cfg.buffer_minutes || 0;
+        const leadTime = cfg.lead_time_hours || 24;
+        const maxAdvance = cfg.max_advance_days || 60;
+
+        return `
+          <div style="border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-md); margin-bottom: var(--space-md); ${enabled ? 'border-left: 3px solid var(--color-primary);' : ''}">
+            <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: ${enabled ? 'var(--space-md)' : '0'};">
+              <span style="font-size: 1.25rem;">${at.icon || '📅'}</span>
+              <span style="flex: 1; font-weight: 500;">${at.name}</span>
+              <label style="display: flex; align-items: center; gap: var(--space-xs); cursor: pointer;">
+                <input type="checkbox" class="sched-enabled" data-type-id="${at.id}" ${enabled ? 'checked' : ''} onchange="toggleSchedulingType('${at.id}', this.checked)">
+                Enable online booking
+              </label>
+            </div>
+            <div class="sched-config-${at.id}" style="display: ${enabled ? 'block' : 'none'};">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
+                <div>
+                  <label class="form-label" style="font-size: 0.8rem;">Available Days</label>
+                  <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs);">
+                    ${dayNames.map((name, i) => {
+                      const dayNum = i + 1;
+                      return `<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; cursor: pointer;"><input type="checkbox" class="sched-day-${at.id}" value="${dayNum}" ${days.includes(dayNum) ? 'checked' : ''}>${name}</label>`;
+                    }).join('')}
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.8rem;">Slot Duration</label>
+                  <select class="form-input sched-duration-${at.id}" style="padding: 6px 8px;">
+                    ${[15,30,45,60,90,120].map(m => `<option value="${m}" ${slotDuration === m ? 'selected' : ''}>${m} min</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: var(--space-md);">
+                <div>
+                  <label class="form-label" style="font-size: 0.8rem;">Start Time</label>
+                  <input type="time" class="form-input sched-start-${at.id}" value="${startTime}" style="padding: 6px 8px;">
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.8rem;">End Time</label>
+                  <input type="time" class="form-input sched-end-${at.id}" value="${endTime}" style="padding: 6px 8px;">
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.8rem;">Buffer Between</label>
+                  <select class="form-input sched-buffer-${at.id}" style="padding: 6px 8px;">
+                    ${[0,15,30,45,60].map(m => `<option value="${m}" ${buffer === m ? 'selected' : ''}>${m} min</option>`).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.8rem;">Lead Time</label>
+                  <select class="form-input sched-lead-${at.id}" style="padding: 6px 8px;">
+                    ${[1,2,4,8,12,24,48,72].map(h => `<option value="${h}" ${leadTime === h ? 'selected' : ''}>${h}h</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <div style="margin-top: var(--space-md);">
+                <label class="form-label" style="font-size: 0.8rem;">Max Advance Booking (days)</label>
+                <input type="number" class="form-input sched-maxadvance-${at.id}" value="${maxAdvance}" min="1" max="365" style="padding: 6px 8px; width: 100px;">
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.toggleSchedulingType = (typeId, checked) => {
+      const configDiv = document.querySelector(`.sched-config-${typeId}`);
+      if (configDiv) configDiv.style.display = checked ? 'block' : 'none';
+      // Update border style on parent
+      const parentDiv = configDiv?.parentElement;
+      if (parentDiv) parentDiv.style.borderLeft = checked ? '3px solid var(--color-primary)' : '';
+    };
+
+    window.saveSchedulingConfig = async () => {
+      const config = {
+        blocked_dates: schedulingConfig.blocked_dates,
+        types: {}
+      };
+      appointmentTypes.forEach(at => {
+        const enabledEl = document.querySelector(`.sched-enabled[data-type-id="${at.id}"]`);
+        if (!enabledEl) return;
+        const enabled = enabledEl.checked;
+        const days = Array.from(document.querySelectorAll(`.sched-day-${at.id}:checked`)).map(cb => parseInt(cb.value));
+        config.types[at.id] = {
+          enabled,
+          days,
+          start_time: document.querySelector(`.sched-start-${at.id}`)?.value || '09:00',
+          end_time: document.querySelector(`.sched-end-${at.id}`)?.value || '17:00',
+          slot_duration: parseInt(document.querySelector(`.sched-duration-${at.id}`)?.value) || 60,
+          buffer_minutes: parseInt(document.querySelector(`.sched-buffer-${at.id}`)?.value) || 0,
+          lead_time_hours: parseInt(document.querySelector(`.sched-lead-${at.id}`)?.value) || 24,
+          max_advance_days: parseInt(document.querySelector(`.sched-maxadvance-${at.id}`)?.value) || 60
+        };
+      });
+      schedulingConfig = config;
+      await saveSetting('scheduling', config);
+    };
+
     // ==========================================
     // SCHEDULED DATE TYPES (Job Event Types)
     // ==========================================
@@ -2883,6 +3069,9 @@
       // Process appointment types
       appointmentTypes = apptTypesRes.data || [];
       renderAppointmentTypes();
+
+      // Load scheduling config (depends on appointmentTypes being set)
+      loadSchedulingConfig(settingsRes.data);
       
       // Process event types (scheduled date types)
       eventTypes = eventTypesRes.data || [];
