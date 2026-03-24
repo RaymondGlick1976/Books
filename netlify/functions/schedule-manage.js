@@ -158,14 +158,16 @@ exports.handler = async (event) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing date or time' }) };
       }
 
-      // Load scheduling settings and appointment type
-      const [schedulingResult, typeResult] = await Promise.all([
+      // Load scheduling settings, appointment type, and company settings
+      const [schedulingResult, typeResult, companyResult] = await Promise.all([
         supabase.from('settings').select('value').eq('key', 'scheduling').maybeSingle(),
-        supabase.from('appointment_types').select('*').eq('id', existing.appointment_type_id).single()
+        supabase.from('appointment_types').select('*').eq('id', existing.appointment_type_id).single(),
+        supabase.from('settings').select('value').eq('key', 'company').maybeSingle()
       ]);
 
       const scheduling = schedulingResult.data?.value || {};
       const appointmentType = typeResult.data;
+      const company = companyResult.data?.value || {};
 
       if (!appointmentType) {
         return { statusCode: 404, headers, body: JSON.stringify({ error: 'Appointment type not found' }) };
@@ -267,12 +269,16 @@ exports.handler = async (event) => {
       if (existing.gcal_event_id) {
         try {
           const { gcalRequest } = require('./gcal-utils');
-          const apptDateTime = new Date(`${data.date}T${data.time}:00`);
-          const endDateTime = new Date(apptDateTime.getTime() + config.slot_duration * 60 * 1000);
+          const startMinutes = parseInt(data.time.split(':')[0]) * 60 + parseInt(data.time.split(':')[1]);
+          const endMinutes = startMinutes + config.slot_duration;
+          const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
+          const endMin = String(endMinutes % 60).padStart(2, '0');
+          const endTime = `${endHour}:${endMin}`;
+          const timeZone = company.timezone || 'America/New_York';
 
           await gcalRequest('PATCH', `/calendars/primary/events/${existing.gcal_event_id}`, {
-            start: { dateTime: apptDateTime.toISOString() },
-            end: { dateTime: endDateTime.toISOString() }
+            start: { dateTime: `${data.date}T${data.time}:00`, timeZone },
+            end: { dateTime: `${data.date}T${endTime}:00`, timeZone }
           });
           console.log('GCal event updated:', existing.gcal_event_id);
         } catch (gcalErr) {

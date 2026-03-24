@@ -286,13 +286,18 @@ exports.handler = async (event) => {
     // 5b. Create Google Calendar event (don't fail booking if GCal fails)
     try {
       const { gcalRequest } = require('./gcal-utils');
-      const apptDateTime = new Date(`${data.date}T${data.time}:00`);
-      const endDateTime = new Date(apptDateTime.getTime() + config.slot_duration * 60 * 1000);
+      // Build end time from start + duration
+      const startMinutes = parseInt(data.time.split(':')[0]) * 60 + parseInt(data.time.split(':')[1]);
+      const endMinutes = startMinutes + config.slot_duration;
+      const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
+      const endMin = String(endMinutes % 60).padStart(2, '0');
+      const endTime = `${endHour}:${endMin}`;
+      const timeZone = company.timezone || 'America/New_York';
 
       const eventBody = {
         summary: `${typeName} - ${data.first_name} ${data.last_name}`,
-        start: { dateTime: apptDateTime.toISOString() },
-        end: { dateTime: endDateTime.toISOString() },
+        start: { dateTime: `${data.date}T${data.time}:00`, timeZone },
+        end: { dateTime: `${data.date}T${endTime}:00`, timeZone },
         description: `Customer: ${data.first_name} ${data.last_name}\nEmail: ${data.email}\nPhone: ${data.phone || 'N/A'}${data.notes ? '\nNotes: ' + data.notes : ''}`
       };
 
