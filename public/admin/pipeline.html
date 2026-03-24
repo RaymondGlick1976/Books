@@ -940,7 +940,7 @@
       if (deal.job_number) {
         infoHtml += `<div class="deal-view-field"><label>Job Number</label><p>${deal.job_number}</p></div>`;
       }
-      infoHtml += `<div class="deal-view-field"><label>Customer</label><p>${customer ? `<a href="/admin/customers.html?id=${deal.customer_id}" style="color:var(--color-primary);text-decoration:none;font-weight:500;">${customer.name}</a>` : '<span class="text-muted">—</span>'}</p></div>`;
+      infoHtml += `<div class="deal-view-field"><label>Customer</label><p>${customer ? `<a href="javascript:void(0)" onclick="viewCustomerDetail('${deal.customer_id}')" style="color:var(--color-primary);text-decoration:none;font-weight:500;">${customer.name}</a>` : '<span class="text-muted">—</span>'}</p></div>`;
       infoHtml += `<div class="deal-view-field"><label>Stage</label><p><span class="badge" style="background:${stage?.color || '#666'};color:white;">${stage?.label || deal.stage}</span></p></div>`;
       if (deal.estimated_value) {
         infoHtml += `<div class="deal-view-field"><label>Estimated Value</label><p style="font-weight:600;color:var(--color-primary);">${formatCurrency(deal.estimated_value)}</p></div>`;
@@ -1094,9 +1094,60 @@
       }
     }
 
+    window.viewCustomerDetail = async (customerId) => {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: customer, error } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('id', customerId)
+          .single();
+        if (error || !customer) { showToast('Customer not found', 'error'); return; }
+
+        const fieldStyle = 'font-size:0.7rem;text-transform:uppercase;letter-spacing:0.03em;color:var(--color-text-muted);font-weight:600;';
+        const addr = [customer.address, customer.city, customer.state, customer.zip].filter(Boolean);
+        const addrDisplay = addr.length ? addr.join(', ') : '—';
+        const mapsUrl = addr.length ? `https://maps.google.com/?q=${encodeURIComponent(addr.join(', '))}` : null;
+
+        const content = createElement('div');
+        content.innerHTML = `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md) var(--space-xl);">
+            <div>
+              <div style="${fieldStyle}">Email</div>
+              <div style="margin-top:2px;">${customer.email ? `<a href="mailto:${customer.email}">${customer.email}</a>` : '—'}</div>
+            </div>
+            <div>
+              <div style="${fieldStyle}">Phone</div>
+              <div style="margin-top:2px;">${customer.phone ? `<a href="tel:${customer.phone}">${customer.phone}</a>` : '—'}</div>
+            </div>
+            <div style="grid-column:1/-1;">
+              <div style="${fieldStyle}">Address</div>
+              <div style="margin-top:2px;">${mapsUrl ? `<a href="${mapsUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:4px;">${addrDisplay}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></a>` : addrDisplay}</div>
+            </div>
+            ${customer.company ? `<div><div style="${fieldStyle}">Company</div><div style="margin-top:2px;">${customer.company}</div></div>` : ''}
+            ${customer.lead_source ? `<div><div style="${fieldStyle}">Lead Source</div><div style="margin-top:2px;"><span class="badge badge-info">${customer.lead_source}</span></div></div>` : ''}
+            ${customer.notes ? `<div style="grid-column:1/-1;"><div style="${fieldStyle}">Notes</div><div style="margin-top:2px;white-space:pre-wrap;">${customer.notes}</div></div>` : ''}
+          </div>
+        `;
+
+        const footer = createElement('div', { className: 'btn-group' });
+        const closeBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Close' });
+        const fullBtn = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: 'Open in Customers' });
+        footer.appendChild(closeBtn);
+        footer.appendChild(fullBtn);
+
+        const modal = createModal({ title: customer.name, content, footer, size: 'lg' });
+        closeBtn.addEventListener('click', () => closeModal(modal));
+        fullBtn.addEventListener('click', () => { window.location.href = '/admin/customers.html'; });
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to load customer', 'error');
+      }
+    };
+
     function printDeal() {
       if (!currentDeal) return;
-      
+
       const deal = currentDeal;
       const customer = customers.find(c => c.id === deal.customer_id);
       const stage = stages.find(s => s.stage_id === deal.stage);
