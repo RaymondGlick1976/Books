@@ -701,12 +701,13 @@
                   <label class="form-label">Appointment Reminder Email</label>
                   <select id="reminder-hours" class="form-input">
                     <option value="0">None (disabled)</option>
+                    <option value="0.2">12 minutes before</option>
                     <option value="1">1 hour before</option>
                     <option value="4">4 hours before</option>
                     <option value="24" selected>24 hours before</option>
                     <option value="48">48 hours before</option>
                   </select>
-                  <div class="form-help">Send customers a reminder email before their appointment</div>
+                  <div class="form-help">Default reminder timing. Can be overridden per appointment type in Scheduling Settings below.</div>
                 </div>
                 <button type="submit" class="btn btn-primary">Save Notification Settings</button>
               </div>
@@ -1839,6 +1840,17 @@
           }
         }
 
+        // Reminder override
+        const reminderOverrideEl = document.querySelector(`.sched-reminder-override-${at.id}`);
+        if (reminderOverrideEl) {
+          if (reminderOverrideEl.checked) {
+            const reminderValEl = document.querySelector(`.sched-reminder-${at.id}`);
+            cfg.reminder_hours = reminderValEl ? parseFloat(reminderValEl.value) : null;
+          } else {
+            cfg.reminder_hours = null;
+          }
+        }
+
         // Snapshot schedule windows from DOM
         if (!cfg.schedule) cfg.schedule = normalizeTypeSchedule(cfg);
         for (let d = 1; d <= 7; d++) {
@@ -1874,6 +1886,8 @@
         const leadTime = cfg.lead_time_hours || 24;
         const hasMaxAdvanceOverride = cfg.max_advance_days != null;
         const maxAdvance = cfg.max_advance_days || 60;
+        const hasReminderOverride = cfg.reminder_hours != null;
+        const reminderHours = cfg.reminder_hours || 24;
 
         const scheduleRows = dayNames.map((name, i) => {
           const dayNum = i + 1;
@@ -1934,12 +1948,12 @@
                 </div>
               </div>
 
-              <!-- Lead time & max advance overrides -->
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+              <!-- Lead time, max advance, & reminder overrides -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md);">
                 <div>
                   <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
                     <input type="checkbox" class="sched-lead-override-${at.id}" ${hasLeadOverride ? 'checked' : ''} onchange="toggleLeadOverride('${at.id}', this.checked)">
-                    Override global lead time
+                    Override lead time
                   </label>
                   <div class="sched-lead-input-${at.id}" style="display: ${hasLeadOverride ? 'block' : 'none'};">
                     <select class="form-input sched-lead-${at.id}" style="padding: 6px 8px;">
@@ -1950,10 +1964,21 @@
                 <div>
                   <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
                     <input type="checkbox" class="sched-maxadvance-override-${at.id}" ${hasMaxAdvanceOverride ? 'checked' : ''} onchange="toggleMaxAdvanceOverride('${at.id}', this.checked)">
-                    Override global max advance
+                    Override max advance
                   </label>
                   <div class="sched-maxadvance-input-${at.id}" style="display: ${hasMaxAdvanceOverride ? 'block' : 'none'};">
                     <input type="number" class="form-input sched-maxadvance-${at.id}" value="${maxAdvance}" min="1" max="365" style="padding: 6px 8px; width: 100px;">
+                  </div>
+                </div>
+                <div>
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
+                    <input type="checkbox" class="sched-reminder-override-${at.id}" ${hasReminderOverride ? 'checked' : ''} onchange="toggleReminderOverride('${at.id}', this.checked)">
+                    Override reminder
+                  </label>
+                  <div class="sched-reminder-input-${at.id}" style="display: ${hasReminderOverride ? 'block' : 'none'};">
+                    <select class="form-input sched-reminder-${at.id}" style="padding: 6px 8px;">
+                      ${[{v:0,l:'None'},{v:0.2,l:'12 min'},{v:1,l:'1h'},{v:4,l:'4h'},{v:24,l:'24h'},{v:48,l:'48h'}].map(o => `<option value="${o.v}" ${reminderHours === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1977,6 +2002,11 @@
 
     window.toggleMaxAdvanceOverride = (typeId, checked) => {
       const inputDiv = document.querySelector(`.sched-maxadvance-input-${typeId}`);
+      if (inputDiv) inputDiv.style.display = checked ? 'block' : 'none';
+    };
+
+    window.toggleReminderOverride = (typeId, checked) => {
+      const inputDiv = document.querySelector(`.sched-reminder-input-${typeId}`);
       if (inputDiv) inputDiv.style.display = checked ? 'block' : 'none';
     };
 

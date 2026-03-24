@@ -31,30 +31,35 @@ exports.handler = async (event) => {
   );
 
   try {
-    // 1. Load notification settings to get reminder_hours
-    const { data: notifSetting } = await supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'notifications')
-      .maybeSingle();
+    // 1. Load notification + scheduling settings
+    const [notifResult, schedulingResult] = await Promise.all([
+      supabase.from('settings').select('value').eq('key', 'notifications').maybeSingle(),
+      supabase.from('settings').select('value').eq('key', 'scheduling').maybeSingle()
+    ]);
 
-    const notifications = notifSetting?.value || {};
-    const reminderHours = notifications.reminder_hours;
+    const notifications = notifResult.data?.value || {};
+    const scheduling = schedulingResult.data?.value || {};
+    const globalReminderHours = notifications.reminder_hours;
 
-    // If reminder_hours is 0, null, or undefined — reminders disabled
-    if (!reminderHours) {
-      console.log('Appointment reminders disabled (reminder_hours not set)');
+    // If global reminder_hours is 0/null/undefined AND no per-type overrides exist, skip
+    const typeConfigs = scheduling.types || {};
+    const hasAnyTypeReminder = Object.values(typeConfigs).some(tc => tc.reminder_hours != null && tc.reminder_hours > 0);
+    if (!globalReminderHours && !hasAnyTypeReminder) {
+      console.log('Appointment reminders disabled (no global or per-type reminder configured)');
       return { statusCode: 200, body: JSON.stringify({ sent: 0, message: 'Reminders disabled' }) };
     }
 
-    // 2. Calculate the reminder window
-    // We want appointments where appointment datetime is between NOW and NOW + reminder_hours
-    // AND reminder_sent_at IS NULL AND status = 'scheduled'
-    const now = new Date();
-    const windowEnd = new Date(now.getTime() + reminderHours * 60 * 60 * 1000);
+    // 2. Find the max possible reminder window across all configs
+    const allReminderHours = [globalReminderHours || 0];
+    Object.values(typeConfigs).forEach(tc => {
+      if (tc.reminder_hours != null) allReminderHours.push(tc.reminder_hours);
+    });
+    const maxReminderHours = Math.max(...allReminderHours);
 
-    // Query appointments in the window that haven't been reminded yet
-    // We need to filter by date range first, then check time in code
+    const now = new Date();
+    const windowEnd = new Date(now.getTime() + maxReminderHours * 60 * 60 * 1000);
+
+    // Query appointments in the broadest possible window
     const nowDate = now.toISOString().split('T')[0];
     const endDate = windowEnd.toISOString().split('T')[0];
 
@@ -76,10 +81,15 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ sent: 0 }) };
     }
 
-    // 3. Filter to only appointments within the exact time window
+    // 3. Filter: each appointment uses its type-specific reminder_hours, falling back to global
     const eligible = appointments.filter(appt => {
+      const typeCfg = typeConfigs[appt.appointment_type_id] || {};
+      const hours = typeCfg.reminder_hours != null ? typeCfg.reminder_hours : globalReminderHours;
+      if (!hours) return false; // reminders disabled for this type
+
       const apptDateTime = new Date(`${appt.appointment_date}T${appt.appointment_time}:00`);
-      return apptDateTime > now && apptDateTime <= windowEnd;
+      const typeWindowEnd = new Date(now.getTime() + hours * 60 * 60 * 1000);
+      return apptDateTime > now && apptDateTime <= typeWindowEnd;
     });
 
     if (eligible.length === 0) {
