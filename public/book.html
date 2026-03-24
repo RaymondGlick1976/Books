@@ -185,17 +185,11 @@
         </form>
       </div>
       
-      <div id="scheduler-section" style="display:none; margin-top: 30px;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <p style="font-size: 1.1rem; color: #333; font-weight: 500;">Or schedule an appointment online:</p>
-        </div>
-        <iframe id="scheduler-iframe" src="" width="100%" height="700" frameborder="0" style="border-radius: 8px;"></iframe>
-      </div>
-
       <div class="thank-you" id="thank-you" style="display:none;">
         <div class="thank-you-icon">✓</div>
         <h2 class="thank-you-title" id="thank-you-title">Thank You!</h2>
         <p class="thank-you-message" id="thank-you-message">We have received your request and will contact you shortly.</p>
+        <a id="schedule-link" href="/schedule" style="display:none; margin-top: 20px; background: var(--primary, #6366f1); color: white; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 1rem;">Schedule an Appointment</a>
       </div>
     </div>
   </div>
@@ -269,12 +263,13 @@
       // Render custom questions
       renderQuestions();
       
-      // Show online scheduler if enabled
+      // Show scheduling link on thank-you page if enabled
       if (formConfig.show_scheduler) {
-        const schedulerSection = document.getElementById('scheduler-section');
-        const schedulerIframe = document.getElementById('scheduler-iframe');
-        schedulerIframe.src = window.location.origin + '/schedule';
-        schedulerSection.style.display = 'block';
+        const schedLink = document.getElementById('schedule-link');
+        if (schedLink) {
+          schedLink.style.display = 'inline-block';
+          schedLink.style.background = formConfig.primary_color || '#6366f1';
+        }
       }
 
       // Thank you messages

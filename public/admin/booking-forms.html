@@ -218,7 +218,7 @@
                     <label class="toggle-switch"><input type="checkbox" id="show-sms" checked><span class="toggle-slider"></span></label>
                   </div>
                   <div class="toggle-row" style="border-top: 2px solid var(--color-border); margin-top: var(--space-sm); padding-top: var(--space-md);">
-                    <span class="toggle-label">Embed Online Scheduler</span>
+                    <span class="toggle-label">Show Scheduling Link on Thank You Page</span>
                     <label class="toggle-switch"><input type="checkbox" id="show-scheduler"><span class="toggle-slider"></span></label>
                   </div>
                 </div>
@@ -726,18 +726,23 @@
 
       html += `<button type="button" style="width:100%;background:${$('#form-color').value};color:white;border:none;padding:12px;border-radius:4px;font-size:1rem;cursor:pointer;">Submit Request</button>`;
 
-      if ($('#show-scheduler').checked) {
-        html += `
-          <div style="margin-top:20px;text-align:center;">
-            <p style="font-size:0.95rem;color:#333;font-weight:500;margin-bottom:12px;">Or schedule an appointment online:</p>
-            <div style="border:2px dashed #ddd;border-radius:8px;padding:32px;color:#999;font-size:0.85rem;">
-              Online Scheduler will appear here
-            </div>
-          </div>
-        `;
-      }
+      // Thank-you preview with optional scheduling link
+      html += `
+        <div style="display:none;text-align:center;padding:40px 20px;margin-top:20px;border-top:2px dashed #eee;" id="preview-thankyou">
+          <div style="font-size:2.5rem;margin-bottom:12px;">✓</div>
+          <h3 style="margin:0 0 8px;">${$('#thank-you-title').value || 'Thank You!'}</h3>
+          <p style="color:#666;margin:0 0 16px;">${$('#thank-you-message').value || ''}</p>
+          ${$('#show-scheduler').checked ? `<a style="display:inline-block;background:${$('#form-color').value};color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:500;">Schedule an Appointment</a>` : ''}
+        </div>
+      `;
 
       $('#preview-form').innerHTML = html;
+
+      // Show thank-you preview briefly when scheduler toggle changes
+      const thankyouPreview = document.getElementById('preview-thankyou');
+      if ($('#show-scheduler').checked && thankyouPreview) {
+        thankyouPreview.style.display = 'block';
+      }
     }
     
     // Tabs
@@ -753,7 +758,7 @@
       });
       
       // Live preview updates
-      ['form-header-title', 'form-header-desc', 'form-color', 'show-address', 'show-service', 'show-how-heard', 'show-datetime', 'allow-attachments', 'show-sms', 'show-scheduler'].forEach(id => {
+      ['form-header-title', 'form-header-desc', 'form-color', 'show-address', 'show-service', 'show-how-heard', 'show-datetime', 'allow-attachments', 'show-sms', 'show-scheduler', 'thank-you-title', 'thank-you-message'].forEach(id => {
         const el = $('#' + id);
         if (el) el.addEventListener('change', updatePreview);
         if (el) el.addEventListener('input', updatePreview);
