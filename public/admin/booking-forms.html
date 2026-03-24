@@ -217,6 +217,10 @@
                     <span class="toggle-label">Show SMS Consent</span>
                     <label class="toggle-switch"><input type="checkbox" id="show-sms" checked><span class="toggle-slider"></span></label>
                   </div>
+                  <div class="toggle-row" style="border-top: 2px solid var(--color-border); margin-top: var(--space-sm); padding-top: var(--space-md);">
+                    <span class="toggle-label">Embed Online Scheduler</span>
+                    <label class="toggle-switch"><input type="checkbox" id="show-scheduler"><span class="toggle-slider"></span></label>
+                  </div>
                 </div>
               </div>
               
@@ -251,15 +255,26 @@
                 <div class="card-body">
                   <div class="tabs">
                     <div class="tab active" data-tab="link">Direct Link</div>
+                    <div class="tab" data-tab="text">Text Message</div>
                     <div class="tab" data-tab="embed">Embed Code</div>
                   </div>
-                  
+
                   <div class="tab-content active" id="tab-link">
                     <div class="form-group">
                       <label class="form-label">Form URL</label>
                       <div class="flex gap-sm">
                         <input type="text" id="form-url" class="form-input" readonly style="flex:1;">
                         <button class="btn btn-secondary" onclick="copyFormUrl()">Copy</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tab-content" id="tab-text">
+                    <div class="form-group">
+                      <label class="form-label">Copy & paste into a text or email</label>
+                      <div class="flex gap-sm">
+                        <input type="text" id="form-sms" class="form-input" readonly style="flex:1;">
+                        <button class="btn btn-secondary" onclick="copyFormSms()">Copy</button>
                       </div>
                     </div>
                   </div>
@@ -438,6 +453,7 @@
       $('#allow-attachments').checked = currentForm.allow_attachments !== false;
       $('#require-attachments').checked = currentForm.attachments_required === true;
       $('#show-sms').checked = currentForm.show_sms_consent !== false;
+      $('#show-scheduler').checked = currentForm.show_scheduler === true;
       $('#thank-you-title').value = currentForm.thank_you_title || 'Thank You!';
       $('#thank-you-message').value = currentForm.thank_you_message || '';
       
@@ -471,6 +487,7 @@
         allow_attachments: $('#allow-attachments').checked,
         attachments_required: $('#require-attachments').checked,
         show_sms_consent: $('#show-sms').checked,
+        show_scheduler: $('#show-scheduler').checked,
         thank_you_title: $('#thank-you-title').value,
         thank_you_message: $('#thank-you-message').value,
         updated_at: new Date().toISOString()
@@ -503,13 +520,19 @@
     function updateEmbedCodes() {
       const url = `${baseUrl}/book/${currentForm.slug}`;
       $('#form-url').value = url;
+      $('#form-sms').value = `Fill out your request here: ${url}`;
       $('#embed-iframe').textContent = `<iframe src="${url}" width="100%" height="800" frameborder="0"></iframe>`;
       $('#embed-js').textContent = `<div id="hcd-booking-form"></div>\n<script src="${baseUrl}/js/booking-embed.js" data-form="${currentForm.slug}"><\/script>`;
     }
-    
+
     function copyFormUrl() {
       navigator.clipboard.writeText($('#form-url').value);
       showToast('URL copied!', 'success');
+    }
+
+    function copyFormSms() {
+      navigator.clipboard.writeText($('#form-sms').value);
+      showToast('Text copied!', 'success');
     }
     
     function copyEmbed(type) {
