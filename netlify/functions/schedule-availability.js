@@ -140,12 +140,16 @@ exports.handler = async (event) => {
     // Blocked dates from scheduling config (filtered to this month)
     const blockedDates = (scheduling.blocked_dates || []).filter(d => d >= firstOfMonth && d <= lastOfMonth);
 
+    // Blocked time ranges from scheduling config (filtered to this month)
+    const blockedTimes = (scheduling.blocked_times || []).filter(bt => bt.date >= firstOfMonth && bt.date <= lastOfMonth);
+
     // Load ALL appointments in the month (any type — single operator)
     const { data: appointments, error: apptsError } = await supabase
       .from('appointments')
       .select('appointment_date, appointment_time, appointment_type_id')
       .gte('appointment_date', firstOfMonth)
-      .lte('appointment_date', lastOfMonth);
+      .lte('appointment_date', lastOfMonth)
+      .neq('status', 'cancelled');
 
     if (apptsError) {
       console.error('Appointments query error:', apptsError);
@@ -173,6 +177,7 @@ exports.handler = async (event) => {
         },
         config,
         blocked_dates: blockedDates,
+        blocked_times: blockedTimes,
         booked_slots: bookedSlots
       })
     };

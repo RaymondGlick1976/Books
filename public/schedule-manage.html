@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Appointment | Homestead Cabinet Design</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; min-height: 100vh; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center; }
+    .logo { max-height: 50px; }
+    .container { max-width: 700px; margin: 0 auto; padding: 20px; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 40px; margin-top: -40px; position: relative; }
+
+    /* Section title */
+    .section-title { font-size: 1.5rem; font-weight: 600; color: #111827; text-align: center; margin-bottom: 24px; }
+    .section-subtitle { font-size: 0.95rem; color: #6b7280; text-align: center; margin-top: -16px; margin-bottom: 24px; }
+
+    /* Appointment details card */
+    .appt-details {
+      background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px;
+      margin: 0 auto 28px; max-width: 400px;
+    }
+    .appt-detail { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-size: 0.95rem; color: #374151; }
+    .appt-detail + .appt-detail { border-top: 1px solid #f0f0f0; }
+    .appt-detail-label { font-size: 0.8rem; color: #9ca3af; min-width: 50px; }
+
+    /* Action buttons */
+    .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+    .btn-primary {
+      padding: 14px 32px; font-size: 1rem; font-weight: 600; color: white;
+      background: #6366f1; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:disabled { background: #a5b4fc; cursor: not-allowed; transform: none; }
+    .btn-danger {
+      padding: 14px 32px; font-size: 1rem; font-weight: 600; color: #dc2626;
+      background: white; border: 2px solid #dc2626; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-danger:hover { background: #dc2626; color: white; }
+    .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary {
+      padding: 12px 28px; font-size: 0.95rem; font-weight: 500; color: #6b7280;
+      background: white; border: 1px solid #e5e7eb; border-radius: 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-secondary:hover { border-color: #6366f1; color: #6366f1; background: #eef2ff; }
+    .btn-link {
+      display: inline-block; padding: 12px 28px; font-size: 1rem; font-weight: 500; color: #6366f1;
+      background: #eef2ff; border: 2px solid #6366f1; border-radius: 8px; cursor: pointer;
+      transition: all 0.2s; text-decoration: none; margin-top: 16px;
+    }
+    .btn-link:hover { background: #6366f1; color: white; }
+    .btn-back {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+      border: 1px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer;
+      font-size: 0.875rem; color: #6b7280; transition: all 0.15s; margin-bottom: 20px;
+    }
+    .btn-back:hover { border-color: #6366f1; color: #6366f1; background: #eef2ff; }
+
+    /* Calendar */
+    .calendar-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .calendar-nav-btn {
+      width: 36px; height: 36px; border: 1px solid #e5e7eb; border-radius: 8px; background: white;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+      color: #374151; transition: all 0.15s;
+    }
+    .calendar-nav-btn:hover:not(:disabled) { border-color: #6366f1; color: #6366f1; background: #eef2ff; }
+    .calendar-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .calendar-month { font-size: 1.1rem; font-weight: 600; color: #111827; }
+    .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; margin-bottom: 4px; }
+    .calendar-weekday { font-size: 0.75rem; font-weight: 600; color: #9ca3af; padding: 8px 0; text-transform: uppercase; }
+    .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .calendar-day {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; font-size: 0.9rem; cursor: pointer; transition: all 0.15s;
+      border: 1px solid transparent; color: #374151; font-weight: 500;
+    }
+    .calendar-day:hover:not(.disabled):not(.empty) { background: #eef2ff; border-color: #6366f1; }
+    .calendar-day.selected { background: #6366f1; color: white; border-color: #6366f1; }
+    .calendar-day.today:not(.selected) { border-color: #6366f1; color: #6366f1; }
+    .calendar-day.disabled { color: #d1d5db; cursor: not-allowed; text-decoration: line-through; }
+    .calendar-day.empty { cursor: default; }
+
+    /* Time slots */
+    .time-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .time-slot {
+      padding: 12px 20px; border: 2px solid #e5e7eb; border-radius: 10px; cursor: pointer;
+      font-size: 0.95rem; font-weight: 500; color: #374151; background: white; transition: all 0.15s;
+      min-width: 110px; text-align: center;
+    }
+    .time-slot:hover { border-color: #6366f1; background: #eef2ff; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(99,102,241,0.12); }
+    .time-slot.selected { border-color: #6366f1; background: #6366f1; color: white; }
+    .no-slots { text-align: center; padding: 40px 20px; color: #6b7280; }
+    .no-slots p { margin-bottom: 16px; font-size: 1rem; }
+
+    /* Confirmation */
+    .confirmation { text-align: center; padding: 40px 0; }
+    .confirmation-icon {
+      width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px; font-size: 2rem;
+    }
+    .confirmation-icon.success { background: #ecfdf5; border: 3px solid #10b981; color: #10b981; }
+    .confirmation-icon.cancelled { background: #fef2f2; border: 3px solid #ef4444; color: #ef4444; }
+    .confirmation h2 { font-size: 1.75rem; font-weight: 600; color: #111827; margin-bottom: 16px; }
+    .confirmation p { color: #6b7280; font-size: 0.95rem; }
+    .confirmation-details {
+      background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px;
+      margin: 24px auto; max-width: 400px; text-align: left;
+    }
+    .confirmation-detail { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 0.95rem; color: #374151; }
+    .confirmation-detail + .confirmation-detail { border-top: 1px solid #f0f0f0; }
+    .confirmation-detail-label { font-size: 0.8rem; color: #9ca3af; min-width: 50px; }
+
+    /* Loading / spinner */
+    .loading { text-align: center; padding: 60px 20px; }
+    .spinner {
+      width: 40px; height: 40px; border: 3px solid #eee; border-top-color: #6366f1;
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: #6b7280; font-size: 0.95rem; }
+
+    /* View visibility */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* Cancel confirm prompt */
+    .cancel-prompt { text-align: center; padding: 20px 0; }
+    .cancel-prompt p { color: #374151; font-size: 1.05rem; margin-bottom: 24px; }
+    .cancel-prompt .actions { margin-top: 0; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .card { padding: 24px; margin-top: -20px; }
+      .section-title { font-size: 1.25rem; }
+      .time-slot { min-width: 90px; padding: 10px 14px; font-size: 0.9rem; }
+      .actions { flex-direction: column; align-items: stretch; }
+      .btn-primary, .btn-danger, .btn-secondary { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="/images/logo.gif" alt="Homestead Cabinet Design" class="logo">
+  </div>
+
+  <div class="container">
+    <div class="card">
+
+      <!-- Loading -->
+      <div class="view active" id="view-loading">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p class="loading-text">Loading appointment details...</p>
+        </div>
+      </div>
+
+      <!-- Not Found -->
+      <div class="view" id="view-not-found">
+        <div class="confirmation">
+          <div class="confirmation-icon cancelled">&#10007;</div>
+          <h2>Appointment Not Found</h2>
+          <p>This appointment may have already been cancelled or the link is invalid.</p>
+        </div>
+      </div>
+
+      <!-- Appointment Details -->
+      <div class="view" id="view-details">
+        <h2 class="section-title">Your Appointment</h2>
+        <div class="appt-details" id="appt-details"></div>
+        <div class="actions">
+          <button class="btn-primary" onclick="startReschedule()">Reschedule</button>
+          <button class="btn-danger" onclick="showCancelConfirm()">Cancel Appointment</button>
+        </div>
+      </div>
+
+      <!-- Cancel Confirmation -->
+      <div class="view" id="view-cancel-confirm">
+        <h2 class="section-title">Cancel Appointment</h2>
+        <div class="appt-details" id="cancel-details"></div>
+        <div class="cancel-prompt">
+          <p>Are you sure you want to cancel this appointment?</p>
+          <div class="actions">
+            <button class="btn-danger" id="cancel-btn" onclick="confirmCancel()">Yes, Cancel Appointment</button>
+            <button class="btn-secondary" onclick="showView('view-details')">Go Back</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cancelled Confirmation -->
+      <div class="view" id="view-cancelled">
+        <div class="confirmation">
+          <div class="confirmation-icon cancelled">&#10007;</div>
+          <h2>Appointment Cancelled</h2>
+          <p>Your appointment has been successfully cancelled.</p>
+        </div>
+      </div>
+
+      <!-- Reschedule: Pick Date -->
+      <div class="view" id="view-reschedule-date">
+        <button class="btn-back" onclick="showView('view-details')">&larr; Back</button>
+        <h2 class="section-title">Choose a new date</h2>
+        <div id="calendar-container">
+          <div class="calendar-nav">
+            <button class="calendar-nav-btn" id="cal-prev" onclick="changeMonth(-1)">&lsaquo;</button>
+            <span class="calendar-month" id="cal-month-label"></span>
+            <button class="calendar-nav-btn" id="cal-next" onclick="changeMonth(1)">&rsaquo;</button>
+          </div>
+          <div class="calendar-weekdays">
+            <div class="calendar-weekday">Sun</div>
+            <div class="calendar-weekday">Mon</div>
+            <div class="calendar-weekday">Tue</div>
+            <div class="calendar-weekday">Wed</div>
+            <div class="calendar-weekday">Thu</div>
+            <div class="calendar-weekday">Fri</div>
+            <div class="calendar-weekday">Sat</div>
+          </div>
+          <div class="calendar-days" id="cal-days"></div>
+        </div>
+        <div class="loading" id="calendar-loading" style="display:none;">
+          <div class="spinner"></div>
+          <p class="loading-text">Loading availability...</p>
+        </div>
+      </div>
+
+      <!-- Reschedule: Pick Time -->
+      <div class="view" id="view-reschedule-time">
+        <button class="btn-back" onclick="showView('view-reschedule-date')">&larr; Back</button>
+        <h2 class="section-title">Pick a new time</h2>
+        <p class="section-subtitle" id="selected-date-label"></p>
+        <div class="time-grid" id="time-grid"></div>
+        <div class="no-slots" id="no-slots" style="display:none;">
+          <p>No available times on this date. Please choose another date.</p>
+          <button class="btn-back" onclick="showView('view-reschedule-date')">&larr; Choose another date</button>
+        </div>
+      </div>
+
+      <!-- Reschedule: Confirm -->
+      <div class="view" id="view-reschedule-confirm">
+        <button class="btn-back" onclick="showView('view-reschedule-time')">&larr; Back</button>
+        <h2 class="section-title">Confirm New Time</h2>
+        <div class="appt-details" id="reschedule-summary"></div>
+        <div class="actions">
+          <button class="btn-primary" id="reschedule-btn" onclick="confirmReschedule()">Confirm Reschedule</button>
+        </div>
+      </div>
+
+      <!-- Rescheduled Confirmation -->
+      <div class="view" id="view-rescheduled">
+        <div class="confirmation">
+          <div class="confirmation-icon success">&#10003;</div>
+          <h2>Appointment Rescheduled</h2>
+          <div class="confirmation-details" id="rescheduled-details"></div>
+          <p>Your appointment has been updated to the new date and time.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ========== State ==========
+    let appointment = null;
+    let selectedDate = null;
+    let selectedTime = null;
+    let config = null;
+    let blockedDates = [];
+    let blockedTimes = [];
+    let bookedSlots = [];
+    let currentMonth = new Date();
+
+    // ========== Helpers ==========
+    function timeToMinutes(t) {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function minutesToTime(m) {
+      return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    }
+
+    function formatTime(t) {
+      const [h, m] = t.split(':').map(Number);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const hr = h % 12 || 12;
+      return hr + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + 'T12:00:00');
+      return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    function slotsOverlap(start1, dur1, start2, dur2, buffer) {
+      const s1 = timeToMinutes(start1), e1 = s1 + dur1;
+      const s2 = timeToMinutes(start2), e2 = s2 + dur2;
+      return (s1 < e2 + buffer) && (s2 < e1 + buffer);
+    }
+
+    function monthKey(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+    }
+
+    function dateKey(y, m, d) {
+      return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    }
+
+    function normalizeConfig(cfg) {
+      if (cfg.schedule) return cfg;
+      const start = cfg.start_time || '09:00';
+      const end = cfg.end_time || '17:00';
+      const days = cfg.days || [1,2,3,4,5];
+      const schedule = {};
+      for (let d = 1; d <= 7; d++) {
+        schedule[String(d)] = days.includes(d) ? [{ start, end }] : [];
+      }
+      cfg.schedule = schedule;
+      return cfg;
+    }
+
+    // ========== View Management ==========
+    function showView(id) {
+      document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.querySelector('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ========== Init ==========
+    async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+
+      if (!id) {
+        showView('view-not-found');
+        return;
+      }
+
+      try {
+        const resp = await fetch(`/api/schedule-manage?id=${encodeURIComponent(id)}`);
+        if (!resp.ok) {
+          showView('view-not-found');
+          return;
+        }
+
+        appointment = await resp.json();
+        renderDetails();
+        showView('view-details');
+      } catch (err) {
+        console.error(err);
+        showView('view-not-found');
+      }
+    }
+
+    // ========== Details View ==========
+    function renderDetails() {
+      const icon = appointment.type_icon || '';
+      const html = `
+        <div class="appt-detail">
+          <span class="appt-detail-label">Type</span>
+          <span>${icon ? icon + ' ' : ''}${appointment.type_name}</span>
+        </div>
+        <div class="appt-detail">
+          <span class="appt-detail-label">Date</span>
+          <span>${formatDate(appointment.date)}</span>
+        </div>
+        <div class="appt-detail">
+          <span class="appt-detail-label">Time</span>
+          <span>${formatTime(appointment.time)}</span>
+        </div>
+        ${appointment.customer_name ? `
+        <div class="appt-detail">
+          <span class="appt-detail-label">Name</span>
+          <span>${appointment.customer_name}</span>
+        </div>` : ''}
+      `;
+      document.getElementById('appt-details').innerHTML = html;
+      document.getElementById('cancel-details').innerHTML = html;
+    }
+
+    // ========== Cancel Flow ==========
+    function showCancelConfirm() {
+      showView('view-cancel-confirm');
+    }
+
+    async function confirmCancel() {
+      const btn = document.getElementById('cancel-btn');
+      btn.disabled = true;
+      btn.textContent = 'Cancelling...';
+
+      try {
+        const resp = await fetch('/api/schedule-manage?action=cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: appointment.id })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.error || 'Failed to cancel');
+        }
+
+        showView('view-cancelled');
+      } catch (err) {
+        console.error(err);
+        alert(err.message || 'Failed to cancel appointment. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Yes, Cancel Appointment';
+      }
+    }
+
+    // ========== Reschedule Flow ==========
+    function startReschedule() {
+      selectedDate = null;
+      selectedTime = null;
+      currentMonth = new Date();
+      showView('view-reschedule-date');
+      loadMonthAvailability();
+    }
+
+    async function loadMonthAvailability() {
+      const calContainer = document.getElementById('calendar-container');
+      const calLoading = document.getElementById('calendar-loading');
+      calContainer.style.display = 'none';
+      calLoading.style.display = 'block';
+
+      try {
+        const mk = monthKey(currentMonth);
+        const resp = await fetch(`/api/schedule-availability?type_id=${appointment.appointment_type_id}&month=${mk}`);
+        if (!resp.ok) throw new Error('Failed to load availability');
+        const data = await resp.json();
+
+        config = normalizeConfig(data.config);
+        blockedDates = data.blocked_dates || [];
+        blockedTimes = data.blocked_times || [];
+        bookedSlots = data.booked_slots || [];
+
+        calLoading.style.display = 'none';
+        calContainer.style.display = 'block';
+        renderCalendar();
+      } catch (err) {
+        console.error(err);
+        calLoading.innerHTML = '<p style="color:#e53e3e;">Failed to load availability. Please try again.</p>';
+      }
+    }
+
+    function isDayFullyBooked(dateStr) {
+      if (!config) return false;
+      const d = new Date(dateStr + 'T12:00:00');
+      const jsDay = d.getDay();
+      const isoDay = jsDay === 0 ? 7 : jsDay;
+      const windows = config.schedule[String(isoDay)] || [];
+      if (windows.length === 0) return true;
+
+      for (const win of windows) {
+        const startMin = timeToMinutes(win.start);
+        const endMin = timeToMinutes(win.end);
+        for (let minute = startMin; minute + config.slot_duration <= endMin; minute += config.slot_duration) {
+          const timeStr = minutesToTime(minute);
+          const apptDateTime = new Date(dateStr + 'T' + timeStr);
+          if (apptDateTime - new Date() < config.lead_time_hours * 3600000) continue;
+          const overlaps = bookedSlots.some(s => {
+            if (s.date !== dateStr) return false;
+            return slotsOverlap(timeStr, config.slot_duration, s.time, s.duration, config.buffer_minutes);
+          });
+          if (overlaps) continue;
+          const slotS = timeToMinutes(timeStr);
+          const slotE = slotS + config.slot_duration;
+          const blockedTime = blockedTimes.some(bt => {
+            if (bt.date !== dateStr) return false;
+            return slotS < timeToMinutes(bt.end) && slotE > timeToMinutes(bt.start);
+          });
+          if (!blockedTime) return false;
+        }
+      }
+      return true;
+    }
+
+    function renderCalendar() {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const firstDayOfMonth = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+      document.getElementById('cal-month-label').textContent = monthNames[month] + ' ' + year;
+
+      const nowMonth = new Date();
+      document.getElementById('cal-prev').disabled =
+        (year === nowMonth.getFullYear() && month === nowMonth.getMonth());
+
+      const maxDate = new Date();
+      maxDate.setDate(maxDate.getDate() + (config ? config.max_advance_days : 60));
+
+      const daysContainer = document.getElementById('cal-days');
+      let html = '';
+
+      for (let i = 0; i < firstDayOfMonth; i++) {
+        html += '<div class="calendar-day empty"></div>';
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const ds = dateKey(year, month, d);
+        const date = new Date(year, month, d);
+        date.setHours(0, 0, 0, 0);
+        const jsDay = date.getDay();
+        const isoDay = jsDay === 0 ? 7 : jsDay;
+
+        let classes = 'calendar-day';
+        let disabled = false;
+
+        if (date < today) disabled = true;
+        if (date > maxDate) disabled = true;
+        if (config && (!config.schedule[String(isoDay)] || config.schedule[String(isoDay)].length === 0)) disabled = true;
+        if (blockedDates.includes(ds)) disabled = true;
+        if (!disabled && isDayFullyBooked(ds)) disabled = true;
+
+        if (disabled) classes += ' disabled';
+        if (date.getTime() === today.getTime()) classes += ' today';
+        if (selectedDate === ds) classes += ' selected';
+
+        if (disabled) {
+          html += `<div class="${classes}">${d}</div>`;
+        } else {
+          html += `<div class="${classes}" onclick="selectDate('${ds}')">${d}</div>`;
+        }
+      }
+
+      daysContainer.innerHTML = html;
+    }
+
+    function changeMonth(delta) {
+      const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1);
+      const now = new Date();
+      if (newMonth.getFullYear() < now.getFullYear() ||
+        (newMonth.getFullYear() === now.getFullYear() && newMonth.getMonth() < now.getMonth())) {
+        return;
+      }
+      currentMonth = newMonth;
+      loadMonthAvailability();
+    }
+
+    function selectDate(ds) {
+      selectedDate = ds;
+      selectedTime = null;
+      renderCalendar();
+      showView('view-reschedule-time');
+      renderTimeSlots();
+    }
+
+    // ========== Time Slots ==========
+    function renderTimeSlots() {
+      document.getElementById('selected-date-label').textContent = formatDate(selectedDate);
+
+      if (!config) {
+        document.getElementById('time-grid').innerHTML = '';
+        document.getElementById('no-slots').style.display = 'block';
+        return;
+      }
+
+      const d = new Date(selectedDate + 'T12:00:00');
+      const jsDay = d.getDay();
+      const isoDay = jsDay === 0 ? 7 : jsDay;
+      const windows = config.schedule[String(isoDay)] || [];
+      const slots = [];
+
+      for (const win of windows) {
+        const startMin = timeToMinutes(win.start);
+        const endMin = timeToMinutes(win.end);
+        for (let minute = startMin; minute + config.slot_duration <= endMin; minute += config.slot_duration) {
+          const timeStr = minutesToTime(minute);
+          const apptDateTime = new Date(selectedDate + 'T' + timeStr);
+          if (apptDateTime - new Date() < config.lead_time_hours * 3600000) continue;
+          const overlaps = bookedSlots.some(s => {
+            if (s.date !== selectedDate) return false;
+            return slotsOverlap(timeStr, config.slot_duration, s.time, s.duration, config.buffer_minutes);
+          });
+          if (!overlaps) {
+            const slotStartMin = timeToMinutes(timeStr);
+            const slotEndMin = slotStartMin + config.slot_duration;
+            const isBlockedTime = blockedTimes.some(bt => {
+              if (bt.date !== selectedDate) return false;
+              const btStart = timeToMinutes(bt.start);
+              const btEnd = timeToMinutes(bt.end);
+              return slotStartMin < btEnd && slotEndMin > btStart;
+            });
+            if (!isBlockedTime) slots.push(timeStr);
+          }
+        }
+      }
+      slots.sort();
+
+      const grid = document.getElementById('time-grid');
+      const noSlots = document.getElementById('no-slots');
+
+      if (slots.length === 0) {
+        grid.innerHTML = '';
+        grid.style.display = 'none';
+        noSlots.style.display = 'block';
+      } else {
+        noSlots.style.display = 'none';
+        grid.style.display = 'flex';
+        grid.innerHTML = slots.map(t => `
+          <button class="time-slot" type="button" onclick="selectTime('${t}')">${formatTime(t)}</button>
+        `).join('');
+      }
+    }
+
+    function selectTime(t) {
+      selectedTime = t;
+      document.querySelectorAll('.time-slot').forEach(el => el.classList.remove('selected'));
+      event.target.classList.add('selected');
+      showRescheduleConfirm();
+    }
+
+    function showRescheduleConfirm() {
+      const icon = appointment.type_icon || '';
+      document.getElementById('reschedule-summary').innerHTML = `
+        <div class="appt-detail">
+          <span class="appt-detail-label">Type</span>
+          <span>${icon ? icon + ' ' : ''}${appointment.type_name}</span>
+        </div>
+        <div class="appt-detail">
+          <span class="appt-detail-label">New Date</span>
+          <span>${formatDate(selectedDate)}</span>
+        </div>
+        <div class="appt-detail">
+          <span class="appt-detail-label">New Time</span>
+          <span>${formatTime(selectedTime)}</span>
+        </div>
+      `;
+      showView('view-reschedule-confirm');
+    }
+
+    async function confirmReschedule() {
+      const btn = document.getElementById('reschedule-btn');
+      btn.disabled = true;
+      btn.textContent = 'Rescheduling...';
+
+      try {
+        const resp = await fetch('/api/schedule-manage?action=reschedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: appointment.id,
+            date: selectedDate,
+            time: selectedTime
+          })
+        });
+
+        if (resp.status === 409) {
+          const err = await resp.json();
+          alert(err.error || 'This time slot is no longer available. Please choose another time.');
+          btn.disabled = false;
+          btn.textContent = 'Confirm Reschedule';
+          await loadMonthAvailability();
+          showView('view-reschedule-time');
+          renderTimeSlots();
+          return;
+        }
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.error || 'Reschedule failed');
+        }
+
+        // Show rescheduled confirmation
+        const icon = appointment.type_icon || '';
+        document.getElementById('rescheduled-details').innerHTML = `
+          <div class="confirmation-detail">
+            <span class="confirmation-detail-label">Type</span>
+            <span>${icon ? icon + ' ' : ''}${appointment.type_name}</span>
+          </div>
+          <div class="confirmation-detail">
+            <span class="confirmation-detail-label">Date</span>
+            <span>${formatDate(selectedDate)}</span>
+          </div>
+          <div class="confirmation-detail">
+            <span class="confirmation-detail-label">Time</span>
+            <span>${formatTime(selectedTime)}</span>
+          </div>
+        `;
+        showView('view-rescheduled');
+
+      } catch (err) {
+        console.error(err);
+        alert(err.message || 'Failed to reschedule. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Confirm Reschedule';
+      }
+    }
+
+    // ========== Init ==========
+    init();
+  </script>
+</body>
+</html>

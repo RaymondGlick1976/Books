@@ -296,6 +296,7 @@
     let selectedTime = null;
     let config = null;
     let blockedDates = [];
+    let blockedTimes = [];
     let bookedSlots = [];
     let currentMonth = new Date();
 
@@ -432,6 +433,7 @@
 
         config = normalizeConfig(data.config);
         blockedDates = data.blocked_dates || [];
+        blockedTimes = data.blocked_times || [];
         bookedSlots = data.booked_slots || [];
 
         calLoading.style.display = 'none';
@@ -462,7 +464,15 @@
             if (s.date !== dateStr) return false;
             return slotsOverlap(timeStr, config.slot_duration, s.time, s.duration, config.buffer_minutes);
           });
-          if (!overlaps) return false;
+          if (overlaps) continue;
+          // Check blocked time ranges
+          const slotS = timeToMinutes(timeStr);
+          const slotE = slotS + config.slot_duration;
+          const blockedTime = blockedTimes.some(bt => {
+            if (bt.date !== dateStr) return false;
+            return slotS < timeToMinutes(bt.end) && slotE > timeToMinutes(bt.start);
+          });
+          if (!blockedTime) return false;
         }
       }
       return true;
@@ -601,7 +611,18 @@
             if (s.date !== selectedDate) return false;
             return slotsOverlap(timeStr, config.slot_duration, s.time, s.duration, config.buffer_minutes);
           });
-          if (!overlaps) slots.push(timeStr);
+          if (!overlaps) {
+            // Check blocked time ranges for this date
+            const slotStartMin = timeToMinutes(timeStr);
+            const slotEndMin = slotStartMin + config.slot_duration;
+            const isBlockedTime = blockedTimes.some(bt => {
+              if (bt.date !== selectedDate) return false;
+              const btStart = timeToMinutes(bt.start);
+              const btEnd = timeToMinutes(bt.end);
+              return slotStartMin < btEnd && slotEndMin > btStart;
+            });
+            if (!isBlockedTime) slots.push(timeStr);
+          }
         }
       }
       // Sort chronologically (windows may not be ordered)
@@ -727,6 +748,7 @@
       selectedTime = null;
       config = null;
       blockedDates = [];
+      blockedTimes = [];
       bookedSlots = [];
       currentMonth = new Date();
 

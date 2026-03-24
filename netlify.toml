@@ -47,6 +47,9 @@
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
     Access-Control-Allow-Headers = "Content-Type, Authorization"
 
+[functions."schedule-reminders"]
+  schedule = "@hourly"
+
 # Environment variables (set these in Netlify dashboard)
 # SUPABASE_URL
 # SUPABASE_ANON_KEY
@@ -57,3 +60,5 @@
 # RESEND_API_KEY
 # ADMIN_EMAIL
 # SITE_URL
+# GOOGLE_CLIENT_ID
+# GOOGLE_CLIENT_SECRET

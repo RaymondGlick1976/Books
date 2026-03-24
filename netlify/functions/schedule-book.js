@@ -135,6 +135,24 @@ exports.handler = async (event) => {
       };
     }
 
+    // Check blocked time ranges
+    const blockedTimes = scheduling.blocked_times || [];
+    const slotStartMin = timeToMinutes(data.time);
+    const slotEndMin = slotStartMin + config.slot_duration;
+    const overlapsBlockedTime = blockedTimes.some(bt => {
+      if (bt.date !== data.date) return false;
+      const btStart = timeToMinutes(bt.start);
+      const btEnd = timeToMinutes(bt.end);
+      return slotStartMin < btEnd && slotEndMin > btStart;
+    });
+    if (overlapsBlockedTime) {
+      return {
+        statusCode: 409,
+        headers,
+        body: JSON.stringify({ error: 'This time slot is blocked and not available for scheduling' })
+      };
+    }
+
     // Check day-of-week is allowed (using schedule windows)
     const jsDay = new Date(data.date + 'T12:00:00').getDay(); // use noon to avoid timezone edge issues
     const dayOfWeek = jsDay === 0 ? 7 : jsDay; // Convert JS Sunday=0 to ISO Sunday=7
@@ -190,7 +208,8 @@ exports.handler = async (event) => {
     const { data: existingAppts } = await supabase
       .from('appointments')
       .select('appointment_time, appointment_type_id')
-      .eq('appointment_date', data.date);
+      .eq('appointment_date', data.date)
+      .neq('status', 'cancelled');
 
     const apptList = existingAppts || [];
     for (const existing of apptList) {
@@ -250,12 +269,42 @@ exports.handler = async (event) => {
 
     if (apptError) throw apptError;
 
+    // 5b. Create Google Calendar event (don't fail booking if GCal fails)
+    try {
+      const { gcalRequest } = require('./gcal-utils');
+      const apptDateTime = new Date(`${data.date}T${data.time}:00`);
+      const endDateTime = new Date(apptDateTime.getTime() + config.slot_duration * 60 * 1000);
+
+      const eventBody = {
+        summary: `${typeName} - ${data.first_name} ${data.last_name}`,
+        start: { dateTime: apptDateTime.toISOString() },
+        end: { dateTime: endDateTime.toISOString() },
+        description: `Customer: ${data.first_name} ${data.last_name}\nEmail: ${data.email}\nPhone: ${data.phone || 'N/A'}${data.notes ? '\nNotes: ' + data.notes : ''}`
+      };
+
+      const gcalEvent = await gcalRequest('POST', '/calendars/primary/events', eventBody);
+      if (gcalEvent && gcalEvent.id) {
+        await supabase
+          .from('appointments')
+          .update({ gcal_event_id: gcalEvent.id })
+          .eq('id', appt.id);
+        console.log('GCal event created:', gcalEvent.id);
+      }
+    } catch (gcalErr) {
+      // Don't fail the booking if GCal sync fails
+      console.error('Failed to create GCal event:', gcalErr.message);
+    }
+
     // 6. Send customer HTML confirmation email
     try {
       const companyName = company.name || 'Homestead Cabinet Design';
       const fromEmail = company.email || 'noreply@homesteadcabinetdesign.com';
       const formattedDate = formatDate(data.date);
       const formattedTime = formatTime(data.time);
+
+      // Derive base URL for manage link
+      const host = (event.headers || {}).host || (event.headers || {}).Host || '';
+      const baseUrl = host ? `https://${host}` : '';
 
       // Check if this is a site visit type
       const isSiteVisit = /site|visit|estimate|home/i.test(typeName);
@@ -314,7 +363,7 @@ exports.handler = async (event) => {
                   </td>
                 </tr>${locationSection}
               </table>
-              <p style="color: #999; font-size: 13px; margin: 24px 0 0 0; text-align: center;">If you need to reschedule or cancel, please contact us directly.</p>
+              <p style="color: #999; font-size: 13px; margin: 24px 0 0 0; text-align: center;">Need to make changes? <a href="${baseUrl}/schedule-manage.html?id=${appt.id}" style="color: #667eea; text-decoration: none;">Reschedule or Cancel</a></p>
             </td>
           </tr>
           <!-- Footer -->

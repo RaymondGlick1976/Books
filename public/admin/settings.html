@@ -460,6 +460,20 @@
               <div id="scheduling-blocked-dates" style="display: flex; flex-wrap: wrap; gap: var(--space-xs);"></div>
             </div>
 
+            <!-- Blocked Time Ranges -->
+            <div style="margin-bottom: var(--space-xl);">
+              <label class="form-label" style="font-weight: 600;">Blocked Time Ranges</label>
+              <p style="color: var(--color-text-muted); font-size: 0.8rem; margin-bottom: var(--space-sm);">Block specific hours on a date (e.g., morning only) while keeping the rest of the day open.</p>
+              <div style="display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-sm);">
+                <input type="date" id="scheduling-blocked-time-date" class="form-input" style="width: auto;">
+                <input type="time" id="scheduling-blocked-time-start" class="form-input" style="width: auto;" value="09:00">
+                <span style="color: var(--color-text-muted);">to</span>
+                <input type="time" id="scheduling-blocked-time-end" class="form-input" style="width: auto;" value="12:00">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addBlockedTime()">Add</button>
+              </div>
+              <div id="scheduling-blocked-times" style="display: flex; flex-wrap: wrap; gap: var(--space-xs);"></div>
+            </div>
+
             <!-- Global Scheduling Limits -->
             <div id="global-limits-section" style="margin-bottom: var(--space-xl); padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-soft);">
               <label class="form-label" style="font-weight: 600; margin-bottom: var(--space-sm);">Global Defaults</label>
@@ -683,6 +697,17 @@
               </div>
               
               <div style="margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--color-border);">
+                <div class="form-group" style="max-width: 400px; margin-bottom: var(--space-lg);">
+                  <label class="form-label">Appointment Reminder Email</label>
+                  <select id="reminder-hours" class="form-input">
+                    <option value="0">None (disabled)</option>
+                    <option value="1">1 hour before</option>
+                    <option value="4">4 hours before</option>
+                    <option value="24" selected>24 hours before</option>
+                    <option value="48">48 hours before</option>
+                  </select>
+                  <div class="form-help">Send customers a reminder email before their appointment</div>
+                </div>
                 <button type="submit" class="btn btn-primary">Save Notification Settings</button>
               </div>
             </form>
@@ -864,6 +889,59 @@
             </div>
           </div>
         </div>
+
+        <!-- Google Calendar Integration -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Google Calendar Integration</h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-md">Sync appointments to your Google Calendar automatically when they are booked, rescheduled, or cancelled.</p>
+
+            <div id="gcal-status">
+              <div class="loading">Checking connection...</div>
+            </div>
+
+            <div id="gcal-connected" style="display: none;">
+              <div style="background: var(--color-success-bg); border: 1px solid var(--color-success); border-radius: var(--radius-md); padding: var(--space-md); margin-bottom: var(--space-md);">
+                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  <span style="font-weight: 500; color: var(--color-success);">Connected to Google Calendar</span>
+                </div>
+                <div class="text-muted text-sm" style="margin-top: var(--space-xs);" id="gcal-connected-info"></div>
+              </div>
+              <button type="button" class="btn btn-secondary" onclick="disconnectGoogleCalendar()">
+                Disconnect Google Calendar
+              </button>
+            </div>
+
+            <div id="gcal-disconnected" style="display: none;">
+              <button type="button" class="btn btn-primary" onclick="connectGoogleCalendar()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Connect to Google Calendar
+              </button>
+              <p class="text-muted text-sm" style="margin-top: var(--space-sm);">
+                You'll be redirected to Google to authorize calendar access.
+              </p>
+            </div>
+
+            <div id="gcal-not-configured" style="display: none;">
+              <div style="background: var(--color-warning-bg); border: 1px solid var(--color-warning); border-radius: var(--radius-md); padding: var(--space-md);">
+                <p style="margin: 0; color: var(--color-warning-dark);">
+                  <strong>Setup Required:</strong> Google Calendar integration requires environment variables to be configured (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET).
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -998,6 +1076,9 @@
           $('#notify-payment-received').checked = notifs.payment_received !== false;
           $('#notify-customer-upload').checked = notifs.customer_upload !== false;
           $('#notify-job-stage-changed').checked = notifs.job_stage_changed === true;
+          if (notifs.reminder_hours != null) {
+            $('#reminder-hours').value = notifs.reminder_hours;
+          }
         }
         
         if (settings.terms_and_conditions) {
@@ -1227,7 +1308,8 @@
         invoice_viewed: $('#notify-invoice-viewed').checked,
         payment_received: $('#notify-payment-received').checked,
         customer_upload: $('#notify-customer-upload').checked,
-        job_stage_changed: $('#notify-job-stage-changed').checked
+        job_stage_changed: $('#notify-job-stage-changed').checked,
+        reminder_hours: parseInt($('#reminder-hours').value) || 0
       };
       await saveSetting('notifications', value);
     });
@@ -1644,10 +1726,12 @@
       if (sched?.value) {
         schedulingConfig = sched.value;
         if (!schedulingConfig.blocked_dates) schedulingConfig.blocked_dates = [];
+        if (!schedulingConfig.blocked_times) schedulingConfig.blocked_times = [];
         if (!schedulingConfig.global) schedulingConfig.global = {};
         if (!schedulingConfig.types) schedulingConfig.types = {};
       }
       renderBlockedDates();
+      renderBlockedTimes();
       renderGlobalLimits();
       renderSchedulingTypes();
     }
@@ -1678,6 +1762,37 @@
     window.removeBlockedDate = (idx) => {
       schedulingConfig.blocked_dates.splice(idx, 1);
       renderBlockedDates();
+    };
+
+    function renderBlockedTimes() {
+      const container = $('#scheduling-blocked-times');
+      if (!schedulingConfig.blocked_times || !schedulingConfig.blocked_times.length) {
+        container.innerHTML = '<span style="color: var(--color-text-muted); font-size: 0.8rem;">No blocked time ranges</span>';
+        return;
+      }
+      container.innerHTML = schedulingConfig.blocked_times
+        .map((bt, i) => `<span style="display: inline-flex; align-items: center; gap: 4px; background: var(--color-bg-soft); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem;">${bt.date} ${bt.start}\u2013${bt.end}<button type="button" onclick="removeBlockedTime(${i})" style="background: none; border: none; cursor: pointer; color: var(--color-text-muted); font-size: 1rem; line-height: 1; padding: 0 0 0 4px;">&times;</button></span>`)
+        .join('');
+    }
+
+    window.addBlockedTime = () => {
+      const dateInput = $('#scheduling-blocked-time-date');
+      const startInput = $('#scheduling-blocked-time-start');
+      const endInput = $('#scheduling-blocked-time-end');
+      const date = dateInput.value;
+      const start = startInput.value;
+      const end = endInput.value;
+      if (!date || !start || !end) return;
+      if (start >= end) { alert('Start time must be before end time'); return; }
+      if (!schedulingConfig.blocked_times) schedulingConfig.blocked_times = [];
+      schedulingConfig.blocked_times.push({ date, start, end });
+      renderBlockedTimes();
+      dateInput.value = '';
+    };
+
+    window.removeBlockedTime = (idx) => {
+      schedulingConfig.blocked_times.splice(idx, 1);
+      renderBlockedTimes();
     };
 
     function renderGlobalLimits() {
@@ -1888,6 +2003,7 @@
       const globalMaxEl = $('#global-max-advance');
       const config = {
         blocked_dates: schedulingConfig.blocked_dates,
+        blocked_times: schedulingConfig.blocked_times || [],
         global: {
           lead_time_hours: parseInt(globalLeadEl?.value) || 24,
           max_advance_days: parseInt(globalMaxEl?.value) || 60
@@ -2845,6 +2961,96 @@
       }
     }
     
+    // =============================================
+    // GOOGLE CALENDAR FUNCTIONS
+    // =============================================
+
+    async function checkGCalStatus() {
+      try {
+        const response = await fetch('/.netlify/functions/gcal-status');
+        const data = await response.json();
+
+        document.getElementById('gcal-status').style.display = 'none';
+
+        if (data.error && data.error.includes('not configured')) {
+          document.getElementById('gcal-not-configured').style.display = 'block';
+        } else if (data.connected) {
+          document.getElementById('gcal-connected').style.display = 'block';
+          const connectedAt = new Date(data.connectedAt).toLocaleDateString();
+          document.getElementById('gcal-connected-info').textContent = `Connected on ${connectedAt}`;
+        } else {
+          document.getElementById('gcal-disconnected').style.display = 'block';
+        }
+      } catch (err) {
+        console.error('GCal status check failed:', err);
+        document.getElementById('gcal-status').innerHTML = '<span class="text-muted">Unable to check Google Calendar status</span>';
+      }
+    }
+
+    async function connectGoogleCalendar() {
+      try {
+        const response = await fetch('/.netlify/functions/gcal-auth');
+        const data = await response.json();
+
+        if (data.error) {
+          if (data.error.includes('not configured')) {
+            document.getElementById('gcal-disconnected').style.display = 'none';
+            document.getElementById('gcal-not-configured').style.display = 'block';
+          } else {
+            showToast(data.error, 'error');
+          }
+          return;
+        }
+
+        // Redirect to Google auth
+        window.location.href = data.authUrl;
+      } catch (err) {
+        showToast('Failed to start Google Calendar connection', 'error');
+      }
+    }
+
+    async function disconnectGoogleCalendar() {
+      if (!confirm('Are you sure you want to disconnect Google Calendar? Future appointments won\'t sync to your calendar.')) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/.netlify/functions/gcal-disconnect', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+          showToast('Google Calendar disconnected', 'success');
+          document.getElementById('gcal-connected').style.display = 'none';
+          document.getElementById('gcal-disconnected').style.display = 'block';
+        } else {
+          showToast(data.error || 'Failed to disconnect', 'error');
+        }
+      } catch (err) {
+        showToast('Failed to disconnect Google Calendar', 'error');
+      }
+    }
+
+    // Check for GCal callback params
+    function handleGCalCallback() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('gcal_connected') === '1') {
+        showToast('Google Calendar connected successfully!', 'success');
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (params.get('gcal_error')) {
+        const errorMap = {
+          'missing_params': 'Google Calendar authorization was incomplete',
+          'token_exchange_failed': 'Failed to complete Google Calendar authorization',
+          'save_failed': 'Failed to save Google Calendar connection',
+          'not_configured': 'Google Calendar is not configured yet',
+          'unexpected': 'An unexpected error occurred'
+        };
+        const error = params.get('gcal_error');
+        showToast(errorMap[error] || error, 'error');
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+
     // ==========================================
     // Payment Schedule Templates
     // ==========================================
@@ -3205,11 +3411,13 @@
     
     // Initialize - load all data in parallel
     async function initSettings() {
-      // Handle QB callback params
+      // Handle callback params
       handleQBCallback();
-      
-      // Check QB status
+      handleGCalCallback();
+
+      // Check integration statuses
       checkQBStatus();
+      checkGCalStatus();
       
       // Load payment templates
       loadPaymentTemplates();
