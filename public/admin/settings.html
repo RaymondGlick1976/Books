@@ -1817,6 +1817,8 @@
         if (durEl) cfg.slot_duration = parseInt(durEl.value) || 60;
         const bufEl = document.querySelector(`.sched-buffer-${at.id}`);
         if (bufEl) cfg.buffer_minutes = parseInt(bufEl.value) || 0;
+        const maxPerDayEl = document.querySelector(`.sched-maxperday-${at.id}`);
+        if (maxPerDayEl) cfg.max_per_day = parseInt(maxPerDayEl.value) || 0;
 
         // Lead time override
         const leadOverrideEl = document.querySelector(`.sched-lead-override-${at.id}`);
@@ -1888,6 +1890,7 @@
         const maxAdvance = cfg.max_advance_days || 60;
         const hasReminderOverride = cfg.reminder_hours != null;
         const reminderHours = cfg.reminder_hours || 24;
+        const maxPerDay = cfg.max_per_day || 0;
 
         const scheduleRows = dayNames.map((name, i) => {
           const dayNum = i + 1;
@@ -1925,7 +1928,7 @@
               </label>
             </div>
             <div class="sched-config-${at.id}" style="display: ${enabled ? 'block' : 'none'};">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
                 <div>
                   <label class="form-label" style="font-size: 0.8rem;">Slot Duration</label>
                   <select class="form-input sched-duration-${at.id}" style="padding: 6px 8px;">
@@ -1937,6 +1940,11 @@
                   <select class="form-input sched-buffer-${at.id}" style="padding: 6px 8px;">
                     ${[0,15,30,45,60].map(m => `<option value="${m}" ${buffer === m ? 'selected' : ''}>${m} min</option>`).join('')}
                   </select>
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.8rem;">Max Per Day</label>
+                  <input type="number" class="form-input sched-maxperday-${at.id}" value="${maxPerDay}" min="0" max="50" style="padding: 6px 8px; width: 80px;" placeholder="0">
+                  <div style="font-size: 0.7rem; color: var(--color-text-muted);">0 = no limit</div>
                 </div>
               </div>
 

@@ -299,6 +299,8 @@
     let blockedDates = [];
     let blockedTimes = [];
     let bookedSlots = [];
+    let maxPerDay = 0;
+    let typeCountByDate = {};
     let currentMonth = new Date();
 
     // ========== Helpers ==========
@@ -412,6 +414,8 @@
       config = null;
       blockedDates = [];
       bookedSlots = [];
+      maxPerDay = 0;
+      typeCountByDate = {};
       currentMonth = new Date();
 
       // Move to step 2 and load availability
@@ -436,6 +440,8 @@
         blockedDates = data.blocked_dates || [];
         blockedTimes = data.blocked_times || [];
         bookedSlots = data.booked_slots || [];
+        maxPerDay = data.max_per_day || 0;
+        typeCountByDate = data.type_count_by_date || {};
 
         calLoading.style.display = 'none';
         calContainer.style.display = 'block';
@@ -448,6 +454,9 @@
 
     function isDayFullyBooked(dateStr) {
       if (!config) return false;
+      // Check max per day limit
+      if (maxPerDay > 0 && (typeCountByDate[dateStr] || 0) >= maxPerDay) return true;
+
       const d = new Date(dateStr + 'T12:00:00');
       const jsDay = d.getDay();
       const isoDay = jsDay === 0 ? 7 : jsDay;
@@ -589,6 +598,13 @@
       document.getElementById('selected-date-label').textContent = formatDate(selectedDate);
 
       if (!config) {
+        document.getElementById('time-grid').innerHTML = '';
+        document.getElementById('no-slots').style.display = 'block';
+        return;
+      }
+
+      // Check max per day limit
+      if (maxPerDay > 0 && (typeCountByDate[selectedDate] || 0) >= maxPerDay) {
         document.getElementById('time-grid').innerHTML = '';
         document.getElementById('no-slots').style.display = 'block';
         return;
@@ -751,6 +767,8 @@
       blockedDates = [];
       blockedTimes = [];
       bookedSlots = [];
+      maxPerDay = 0;
+      typeCountByDate = {};
       currentMonth = new Date();
 
       // Reset form fields

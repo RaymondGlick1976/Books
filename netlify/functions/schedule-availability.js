@@ -161,9 +161,22 @@ exports.handler = async (event) => {
       return {
         date: appt.appointment_date,
         time: appt.appointment_time,
-        duration
+        duration,
+        type_id: appt.appointment_type_id
       };
     });
+
+    // Count appointments per day for the requested type (for max_per_day limit)
+    const maxPerDay = typeConfig.max_per_day || 0;
+    let typeCountByDate = {};
+    if (maxPerDay > 0) {
+      typeCountByDate = {};
+      (appointments || []).forEach(appt => {
+        if (appt.appointment_type_id === typeId) {
+          typeCountByDate[appt.appointment_date] = (typeCountByDate[appt.appointment_date] || 0) + 1;
+        }
+      });
+    }
 
     return {
       statusCode: 200,
@@ -176,6 +189,8 @@ exports.handler = async (event) => {
           color: appointmentType.color
         },
         config,
+        max_per_day: maxPerDay,
+        type_count_by_date: typeCountByDate,
         blocked_dates: blockedDates,
         blocked_times: blockedTimes,
         booked_slots: bookedSlots

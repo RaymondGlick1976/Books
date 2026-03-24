@@ -212,6 +212,20 @@ exports.handler = async (event) => {
       .neq('status', 'cancelled');
 
     const apptList = existingAppts || [];
+
+    // Check max per day limit for this appointment type
+    const maxPerDay = typeConfig.max_per_day || 0;
+    if (maxPerDay > 0) {
+      const sameTypeCount = apptList.filter(a => a.appointment_type_id === data.type_id).length;
+      if (sameTypeCount >= maxPerDay) {
+        return {
+          statusCode: 409,
+          headers,
+          body: JSON.stringify({ error: `Maximum of ${maxPerDay} appointments of this type per day has been reached` })
+        };
+      }
+    }
+
     for (const existing of apptList) {
       const existingTypeConfig = (scheduling.types && scheduling.types[existing.appointment_type_id]) || {};
       const existingDuration = existingTypeConfig.slot_duration || 60;
