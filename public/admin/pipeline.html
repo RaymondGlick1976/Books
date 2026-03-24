@@ -1991,11 +1991,12 @@
             throw new Error(result.error || 'Failed to send email');
           }
           
-          showToast('Email sent successfully!', 'success');
           closeModal(modal);
+          // Show toast after modal close animation so it's clearly visible
+          setTimeout(() => showToast('Email sent successfully!', 'success'), 300);
         } catch (err) {
           console.error('Email error:', err);
-          showToast('Failed to send email: ' + err.message, 'error');
+          alert('Failed to send email: ' + err.message);
           sendBtn.disabled = false;
           sendBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Email';
         }

@@ -6,8 +6,10 @@ const supabase = createClient(
 );
 
 exports.handler = async (event) => {
+  const headers = { 'Content-Type': 'application/json' };
+
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method not allowed' };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   try {
@@ -23,9 +25,9 @@ exports.handler = async (event) => {
     } = JSON.parse(event.body);
 
     if (!to_email || !subject || !body) {
-      return { 
-        statusCode: 400, 
-        body: JSON.stringify({ error: 'Missing required fields: to_email, subject, body' }) 
+      return {
+        statusCode: 400, headers,
+        body: JSON.stringify({ error: 'Missing required fields: to_email, subject, body' })
       };
     }
 
@@ -63,7 +65,7 @@ exports.handler = async (event) => {
         const errorData = await response.text();
         console.error('Email send failed:', errorData);
         return {
-          statusCode: 500,
+          statusCode: 500, headers,
           body: JSON.stringify({ error: 'Failed to send email', details: errorData })
         };
       }
@@ -87,7 +89,7 @@ exports.handler = async (event) => {
         const errorData = await response.text();
         console.error('Email send failed:', errorData);
         return {
-          statusCode: 500,
+          statusCode: 500, headers,
           body: JSON.stringify({ error: 'Failed to send email', details: errorData })
         };
       }
@@ -114,14 +116,14 @@ exports.handler = async (event) => {
     });
 
     return {
-      statusCode: 200,
+      statusCode: 200, headers,
       body: JSON.stringify({ success: true, message: 'Email sent successfully' })
     };
 
   } catch (error) {
     console.error('Error:', error);
     return {
-      statusCode: 500,
+      statusCode: 500, headers,
       body: JSON.stringify({ error: error.message })
     };
   }
