@@ -430,6 +430,31 @@
               <div id="scheduling-blocked-dates" style="display: flex; flex-wrap: wrap; gap: var(--space-xs);"></div>
             </div>
 
+            <!-- Global Scheduling Limits -->
+            <div id="global-limits-section" style="margin-bottom: var(--space-xl); padding: var(--space-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-soft);">
+              <label class="form-label" style="font-weight: 600; margin-bottom: var(--space-sm);">Global Defaults</label>
+              <p style="color: var(--color-text-muted); font-size: 0.8rem; margin-bottom: var(--space-md);">Default lead time and max advance days for all types (can be overridden per type).</p>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+                <div>
+                  <label class="form-label" style="font-size: 0.8rem;">Lead Time</label>
+                  <select id="global-lead-time" class="form-input" style="padding: 6px 8px;">
+                    <option value="1">1 hour</option>
+                    <option value="2">2 hours</option>
+                    <option value="4">4 hours</option>
+                    <option value="8">8 hours</option>
+                    <option value="12">12 hours</option>
+                    <option value="24">24 hours</option>
+                    <option value="48">48 hours</option>
+                    <option value="72">72 hours</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.8rem;">Max Advance Booking (days)</label>
+                  <input type="number" id="global-max-advance" class="form-input" min="1" max="365" style="padding: 6px 8px; width: 100px;">
+                </div>
+              </div>
+            </div>
+
             <!-- Per-type config -->
             <div id="scheduling-types-list">
               <div class="loading-spinner"></div>
@@ -1555,17 +1580,32 @@
     // ==========================================
     // ONLINE SCHEDULING CONFIG
     // ==========================================
-    let schedulingConfig = { blocked_dates: [], types: {} };
+    let schedulingConfig = { blocked_dates: [], global: {}, types: {} };
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    // Normalize old-format type config to schedule format (for display in admin)
+    function normalizeTypeSchedule(cfg) {
+      if (cfg.schedule) return cfg.schedule;
+      const start = cfg.start_time || '09:00';
+      const end = cfg.end_time || '17:00';
+      const days = cfg.days || [1,2,3,4,5];
+      const schedule = {};
+      for (let d = 1; d <= 7; d++) {
+        schedule[String(d)] = days.includes(d) ? [{ start, end }] : [];
+      }
+      return schedule;
+    }
 
     function loadSchedulingConfig(settingsData) {
       const sched = settingsData?.find(s => s.key === 'scheduling');
       if (sched?.value) {
         schedulingConfig = sched.value;
         if (!schedulingConfig.blocked_dates) schedulingConfig.blocked_dates = [];
+        if (!schedulingConfig.global) schedulingConfig.global = {};
         if (!schedulingConfig.types) schedulingConfig.types = {};
       }
       renderBlockedDates();
+      renderGlobalLimits();
       renderSchedulingTypes();
     }
 
@@ -1597,6 +1637,64 @@
       renderBlockedDates();
     };
 
+    function renderGlobalLimits() {
+      const g = schedulingConfig.global || {};
+      const leadEl = $('#global-lead-time');
+      const maxEl = $('#global-max-advance');
+      if (leadEl) leadEl.value = String(g.lead_time_hours || 24);
+      if (maxEl) maxEl.value = g.max_advance_days || 60;
+    }
+
+    // Snapshot current DOM values back into schedulingConfig so edits aren't lost on re-render
+    function snapshotSchedulingDOM() {
+      appointmentTypes.forEach(at => {
+        const enabledEl = document.querySelector(`.sched-enabled[data-type-id="${at.id}"]`);
+        if (!enabledEl) return;
+        if (!schedulingConfig.types[at.id]) schedulingConfig.types[at.id] = {};
+        const cfg = schedulingConfig.types[at.id];
+        cfg.enabled = enabledEl.checked;
+
+        const durEl = document.querySelector(`.sched-duration-${at.id}`);
+        if (durEl) cfg.slot_duration = parseInt(durEl.value) || 60;
+        const bufEl = document.querySelector(`.sched-buffer-${at.id}`);
+        if (bufEl) cfg.buffer_minutes = parseInt(bufEl.value) || 0;
+
+        // Lead time override
+        const leadOverrideEl = document.querySelector(`.sched-lead-override-${at.id}`);
+        if (leadOverrideEl) {
+          if (leadOverrideEl.checked) {
+            const leadValEl = document.querySelector(`.sched-lead-${at.id}`);
+            cfg.lead_time_hours = leadValEl ? parseInt(leadValEl.value) : null;
+          } else {
+            cfg.lead_time_hours = null;
+          }
+        }
+
+        // Max advance override
+        const maxOverrideEl = document.querySelector(`.sched-maxadvance-override-${at.id}`);
+        if (maxOverrideEl) {
+          if (maxOverrideEl.checked) {
+            const maxValEl = document.querySelector(`.sched-maxadvance-${at.id}`);
+            cfg.max_advance_days = maxValEl ? parseInt(maxValEl.value) : null;
+          } else {
+            cfg.max_advance_days = null;
+          }
+        }
+
+        // Snapshot schedule windows from DOM
+        if (!cfg.schedule) cfg.schedule = normalizeTypeSchedule(cfg);
+        for (let d = 1; d <= 7; d++) {
+          const windowEls = document.querySelectorAll(`.sched-window-${at.id}-${d}`);
+          if (windowEls.length > 0 || document.querySelector(`.sched-day-row-${at.id}-${d}`)) {
+            cfg.schedule[String(d)] = Array.from(windowEls).map(el => ({
+              start: el.querySelector('.win-start')?.value || '09:00',
+              end: el.querySelector('.win-end')?.value || '17:00'
+            }));
+          }
+        }
+      });
+    }
+
     function renderSchedulingTypes() {
       const container = $('#scheduling-types-list');
       if (!appointmentTypes.length) {
@@ -1606,13 +1704,43 @@
       container.innerHTML = appointmentTypes.map(at => {
         const cfg = schedulingConfig.types[at.id] || {};
         const enabled = cfg.enabled || false;
-        const days = cfg.days || [1,2,3,4,5];
-        const startTime = cfg.start_time || '09:00';
-        const endTime = cfg.end_time || '17:00';
+        const schedule = normalizeTypeSchedule(cfg);
+        // Store normalized schedule back
+        if (!cfg.schedule) {
+          if (!schedulingConfig.types[at.id]) schedulingConfig.types[at.id] = {};
+          schedulingConfig.types[at.id].schedule = schedule;
+        }
         const slotDuration = cfg.slot_duration || 60;
         const buffer = cfg.buffer_minutes || 0;
+        const hasLeadOverride = cfg.lead_time_hours != null;
         const leadTime = cfg.lead_time_hours || 24;
+        const hasMaxAdvanceOverride = cfg.max_advance_days != null;
         const maxAdvance = cfg.max_advance_days || 60;
+
+        const scheduleRows = dayNames.map((name, i) => {
+          const dayNum = i + 1;
+          const windows = schedule[String(dayNum)] || [];
+          const windowsHtml = windows.length === 0
+            ? '<span style="color: var(--color-text-muted); font-size: 0.8rem; font-style: italic;">Closed</span>'
+            : windows.map((w, wi) => `
+                <span class="sched-window-${at.id}-${dayNum}" style="display: inline-flex; align-items: center; gap: 4px;">
+                  <input type="time" class="form-input win-start" value="${w.start}" style="padding: 4px 6px; width: 110px; font-size: 0.8rem;">
+                  <span style="color: var(--color-text-muted);">–</span>
+                  <input type="time" class="form-input win-end" value="${w.end}" style="padding: 4px 6px; width: 110px; font-size: 0.8rem;">
+                  <button type="button" onclick="removeScheduleWindow('${at.id}', ${dayNum}, ${wi})" style="background: none; border: none; cursor: pointer; color: var(--color-danger); font-size: 1.1rem; padding: 0 2px;" title="Remove window">&times;</button>
+                </span>
+              `).join('');
+
+          return `
+            <div class="sched-day-row-${at.id}-${dayNum}" style="display: flex; align-items: center; gap: var(--space-sm); padding: 6px 0; border-bottom: 1px solid var(--color-border-light, #f0f0f0);">
+              <span style="width: 36px; font-size: 0.8rem; font-weight: 600; color: ${windows.length ? 'var(--color-text)' : 'var(--color-text-muted)'};">${name}</span>
+              <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                ${windowsHtml}
+              </div>
+              <button type="button" onclick="addScheduleWindow('${at.id}', ${dayNum})" style="background: none; border: 1px solid var(--color-border); border-radius: 4px; cursor: pointer; color: var(--color-primary); font-size: 0.8rem; padding: 2px 8px;" title="Add window">+ Add</button>
+            </div>
+          `;
+        }).join('');
 
         return `
           <div style="border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-md); margin-bottom: var(--space-md); ${enabled ? 'border-left: 3px solid var(--color-primary);' : ''}">
@@ -1627,29 +1755,10 @@
             <div class="sched-config-${at.id}" style="display: ${enabled ? 'block' : 'none'};">
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
                 <div>
-                  <label class="form-label" style="font-size: 0.8rem;">Available Days</label>
-                  <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs);">
-                    ${dayNames.map((name, i) => {
-                      const dayNum = i + 1;
-                      return `<label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; cursor: pointer;"><input type="checkbox" class="sched-day-${at.id}" value="${dayNum}" ${days.includes(dayNum) ? 'checked' : ''}>${name}</label>`;
-                    }).join('')}
-                  </div>
-                </div>
-                <div>
                   <label class="form-label" style="font-size: 0.8rem;">Slot Duration</label>
                   <select class="form-input sched-duration-${at.id}" style="padding: 6px 8px;">
                     ${[15,30,45,60,90,120].map(m => `<option value="${m}" ${slotDuration === m ? 'selected' : ''}>${m} min</option>`).join('')}
                   </select>
-                </div>
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: var(--space-md);">
-                <div>
-                  <label class="form-label" style="font-size: 0.8rem;">Start Time</label>
-                  <input type="time" class="form-input sched-start-${at.id}" value="${startTime}" style="padding: 6px 8px;">
-                </div>
-                <div>
-                  <label class="form-label" style="font-size: 0.8rem;">End Time</label>
-                  <input type="time" class="form-input sched-end-${at.id}" value="${endTime}" style="padding: 6px 8px;">
                 </div>
                 <div>
                   <label class="form-label" style="font-size: 0.8rem;">Buffer Between</label>
@@ -1657,16 +1766,38 @@
                     ${[0,15,30,45,60].map(m => `<option value="${m}" ${buffer === m ? 'selected' : ''}>${m} min</option>`).join('')}
                   </select>
                 </div>
-                <div>
-                  <label class="form-label" style="font-size: 0.8rem;">Lead Time</label>
-                  <select class="form-input sched-lead-${at.id}" style="padding: 6px 8px;">
-                    ${[1,2,4,8,12,24,48,72].map(h => `<option value="${h}" ${leadTime === h ? 'selected' : ''}>${h}h</option>`).join('')}
-                  </select>
+              </div>
+
+              <!-- Per-day schedule windows -->
+              <div style="margin-bottom: var(--space-md);">
+                <label class="form-label" style="font-size: 0.8rem;">Schedule (per day)</label>
+                <div style="border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-sm);">
+                  ${scheduleRows}
                 </div>
               </div>
-              <div style="margin-top: var(--space-md);">
-                <label class="form-label" style="font-size: 0.8rem;">Max Advance Booking (days)</label>
-                <input type="number" class="form-input sched-maxadvance-${at.id}" value="${maxAdvance}" min="1" max="365" style="padding: 6px 8px; width: 100px;">
+
+              <!-- Lead time & max advance overrides -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+                <div>
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
+                    <input type="checkbox" class="sched-lead-override-${at.id}" ${hasLeadOverride ? 'checked' : ''} onchange="toggleLeadOverride('${at.id}', this.checked)">
+                    Override global lead time
+                  </label>
+                  <div class="sched-lead-input-${at.id}" style="display: ${hasLeadOverride ? 'block' : 'none'};">
+                    <select class="form-input sched-lead-${at.id}" style="padding: 6px 8px;">
+                      ${[1,2,4,8,12,24,48,72].map(h => `<option value="${h}" ${leadTime === h ? 'selected' : ''}>${h}h</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
+                    <input type="checkbox" class="sched-maxadvance-override-${at.id}" ${hasMaxAdvanceOverride ? 'checked' : ''} onchange="toggleMaxAdvanceOverride('${at.id}', this.checked)">
+                    Override global max advance
+                  </label>
+                  <div class="sched-maxadvance-input-${at.id}" style="display: ${hasMaxAdvanceOverride ? 'block' : 'none'};">
+                    <input type="number" class="form-input sched-maxadvance-${at.id}" value="${maxAdvance}" min="1" max="365" style="padding: 6px 8px; width: 100px;">
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1677,30 +1808,75 @@
     window.toggleSchedulingType = (typeId, checked) => {
       const configDiv = document.querySelector(`.sched-config-${typeId}`);
       if (configDiv) configDiv.style.display = checked ? 'block' : 'none';
-      // Update border style on parent
       const parentDiv = configDiv?.parentElement;
       if (parentDiv) parentDiv.style.borderLeft = checked ? '3px solid var(--color-primary)' : '';
     };
 
+    window.toggleLeadOverride = (typeId, checked) => {
+      const inputDiv = document.querySelector(`.sched-lead-input-${typeId}`);
+      if (inputDiv) inputDiv.style.display = checked ? 'block' : 'none';
+    };
+
+    window.toggleMaxAdvanceOverride = (typeId, checked) => {
+      const inputDiv = document.querySelector(`.sched-maxadvance-input-${typeId}`);
+      if (inputDiv) inputDiv.style.display = checked ? 'block' : 'none';
+    };
+
+    window.addScheduleWindow = (typeId, dayNum) => {
+      snapshotSchedulingDOM();
+      const cfg = schedulingConfig.types[typeId];
+      if (!cfg) return;
+      if (!cfg.schedule) cfg.schedule = normalizeTypeSchedule(cfg);
+      if (!cfg.schedule[String(dayNum)]) cfg.schedule[String(dayNum)] = [];
+      cfg.schedule[String(dayNum)].push({ start: '09:00', end: '17:00' });
+      renderSchedulingTypes();
+    };
+
+    window.removeScheduleWindow = (typeId, dayNum, windowIdx) => {
+      snapshotSchedulingDOM();
+      const cfg = schedulingConfig.types[typeId];
+      if (!cfg?.schedule?.[String(dayNum)]) return;
+      cfg.schedule[String(dayNum)].splice(windowIdx, 1);
+      renderSchedulingTypes();
+    };
+
     window.saveSchedulingConfig = async () => {
+      const globalLeadEl = $('#global-lead-time');
+      const globalMaxEl = $('#global-max-advance');
       const config = {
         blocked_dates: schedulingConfig.blocked_dates,
+        global: {
+          lead_time_hours: parseInt(globalLeadEl?.value) || 24,
+          max_advance_days: parseInt(globalMaxEl?.value) || 60
+        },
         types: {}
       };
       appointmentTypes.forEach(at => {
         const enabledEl = document.querySelector(`.sched-enabled[data-type-id="${at.id}"]`);
         if (!enabledEl) return;
         const enabled = enabledEl.checked;
-        const days = Array.from(document.querySelectorAll(`.sched-day-${at.id}:checked`)).map(cb => parseInt(cb.value));
+
+        // Collect schedule windows from DOM
+        const schedule = {};
+        for (let d = 1; d <= 7; d++) {
+          const windowEls = document.querySelectorAll(`.sched-window-${at.id}-${d}`);
+          schedule[String(d)] = Array.from(windowEls).map(el => ({
+            start: el.querySelector('.win-start')?.value || '09:00',
+            end: el.querySelector('.win-end')?.value || '17:00'
+          }));
+        }
+
+        // Lead time & max advance overrides
+        const leadOverride = document.querySelector(`.sched-lead-override-${at.id}`)?.checked;
+        const maxOverride = document.querySelector(`.sched-maxadvance-override-${at.id}`)?.checked;
+
         config.types[at.id] = {
           enabled,
-          days,
-          start_time: document.querySelector(`.sched-start-${at.id}`)?.value || '09:00',
-          end_time: document.querySelector(`.sched-end-${at.id}`)?.value || '17:00',
+          schedule,
           slot_duration: parseInt(document.querySelector(`.sched-duration-${at.id}`)?.value) || 60,
           buffer_minutes: parseInt(document.querySelector(`.sched-buffer-${at.id}`)?.value) || 0,
-          lead_time_hours: parseInt(document.querySelector(`.sched-lead-${at.id}`)?.value) || 24,
-          max_advance_days: parseInt(document.querySelector(`.sched-maxadvance-${at.id}`)?.value) || 60
+          lead_time_hours: leadOverride ? (parseInt(document.querySelector(`.sched-lead-${at.id}`)?.value) || 24) : null,
+          max_advance_days: maxOverride ? (parseInt(document.querySelector(`.sched-maxadvance-${at.id}`)?.value) || 60) : null
         };
       });
       schedulingConfig = config;

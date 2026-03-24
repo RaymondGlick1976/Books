@@ -335,6 +335,20 @@
       return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
     }
 
+    // Normalize config: convert old days/start_time/end_time to schedule format
+    function normalizeConfig(cfg) {
+      if (cfg.schedule) return cfg;
+      const start = cfg.start_time || '09:00';
+      const end = cfg.end_time || '17:00';
+      const days = cfg.days || [1,2,3,4,5];
+      const schedule = {};
+      for (let d = 1; d <= 7; d++) {
+        schedule[String(d)] = days.includes(d) ? [{ start, end }] : [];
+      }
+      cfg.schedule = schedule;
+      return cfg;
+    }
+
     // ========== Step Navigation ==========
     function goToStep(step) {
       currentStep = step;
@@ -416,7 +430,7 @@
         if (!resp.ok) throw new Error('Failed to load availability');
         const data = await resp.json();
 
-        config = data.config;
+        config = normalizeConfig(data.config);
         blockedDates = data.blocked_dates || [];
         bookedSlots = data.booked_slots || [];
 
@@ -431,26 +445,27 @@
 
     function isDayFullyBooked(dateStr) {
       if (!config) return false;
-      const startMin = timeToMinutes(config.start_time);
-      const endMin = timeToMinutes(config.end_time);
-      let hasAvailable = false;
+      const d = new Date(dateStr + 'T12:00:00');
+      const jsDay = d.getDay();
+      const isoDay = jsDay === 0 ? 7 : jsDay;
+      const windows = config.schedule[String(isoDay)] || [];
+      if (windows.length === 0) return true;
 
-      for (let minute = startMin; minute + config.slot_duration <= endMin; minute += config.slot_duration) {
-        const timeStr = minutesToTime(minute);
-        // Check lead time
-        const apptDateTime = new Date(dateStr + 'T' + timeStr);
-        if (apptDateTime - new Date() < config.lead_time_hours * 3600000) continue;
-        // Check overlap with booked slots
-        const overlaps = bookedSlots.some(s => {
-          if (s.date !== dateStr) return false;
-          return slotsOverlap(timeStr, config.slot_duration, s.time, s.duration, config.buffer_minutes);
-        });
-        if (!overlaps) {
-          hasAvailable = true;
-          break;
+      for (const win of windows) {
+        const startMin = timeToMinutes(win.start);
+        const endMin = timeToMinutes(win.end);
+        for (let minute = startMin; minute + config.slot_duration <= endMin; minute += config.slot_duration) {
+          const timeStr = minutesToTime(minute);
+          const apptDateTime = new Date(dateStr + 'T' + timeStr);
+          if (apptDateTime - new Date() < config.lead_time_hours * 3600000) continue;
+          const overlaps = bookedSlots.some(s => {
+            if (s.date !== dateStr) return false;
+            return slotsOverlap(timeStr, config.slot_duration, s.time, s.duration, config.buffer_minutes);
+          });
+          if (!overlaps) return false;
         }
       }
-      return !hasAvailable;
+      return true;
     }
 
     function renderCalendar() {
@@ -500,8 +515,8 @@
         // Beyond max advance
         if (date > maxDate) disabled = true;
 
-        // Wrong day of week
-        if (config && !config.days.includes(isoDay)) disabled = true;
+        // Wrong day of week (no windows = closed)
+        if (config && (!config.schedule[String(isoDay)] || config.schedule[String(isoDay)].length === 0)) disabled = true;
 
         // Blocked date
         if (blockedDates.includes(ds)) disabled = true;
@@ -568,22 +583,29 @@
         return;
       }
 
-      const startMin = timeToMinutes(config.start_time);
-      const endMin = timeToMinutes(config.end_time);
+      // Get windows for the selected day
+      const d = new Date(selectedDate + 'T12:00:00');
+      const jsDay = d.getDay();
+      const isoDay = jsDay === 0 ? 7 : jsDay;
+      const windows = config.schedule[String(isoDay)] || [];
       const slots = [];
 
-      for (let minute = startMin; minute + config.slot_duration <= endMin; minute += config.slot_duration) {
-        const timeStr = minutesToTime(minute);
-        // Skip if within lead_time_hours of now
-        const apptDateTime = new Date(selectedDate + 'T' + timeStr);
-        if (apptDateTime - new Date() < config.lead_time_hours * 3600000) continue;
-        // Skip if overlaps any booked slot (with buffer)
-        const overlaps = bookedSlots.some(s => {
-          if (s.date !== selectedDate) return false;
-          return slotsOverlap(timeStr, config.slot_duration, s.time, s.duration, config.buffer_minutes);
-        });
-        if (!overlaps) slots.push(timeStr);
+      for (const win of windows) {
+        const startMin = timeToMinutes(win.start);
+        const endMin = timeToMinutes(win.end);
+        for (let minute = startMin; minute + config.slot_duration <= endMin; minute += config.slot_duration) {
+          const timeStr = minutesToTime(minute);
+          const apptDateTime = new Date(selectedDate + 'T' + timeStr);
+          if (apptDateTime - new Date() < config.lead_time_hours * 3600000) continue;
+          const overlaps = bookedSlots.some(s => {
+            if (s.date !== selectedDate) return false;
+            return slotsOverlap(timeStr, config.slot_duration, s.time, s.duration, config.buffer_minutes);
+          });
+          if (!overlaps) slots.push(timeStr);
+        }
       }
+      // Sort chronologically (windows may not be ordered)
+      slots.sort();
 
       const grid = document.getElementById('time-grid');
       const noSlots = document.getElementById('no-slots');

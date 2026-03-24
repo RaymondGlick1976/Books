@@ -28,6 +28,34 @@ function formatDate(dateStr) {
   });
 }
 
+// Convert old-format type config to new schedule format, resolving global defaults
+function normalizeTypeConfig(typeConfig, globalDefaults) {
+  const g = globalDefaults || {};
+  const slot_duration = typeConfig.slot_duration || 60;
+  const buffer_minutes = typeConfig.buffer_minutes || 15;
+  const lead_time_hours = (typeConfig.lead_time_hours != null ? typeConfig.lead_time_hours : null) ?? g.lead_time_hours ?? 24;
+  const max_advance_days = (typeConfig.max_advance_days != null ? typeConfig.max_advance_days : null) ?? g.max_advance_days ?? 60;
+
+  let schedule;
+  if (typeConfig.schedule) {
+    schedule = typeConfig.schedule;
+  } else if (typeConfig.days) {
+    const start = typeConfig.start_time || '09:00';
+    const end = typeConfig.end_time || '17:00';
+    schedule = {};
+    for (let d = 1; d <= 7; d++) {
+      schedule[String(d)] = typeConfig.days.includes(d) ? [{ start, end }] : [];
+    }
+  } else {
+    schedule = {};
+    for (let d = 1; d <= 7; d++) {
+      schedule[String(d)] = d <= 5 ? [{ start: '09:00', end: '17:00' }] : [];
+    }
+  }
+
+  return { slot_duration, buffer_minutes, lead_time_hours, max_advance_days, schedule };
+}
+
 // Helper: format time for display
 function formatTime(timeStr) {
   const [h, m] = timeStr.split(':').map(Number);
@@ -93,15 +121,7 @@ exports.handler = async (event) => {
     }
 
     const typeConfig = (scheduling.types && scheduling.types[data.type_id]) || {};
-    const config = {
-      slot_duration: typeConfig.slot_duration || 60,
-      buffer_minutes: typeConfig.buffer_minutes || 15,
-      days: typeConfig.days || [1, 2, 3, 4, 5],
-      start_time: typeConfig.start_time || '09:00',
-      end_time: typeConfig.end_time || '17:00',
-      lead_time_hours: typeConfig.lead_time_hours || 24,
-      max_advance_days: typeConfig.max_advance_days || 60
-    };
+    const config = normalizeTypeConfig(typeConfig, scheduling.global);
 
     // 3. Server-side slot collision detection
 
@@ -115,10 +135,11 @@ exports.handler = async (event) => {
       };
     }
 
-    // Check day-of-week is allowed
+    // Check day-of-week is allowed (using schedule windows)
     const jsDay = new Date(data.date + 'T12:00:00').getDay(); // use noon to avoid timezone edge issues
     const dayOfWeek = jsDay === 0 ? 7 : jsDay; // Convert JS Sunday=0 to ISO Sunday=7
-    if (!config.days.includes(dayOfWeek)) {
+    const dayWindows = config.schedule[String(dayOfWeek)] || [];
+    if (dayWindows.length === 0) {
       return {
         statusCode: 409,
         headers,
@@ -126,12 +147,13 @@ exports.handler = async (event) => {
       };
     }
 
-    // Check time is within business hours
+    // Check time fits within at least one of the day's windows
     const slotStart = timeToMinutes(data.time);
     const slotEnd = slotStart + config.slot_duration;
-    const businessStart = timeToMinutes(config.start_time);
-    const businessEnd = timeToMinutes(config.end_time);
-    if (slotStart < businessStart || slotEnd > businessEnd) {
+    const fitsWindow = dayWindows.some(w => {
+      return slotStart >= timeToMinutes(w.start) && slotEnd <= timeToMinutes(w.end);
+    });
+    if (!fitsWindow) {
       return {
         statusCode: 409,
         headers,
