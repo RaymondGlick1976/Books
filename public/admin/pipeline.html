@@ -1547,13 +1547,35 @@
       const id = $('#appt-id').value;
       const data = { appointment_type_id: $('#appt-type').value || null, title: $('#appt-title').value, appointment_date: $('#appt-date').value, appointment_time: $('#appt-time').value || null, customer_id: $('#appt-customer').value || null, deal_id: $('#appt-deal').value || null, location: $('#appt-location').value, notes: $('#appt-notes').value, updated_at: new Date().toISOString() };
       if (!data.title || !data.appointment_date) { showToast('Title and date are required', 'error'); return; }
-      try { const supabase = await app.waitForSupabase(); if (id) await supabase.from('appointments').update(data).eq('id', id); else await supabase.from('appointments').insert([data]); closeApptModal(); await loadData(); renderCalendar(); showToast(id ? 'Appointment updated' : 'Appointment created', 'success'); }
+      try {
+        const supabase = await app.waitForSupabase();
+        if (id) {
+          // Check if this appointment has a GCal event to update
+          const { data: existing } = await supabase.from('appointments').select('gcal_event_id').eq('id', id).single();
+          await supabase.from('appointments').update(data).eq('id', id);
+          if (existing && existing.gcal_event_id && data.appointment_date && data.appointment_time) {
+            try { await fetch(`/.netlify/functions/gcal-update-event?event_id=${encodeURIComponent(existing.gcal_event_id)}&date=${data.appointment_date}&time=${data.appointment_time}&title=${encodeURIComponent(data.title || '')}`, { method: 'POST' }); } catch (e) { console.error('GCal update failed:', e); }
+          }
+        } else {
+          await supabase.from('appointments').insert([data]);
+        }
+        closeApptModal(); await loadData(); renderCalendar(); showToast(id ? 'Appointment updated' : 'Appointment created', 'success');
+      }
       catch (err) { console.error(err); showToast('Failed to save appointment', 'error'); }
     }
     
     async function deleteAppt() {
       const id = $('#appt-id').value; if (!id || !confirm('Delete this appointment?')) return;
-      try { const supabase = await app.waitForSupabase(); await supabase.from('appointments').delete().eq('id', id); closeApptModal(); await loadData(); renderCalendar(); showToast('Appointment deleted', 'success'); }
+      try {
+        const supabase = await app.waitForSupabase();
+        // Fetch gcal_event_id before deleting
+        const { data: appt } = await supabase.from('appointments').select('gcal_event_id').eq('id', id).single();
+        if (appt && appt.gcal_event_id) {
+          try { await fetch(`/.netlify/functions/gcal-delete-event?event_id=${encodeURIComponent(appt.gcal_event_id)}`, { method: 'POST' }); } catch (e) { console.error('GCal delete failed:', e); }
+        }
+        await supabase.from('appointments').delete().eq('id', id);
+        closeApptModal(); await loadData(); renderCalendar(); showToast('Appointment deleted', 'success');
+      }
       catch (err) { showToast('Failed to delete', 'error'); }
     }
     
