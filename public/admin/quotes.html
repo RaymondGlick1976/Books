@@ -229,6 +229,7 @@
             ${quote.access_token ? `<a href="/portal/quote.html?token=${quote.access_token}" target="_blank" class="btn btn-ghost btn-sm" title="View as customer">👁️</a>` : `<button class="btn btn-ghost btn-sm" onclick="generateToken('${quote.id}')" title="Generate customer link">🔗</button>`}
             <button class="btn btn-ghost btn-sm" onclick="duplicateQuote('${quote.id}')">Duplicate</button>
             ${quote.status === 'accepted' ? `<button class="btn btn-ghost btn-sm" onclick="createInvoice('${quote.id}')">→ Invoice</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="syncEstimateToQB('${quote.id}', this)" title="${quote.qb_synced_at ? 'Synced ' + new Date(quote.qb_synced_at).toLocaleDateString() : 'Sync to QuickBooks'}">${quote.qb_estimate_id ? '✅ QB' : '📤 QB'}</button>
             ${quote.status === 'archived' 
               ? `<button class="btn btn-ghost btn-sm" onclick="unarchiveQuote('${quote.id}')" title="Unarchive">📤</button>`
               : `<button class="btn btn-ghost btn-sm" onclick="archiveQuote('${quote.id}')" title="Archive">📥</button>`}
@@ -545,6 +546,35 @@
       }
     };
     
+    window.syncEstimateToQB = async (quoteId, btn) => {
+      const originalText = btn.textContent;
+      btn.textContent = '⏳';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/.netlify/functions/qb-sync-estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quoteId })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Sync failed');
+        }
+
+        btn.textContent = '✅ QB';
+        btn.title = 'Synced ' + new Date().toLocaleDateString();
+        showToast(result.message || 'Synced to QuickBooks', 'success');
+      } catch (err) {
+        btn.textContent = originalText;
+        showToast('QB sync failed: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
     // Initialize
     loadQuotes();
   </script>

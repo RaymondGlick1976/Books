@@ -1337,8 +1337,16 @@
         }
         
         console.log('Loaded quote:', quote);
+
+        // Redirect to detail view if quote is locked (accepted/converted)
+        if (['accepted', 'converted'].includes(quote.status)) {
+          window.location.href = `/admin/quote-detail.html?id=${quoteId}&locked=1`;
+          return;
+        }
+
         window._quoteNumber = quote.quote_number || '';
-        
+        window._loadedQuoteStatus = quote.status;
+
         $('#page-title').textContent = `Edit Quote: ${quote.quote_number}`;
         $('#customer-select').value = quote.customer_id;
         $('#quote-title').value = quote.title;
@@ -3568,7 +3576,14 @@
       // Cancel any pending autosave
       if (autosaveTimer) clearTimeout(autosaveTimer);
       isSaving = true;
-      
+
+      // Safety net: refuse to save locked quotes
+      if (quoteId && window._loadedQuoteStatus && ['accepted', 'converted'].includes(window._loadedQuoteStatus)) {
+        showToast('This quote is locked. Use change orders to make modifications.', 'error');
+        isSaving = false;
+        return;
+      }
+
       const customerId = $('#customer-select').value;
       const title = $('#quote-title').value.trim();
       

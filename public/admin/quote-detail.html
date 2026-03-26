@@ -20,6 +20,7 @@
     .status-viewed { background: #fef3c7; color: #d97706; }
     .status-accepted { background: #d1fae5; color: #047857; }
     .status-declined { background: #fee2e2; color: #dc2626; }
+    .status-converted { background: #ddd6fe; color: #7c3aed; }
     
     .section-card { background: white; border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin-bottom: var(--space-lg); overflow: hidden; }
     .section-header { padding: var(--space-md) var(--space-lg); background: var(--color-bg-soft); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
@@ -132,7 +133,10 @@
             <a href="#" id="view-deal-btn" class="btn btn-secondary" style="display:none;">View Deal</a>
             <a href="#" id="edit-quote-btn" class="btn btn-secondary">Edit Quote</a>
             <button id="send-quote-btn" class="btn btn-secondary" onclick="showSendEmailModal()">📧 Send</button>
+            <button id="convert-invoice-btn" class="btn btn-secondary" style="display:none;" onclick="convertToInvoice()">→ Invoice</button>
             <a href="#" id="view-invoice-btn" class="btn btn-secondary" style="display:none;">View Invoice</a>
+            <button id="qb-estimate-btn" class="btn btn-secondary" style="display:none;" onclick="syncEstimateToQB()">📤 QB Estimate</button>
+            <button id="qb-invoice-btn" class="btn btn-secondary" style="display:none;" onclick="syncInvoiceToQB()">📤 QB Invoice</button>
             <div class="dropdown" id="change-order-dropdown">
               <button class="btn btn-secondary" onclick="toggleDropdown('change-order-dropdown')">
                 New Change Order ▾
@@ -385,6 +389,11 @@
       await loadQuote(quoteId);
       setupTabs();
       setupDropdowns();
+
+      // Show lock toast if redirected from quote-builder
+      if (params.get('locked') === '1') {
+        showToast('This quote is locked. Use change orders to make modifications.', 'info');
+      }
     }
     
     async function loadQuote(quoteId) {
@@ -477,6 +486,14 @@
       statusEl.textContent = quote.status.charAt(0).toUpperCase() + quote.status.slice(1);
       statusEl.className = `status-badge status-${quote.status}`;
       
+      // Show lock indicator for accepted/converted quotes
+      if (isLocked) {
+        const lockBadge = document.createElement('span');
+        lockBadge.style.cssText = 'font-size: 0.75rem; color: var(--color-text-muted); margin-left: 8px;';
+        lockBadge.textContent = '🔒 Locked — use Change Orders to modify';
+        statusEl.parentNode.insertBefore(lockBadge, statusEl.nextSibling);
+      }
+
       // Update archive button text based on status
       const archiveBtn = $('#archive-btn');
       if (archiveBtn) {
@@ -488,7 +505,27 @@
       }
       
       // Action buttons
+      const isLocked = ['accepted', 'converted'].includes(quote.status);
+      if (isLocked) {
+        $('#edit-quote-btn').style.display = 'none';
+      }
       $('#edit-quote-btn').href = `/admin/quote-builder.html?id=${quote.id}`;
+
+      // Show Convert to Invoice button for accepted quotes (not yet converted)
+      if (quote.status === 'accepted') {
+        $('#convert-invoice-btn').style.display = '';
+      }
+
+      // Check for existing invoice and wire up View Invoice button
+      checkForInvoice();
+
+      // QB Estimate sync button
+      const qbEstBtn = $('#qb-estimate-btn');
+      qbEstBtn.style.display = '';
+      if (quote.qb_estimate_id) {
+        qbEstBtn.textContent = '✅ QB Estimate';
+        qbEstBtn.title = quote.qb_synced_at ? 'Synced ' + new Date(quote.qb_synced_at).toLocaleDateString() : 'Synced';
+      }
       
       // Customer view - set up the new tab link (no preview param - allows real checkout)
       const newTabLink = $('#customer-view-newtab');
@@ -593,6 +630,267 @@
       }
     }
     
+    async function checkForInvoice() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: invoices } = await supabase
+          .from('invoices')
+          .select('id, invoice_number, qb_invoice_id')
+          .eq('quote_id', quote.id)
+          .limit(1);
+
+        if (invoices && invoices.length > 0) {
+          const inv = invoices[0];
+          const viewBtn = $('#view-invoice-btn');
+          viewBtn.href = `/admin/invoice-detail.html?id=${inv.id}`;
+          viewBtn.textContent = `View Invoice #${inv.invoice_number}`;
+          viewBtn.style.display = '';
+          // Hide convert button if invoice already exists
+          $('#convert-invoice-btn').style.display = 'none';
+          // Show QB Invoice sync button
+          const qbInvBtn = $('#qb-invoice-btn');
+          qbInvBtn.style.display = '';
+          if (inv.qb_invoice_id) {
+            qbInvBtn.textContent = '✅ QB Invoice';
+          }
+        }
+      } catch (e) {
+        console.log('Could not check for invoice:', e.message);
+      }
+    }
+
+    async function convertToInvoice() {
+      if (!confirm('Create an invoice from this quote?')) return;
+
+      try {
+        const supabase = await app.waitForSupabase();
+
+        // Get accepted change orders with items
+        const { data: cos } = await supabase
+          .from('change_orders')
+          .select('*, change_order_items(*)')
+          .eq('quote_id', quote.id)
+          .eq('status', 'accepted');
+
+        // Calculate totals
+        let subtotal = 0;
+        let taxableSubtotal = 0;
+        const taxRate = quote.tax_rate || 0;
+
+        // Check packages vs line items
+        let selectedItems = [];
+        if (packages && packages.length > 0) {
+          const selectedPkg = packages.find(p => p.is_selected || p.id === quote.selected_package_id) || packages[0];
+          if (selectedPkg) {
+            const pkgPrice = parseFloat(selectedPkg.price) || 0;
+            subtotal += pkgPrice;
+            if (selectedPkg.apply_tax !== false) taxableSubtotal += pkgPrice;
+            selectedItems.push({
+              description: selectedPkg.name || quote.title,
+              details: selectedPkg.description || '',
+              quantity: 1,
+              unit_price: pkgPrice,
+              line_total: pkgPrice,
+              is_taxable: selectedPkg.apply_tax !== false,
+              sort_order: 0
+            });
+          }
+        } else {
+          selectedItems = lineItems.filter(i => !i.is_optional || i.is_selected);
+          selectedItems.forEach(item => {
+            const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
+            subtotal += lineTotal;
+            if (item.is_taxable) taxableSubtotal += lineTotal;
+          });
+        }
+
+        // Change order items
+        const changeOrderItems = [];
+        (cos || []).forEach(co => {
+          (co.change_order_items || []).forEach(item => {
+            const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
+            subtotal += lineTotal;
+            taxableSubtotal += lineTotal;
+            changeOrderItems.push({
+              description: item.description,
+              details: `Change Order #${co.change_order_number}`,
+              quantity: item.quantity || 1,
+              unit_price: item.unit_price || 0,
+              line_total: lineTotal,
+              is_taxable: true
+            });
+          });
+        });
+
+        const taxAmount = taxableSubtotal * taxRate;
+        const total = subtotal + taxAmount;
+
+        // Generate invoice number
+        const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
+
+        // Create invoice
+        const { data: invoice, error: invError } = await supabase
+          .from('invoices')
+          .insert({
+            invoice_number: invoiceNumber,
+            quote_id: quote.id,
+            customer_id: quote.customer_id,
+            title: quote.title,
+            status: 'draft',
+            subtotal,
+            tax_rate: taxRate,
+            tax_amount: taxAmount,
+            total,
+            amount_due: total,
+            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          })
+          .select()
+          .single();
+
+        if (invError) throw invError;
+
+        // Copy line items to invoice
+        const allInvoiceItems = [];
+
+        if (packages && packages.length > 0) {
+          // Package-based: use the selectedItems we built above
+          selectedItems.forEach((item, index) => {
+            allInvoiceItems.push({
+              invoice_id: invoice.id,
+              description: item.description,
+              details: item.details,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              line_total: item.line_total,
+              is_taxable: item.is_taxable,
+              sort_order: index
+            });
+          });
+        } else {
+          selectedItems.forEach((item, index) => {
+            allInvoiceItems.push({
+              invoice_id: invoice.id,
+              description: item.description,
+              details: item.details,
+              quantity: item.quantity,
+              unit_price: item.unit_price || item.price_range_low,
+              line_total: (item.unit_price || item.price_range_low) * item.quantity,
+              is_taxable: item.is_taxable,
+              sort_order: index
+            });
+          });
+        }
+
+        changeOrderItems.forEach((item, index) => {
+          allInvoiceItems.push({
+            invoice_id: invoice.id,
+            description: item.description,
+            details: item.details,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            line_total: item.line_total,
+            is_taxable: item.is_taxable,
+            sort_order: selectedItems.length + index
+          });
+        });
+
+        if (allInvoiceItems.length > 0) {
+          await supabase.from('invoice_line_items').insert(allInvoiceItems);
+        }
+
+        // Update quote status to converted
+        await supabase.from('quotes').update({ status: 'converted' }).eq('id', quote.id);
+
+        showToast('Invoice created successfully', 'success');
+
+        // Update UI
+        quote.status = 'converted';
+        $('#convert-invoice-btn').style.display = 'none';
+        const viewBtn = $('#view-invoice-btn');
+        viewBtn.href = `/admin/invoice-detail.html?id=${invoice.id}`;
+        viewBtn.textContent = `View Invoice #${invoice.invoice_number}`;
+        viewBtn.style.display = '';
+
+        // Update status badge
+        const statusEl = $('#quote-status');
+        statusEl.textContent = 'Converted';
+        statusEl.className = 'status-badge status-converted';
+
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to create invoice: ' + err.message, 'error');
+      }
+    }
+
+    async function syncEstimateToQB() {
+      const btn = $('#qb-estimate-btn');
+      const originalText = btn.textContent;
+      btn.textContent = '⏳ Syncing...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('/.netlify/functions/qb-sync-estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quoteId: quote.id })
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Sync failed');
+
+        btn.textContent = '✅ QB Estimate';
+        btn.title = 'Synced ' + new Date().toLocaleDateString();
+        quote.qb_estimate_id = result.qb_estimate_id;
+        showToast(result.message || 'Estimate synced to QuickBooks', 'success');
+      } catch (err) {
+        btn.textContent = originalText;
+        showToast('QB sync failed: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function syncInvoiceToQB() {
+      const btn = $('#qb-invoice-btn');
+      const originalText = btn.textContent;
+      btn.textContent = '⏳ Syncing...';
+      btn.disabled = true;
+
+      try {
+        // Find the invoice for this quote
+        const supabase = await app.waitForSupabase();
+        const { data: invoices } = await supabase
+          .from('invoices')
+          .select('id, qb_invoice_id')
+          .eq('quote_id', quote.id)
+          .limit(1);
+
+        if (!invoices || invoices.length === 0) {
+          throw new Error('No invoice found for this quote');
+        }
+
+        const invoiceId = invoices[0].id;
+
+        const response = await fetch('/.netlify/functions/qb-sync-invoice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoiceId })
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Sync failed');
+
+        btn.textContent = '✅ QB Invoice';
+        btn.title = 'Synced ' + new Date().toLocaleDateString();
+        showToast(result.message || 'Invoice synced to QuickBooks', 'success');
+      } catch (err) {
+        btn.textContent = originalText;
+        showToast('QB sync failed: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     function renderActivityLog() {
       const container = $('#quote-activity');
       const events = [];
