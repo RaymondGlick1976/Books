@@ -482,11 +482,14 @@
       $('#quote-title').textContent = `Quote #${quote.quote_number} - ${quote.title}`;
       $('#quote-meta').textContent = `Created ${formatDate(quote.created_at)}`;
       
+      // Action buttons
+      const isLocked = ['accepted', 'converted'].includes(quote.status);
+
       // Status badge
       const statusEl = $('#quote-status');
       statusEl.textContent = quote.status.charAt(0).toUpperCase() + quote.status.slice(1);
       statusEl.className = `status-badge status-${quote.status}`;
-      
+
       // Show lock indicator for accepted/converted quotes
       if (isLocked) {
         const lockBadge = document.createElement('span');
@@ -505,8 +508,6 @@
         }
       }
       
-      // Action buttons
-      const isLocked = ['accepted', 'converted'].includes(quote.status);
       if (isLocked) {
         $('#edit-quote-btn').style.display = 'none';
       }
