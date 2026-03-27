@@ -944,6 +944,58 @@
             </div>
           </div>
         </div>
+
+        <!-- Google Photos Integration -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Google Photos Integration</h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-md">Share deal photos directly to your Google Photos account. Photos are organized into albums by deal name.</p>
+
+            <div id="gphoto-status">
+              <div class="loading">Checking connection...</div>
+            </div>
+
+            <div id="gphoto-connected" style="display: none;">
+              <div style="background: var(--color-success-bg); border: 1px solid var(--color-success); border-radius: var(--radius-md); padding: var(--space-md); margin-bottom: var(--space-md);">
+                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  <span style="font-weight: 500; color: var(--color-success);">Connected to Google Photos</span>
+                </div>
+                <div class="text-muted text-sm" style="margin-top: var(--space-xs);" id="gphoto-connected-info"></div>
+              </div>
+              <button type="button" class="btn btn-secondary" onclick="disconnectGooglePhotos()">
+                Disconnect Google Photos
+              </button>
+            </div>
+
+            <div id="gphoto-disconnected" style="display: none;">
+              <button type="button" class="btn btn-primary" onclick="connectGooglePhotos()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <path d="M21 15l-5-5L5 21"/>
+                </svg>
+                Connect to Google Photos
+              </button>
+              <p class="text-muted text-sm" style="margin-top: var(--space-sm);">
+                You'll be redirected to Google to authorize photo upload access.
+              </p>
+            </div>
+
+            <div id="gphoto-not-configured" style="display: none;">
+              <div style="background: var(--color-warning-bg); border: 1px solid var(--color-warning); border-radius: var(--radius-md); padding: var(--space-md);">
+                <p style="margin: 0; color: var(--color-warning-dark);">
+                  <strong>Setup Required:</strong> Google Photos integration requires environment variables to be configured (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET).
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -3090,6 +3142,93 @@
       }
     }
 
+    // =============================================
+    // GOOGLE PHOTOS FUNCTIONS
+    // =============================================
+
+    async function checkGPhotoStatus() {
+      try {
+        const response = await fetch('/.netlify/functions/gphoto-status');
+        const data = await response.json();
+
+        document.getElementById('gphoto-status').style.display = 'none';
+
+        if (data.error && data.error.includes('not configured')) {
+          document.getElementById('gphoto-not-configured').style.display = 'block';
+        } else if (data.connected) {
+          document.getElementById('gphoto-connected').style.display = 'block';
+          const connectedAt = new Date(data.connectedAt).toLocaleDateString();
+          document.getElementById('gphoto-connected-info').textContent = `Connected on ${connectedAt}`;
+        } else {
+          document.getElementById('gphoto-disconnected').style.display = 'block';
+        }
+      } catch (err) {
+        console.error('GPhoto status check failed:', err);
+        document.getElementById('gphoto-status').innerHTML = '<span class="text-muted">Unable to check Google Photos status</span>';
+      }
+    }
+
+    async function connectGooglePhotos() {
+      try {
+        const response = await fetch('/.netlify/functions/gphoto-auth');
+        const data = await response.json();
+
+        if (data.error) {
+          if (data.error.includes('not configured')) {
+            document.getElementById('gphoto-disconnected').style.display = 'none';
+            document.getElementById('gphoto-not-configured').style.display = 'block';
+          } else {
+            showToast(data.error, 'error');
+          }
+          return;
+        }
+
+        window.location.href = data.authUrl;
+      } catch (err) {
+        showToast('Failed to start Google Photos connection', 'error');
+      }
+    }
+
+    async function disconnectGooglePhotos() {
+      if (!confirm('Are you sure you want to disconnect Google Photos?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/.netlify/functions/gphoto-disconnect', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+          showToast('Google Photos disconnected', 'success');
+          document.getElementById('gphoto-connected').style.display = 'none';
+          document.getElementById('gphoto-disconnected').style.display = 'block';
+        } else {
+          showToast(data.error || 'Failed to disconnect', 'error');
+        }
+      } catch (err) {
+        showToast('Failed to disconnect Google Photos', 'error');
+      }
+    }
+
+    function handleGPhotoCallback() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('gphoto_connected') === '1') {
+        showToast('Google Photos connected successfully!', 'success');
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (params.get('gphoto_error')) {
+        const errorMap = {
+          'missing_params': 'Google Photos authorization was incomplete',
+          'token_exchange_failed': 'Failed to complete Google Photos authorization',
+          'save_failed': 'Failed to save Google Photos connection',
+          'not_configured': 'Google Photos is not configured yet',
+          'unexpected': 'An unexpected error occurred'
+        };
+        const error = params.get('gphoto_error');
+        showToast(errorMap[error] || error, 'error');
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+
     // ==========================================
     // Payment Schedule Templates
     // ==========================================
@@ -3453,10 +3592,12 @@
       // Handle callback params
       handleQBCallback();
       handleGCalCallback();
+      handleGPhotoCallback();
 
       // Check integration statuses
       checkQBStatus();
       checkGCalStatus();
+      checkGPhotoStatus();
       
       // Load payment templates
       loadPaymentTemplates();

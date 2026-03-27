@@ -318,6 +318,19 @@
             <div class="form-section-title"><span>✅ Punch List</span><button type="button" class="btn btn-secondary btn-sm" onclick="addPunchItem()">+ Add Item</button></div>
             <div id="punch-items-container"><p class="text-muted text-sm">No punch list items.</p></div>
           </div>
+          <div class="form-section">
+            <div class="form-section-title">
+              <span>📷 Photos</span>
+              <div style="display:flex;gap:var(--space-sm);">
+                <button type="button" class="btn btn-secondary btn-sm" id="share-all-gphoto-btn" style="display:none;" onclick="shareAllToGooglePhotos()">Share All to Google Photos</button>
+                <label class="btn btn-secondary btn-sm" style="cursor:pointer;margin:0;">
+                  + Upload Photos
+                  <input type="file" id="deal-photo-input" multiple accept="image/*" style="display:none;">
+                </label>
+              </div>
+            </div>
+            <div id="deal-photos-container" style="display:flex;flex-wrap:wrap;gap:var(--space-sm);"><p class="text-muted text-sm">No photos yet.</p></div>
+          </div>
           <div class="form-section"><div class="form-group"><label class="form-label">Notes</label><textarea id="deal-notes" class="form-input" rows="3"></textarea></div></div>
           <div class="form-section" id="submission-section" style="display:none;">
             <div class="form-section-title" style="cursor:pointer;" onclick="this.parentElement.classList.toggle('collapsed')">
@@ -372,6 +385,10 @@
         <div id="deal-view-punch" class="deal-view-section" style="display:none;">
           <div class="deal-view-section-title">Punch List</div>
           <div id="deal-view-punch-list"></div>
+        </div>
+        <div id="deal-view-photos" class="deal-view-section" style="display:none;">
+          <div class="deal-view-section-title">Photos</div>
+          <div id="deal-view-photos-list" style="display:flex;flex-wrap:wrap;gap:var(--space-sm);"></div>
         </div>
         <div id="deal-view-notes" class="deal-view-section" style="display:none;">
           <div class="deal-view-section-title">Notes</div>
@@ -944,6 +961,8 @@
         loadSubmissionData(deal.id);
         // Load punch list items
         loadPunchItems(deal.id);
+        // Load deal photos
+        loadDealPhotos(deal.id);
       } else {
         $('#deal-modal-title').textContent = 'New Deal'; $('#delete-deal-btn').style.display = 'none'; $('#deal-form').reset(); $('#deal-id').value = ''; $('#deal-stage').value = stages[0]?.stage_id || '';
         // Clear customer search
@@ -952,6 +971,8 @@
         $('#customer-search-select').classList.remove('has-value');
         $('#email-deal-btn').style.display = 'none';
         $('#print-deal-btn').style.display = 'none';
+        currentDealPhotos = [];
+        renderDealPhotos();
       }
       renderDealEvents(); renderDealItems(); renderDealFinishes(); renderPunchItems(); $('#deal-modal').classList.add('active');
     }
@@ -1049,6 +1070,10 @@
       // Punch List (load from DB)
       $('#deal-view-punch').style.display = 'none';
       loadPunchItemsForView(deal.id);
+
+      // Photos
+      $('#deal-view-photos').style.display = 'none';
+      loadDealPhotosForView(deal.id);
 
       // Notes
       if (deal.notes) {
@@ -1357,6 +1382,20 @@
   </div>`;
       }
 
+      // Photos
+      if (currentDealPhotos.length > 0) {
+        html += `
+  <div class="section">
+    <div class="section-title">Photos</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">`;
+        currentDealPhotos.forEach(p => {
+          html += `<img src="${p.file_url}" style="width:120px;height:120px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">`;
+        });
+        html += `
+    </div>
+  </div>`;
+      }
+
       // Notes
       if (deal.notes) {
         html += `
@@ -1633,6 +1672,194 @@
         const itemData = { job_id: dealId, description: item.description, is_completed: item.is_completed || false, completed_at: item.completed_at || null, sort_order: currentPunchItems.indexOf(item) };
         if (item.isExisting) await supabase.from('punch_list_items').update(itemData).eq('id', item.id);
         else await supabase.from('punch_list_items').insert([itemData]);
+      }
+    }
+
+    // ==========================================
+    // DEAL PHOTOS
+    // ==========================================
+    let currentDealPhotos = [];
+    let gphotoConnected = false;
+
+    // Check Google Photos connection on load
+    (async () => {
+      try {
+        const res = await fetch('/.netlify/functions/gphoto-status');
+        const data = await res.json();
+        gphotoConnected = data.connected === true;
+      } catch (e) { /* ignore */ }
+    })();
+
+    async function loadDealPhotos(jobId) {
+      const container = $('#deal-photos-container');
+      if (!container) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: photos } = await supabase
+          .from('customer_uploads')
+          .select('*')
+          .eq('job_id', jobId)
+          .order('uploaded_at', { ascending: false });
+
+        currentDealPhotos = photos || [];
+        renderDealPhotos();
+      } catch (err) {
+        console.error('Failed to load deal photos:', err);
+        container.innerHTML = '<p class="text-muted text-sm">Failed to load photos.</p>';
+      }
+    }
+
+    function renderDealPhotos() {
+      const container = $('#deal-photos-container');
+      if (!container) return;
+
+      // Show/hide the "Share All" button
+      const shareAllBtn = $('#share-all-gphoto-btn');
+      if (shareAllBtn) {
+        shareAllBtn.style.display = (gphotoConnected && currentDealPhotos.length > 0) ? '' : 'none';
+      }
+
+      if (currentDealPhotos.length === 0) {
+        container.innerHTML = '<p class="text-muted text-sm">No photos yet.</p>';
+        return;
+      }
+
+      container.innerHTML = currentDealPhotos.map(p => `
+        <div style="position:relative;width:100px;height:100px;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--color-border);">
+          <a href="${p.file_url}" target="_blank">
+            <img src="${p.file_url}" style="width:100%;height:100%;object-fit:cover;" alt="${p.file_name || 'Photo'}">
+          </a>
+          <div style="position:absolute;top:2px;right:2px;display:flex;gap:2px;">
+            ${gphotoConnected ? `<button onclick="shareToGooglePhotos('${p.file_url}','${(p.file_name || 'photo').replace(/'/g, "\\'")}')" class="btn btn-sm" style="background:rgba(255,255,255,0.9);padding:2px 4px;min-width:0;line-height:1;" title="Share to Google Photos">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            </button>` : ''}
+            <button onclick="deleteDealPhoto('${p.id}','${p.job_id}')" class="btn btn-sm" style="background:rgba(255,255,255,0.9);color:var(--color-danger);padding:2px 4px;min-width:0;line-height:1;" title="Delete photo">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Photo upload handler
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('deal-photo-input');
+      if (input) {
+        input.addEventListener('change', async (e) => {
+          const files = Array.from(e.target.files);
+          if (!files.length) return;
+          const jobId = $('#deal-id').value;
+          if (!jobId) { showToast('Save the deal first before uploading photos', 'error'); e.target.value = ''; return; }
+          const customerId = $('#deal-customer').value || null;
+          const supabase = await app.waitForSupabase();
+          let uploaded = 0;
+          for (const file of files) {
+            if (file.size > 10 * 1024 * 1024) { showToast(`${file.name} exceeds 10MB limit`, 'error'); continue; }
+            try {
+              const ext = file.name.split('.').pop();
+              const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+              const filePath = `deal-files/${jobId}/${uniqueName}`;
+              const { error: uploadError } = await supabase.storage.from('Uploads').upload(filePath, file, { contentType: file.type, upsert: false });
+              if (uploadError) throw uploadError;
+              const { data: urlData } = supabase.storage.from('Uploads').getPublicUrl(filePath);
+              await supabase.from('customer_uploads').insert({
+                customer_id: customerId,
+                job_id: jobId,
+                file_url: urlData.publicUrl,
+                file_name: file.name,
+                file_type: file.type,
+                file_size: file.size
+              });
+              uploaded++;
+            } catch (err) { console.error('Upload error:', err); showToast(`Failed to upload ${file.name}`, 'error'); }
+          }
+          if (uploaded > 0) { showToast(`${uploaded} photo(s) uploaded`, 'success'); loadDealPhotos(jobId); }
+          e.target.value = '';
+        });
+      }
+    });
+
+    window.deleteDealPhoto = async (fileId, jobId) => {
+      if (!confirm('Delete this photo?')) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: file } = await supabase.from('customer_uploads').select('file_url').eq('id', fileId).single();
+        if (file?.file_url) {
+          const urlParts = file.file_url.split('/storage/v1/object/public/Uploads/');
+          if (urlParts[1]) {
+            await supabase.storage.from('Uploads').remove([decodeURIComponent(urlParts[1])]);
+          }
+        }
+        await supabase.from('customer_uploads').delete().eq('id', fileId);
+        showToast('Photo deleted', 'success');
+        loadDealPhotos(jobId);
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to delete photo', 'error');
+      }
+    };
+
+    window.shareToGooglePhotos = async (fileUrl, fileName) => {
+      try {
+        const dealName = currentDeal?.name || $('#deal-name').value || 'Deal Photos';
+        showToast('Sharing to Google Photos...', 'info');
+        const res = await fetch('/.netlify/functions/gphoto-upload-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file_url: fileUrl, file_name: fileName, album_name: dealName })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
+        showToast('Photo shared to Google Photos!', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to share to Google Photos: ' + err.message, 'error');
+      }
+    };
+
+    window.shareAllToGooglePhotos = async () => {
+      if (!currentDealPhotos.length) return;
+      if (!confirm(`Share ${currentDealPhotos.length} photo(s) to Google Photos?`)) return;
+      const dealName = currentDeal?.name || $('#deal-name').value || 'Deal Photos';
+      let shared = 0;
+      for (const p of currentDealPhotos) {
+        try {
+          const res = await fetch('/.netlify/functions/gphoto-upload-photo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_url: p.file_url, file_name: p.file_name, album_name: dealName })
+          });
+          if (res.ok) shared++;
+        } catch (err) { console.error(err); }
+      }
+      showToast(`${shared} of ${currentDealPhotos.length} photo(s) shared to Google Photos`, shared > 0 ? 'success' : 'error');
+    };
+
+    async function loadDealPhotosForView(jobId) {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: photos } = await supabase
+          .from('customer_uploads')
+          .select('*')
+          .eq('job_id', jobId)
+          .order('uploaded_at', { ascending: false });
+
+        if (photos && photos.length > 0) {
+          currentDealPhotos = photos;
+          $('#deal-view-photos').style.display = '';
+          $('#deal-view-photos-list').innerHTML = photos.map(p => `
+            <a href="${p.file_url}" target="_blank" style="display:block;width:80px;height:80px;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--color-border);">
+              <img src="${p.file_url}" style="width:100%;height:100%;object-fit:cover;" alt="${p.file_name || 'Photo'}">
+            </a>
+          `).join('');
+        } else {
+          currentDealPhotos = [];
+          $('#deal-view-photos').style.display = 'none';
+        }
+      } catch (err) {
+        console.error('Failed to load photos for view:', err);
+        currentDealPhotos = [];
+        $('#deal-view-photos').style.display = 'none';
       }
     }
 

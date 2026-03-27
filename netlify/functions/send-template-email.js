@@ -45,7 +45,8 @@ exports.handler = async (event) => {
     // Convert plain text body to HTML with clickable links
     const htmlBody = body
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color: #6366f1;">$1</a>')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" style="color: #6366f1;">$1</a>')
+      .replace(/(https?:\/\/[^\s<]+)(?![^<]*<\/a>)/g, '<a href="$1" style="color: #6366f1;">$1</a>')
       .replace(/\n/g, '<br>');
     const emailHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 1.6; color: #333;">${htmlBody}</div>`;
 

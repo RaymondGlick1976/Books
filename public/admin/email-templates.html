@@ -358,6 +358,12 @@
         
         <div class="form-group">
           <label class="form-label">Email Body *</label>
+          <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-xs);">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="insertLink()" title="Insert a hyperlink">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              Insert Link
+            </button>
+          </div>
           <textarea id="template-body" class="form-textarea" rows="10" required placeholder="Hi {{first_name}},&#10;&#10;Your message here...">${template?.body || ''}</textarea>
           <p class="form-help" id="body-help"></p>
         </div>
@@ -438,6 +444,22 @@
         const text = textarea.value;
         textarea.value = text.substring(0, start) + variable + text.substring(end);
         textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+        textarea.focus();
+      };
+
+      // Insert a hyperlink at cursor position
+      window.insertLink = () => {
+        const url = prompt('Enter the URL:', 'https://');
+        if (!url) return;
+        const linkText = prompt('Enter the link text (what the reader clicks):', url);
+        if (!linkText) return;
+        const textarea = $('#template-body');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const linkMarkup = `[${linkText}](${url})`;
+        textarea.value = text.substring(0, start) + linkMarkup + text.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + linkMarkup.length;
         textarea.focus();
       };
       
