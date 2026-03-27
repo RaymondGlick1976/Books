@@ -865,6 +865,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   
+  // Apply cached brand color immediately to prevent flash
+  const cachedColor = localStorage.getItem('brand_color');
+  if (cachedColor) applyBrandColor(cachedColor);
+
   // Load and apply brand settings on all pages (don't block anything)
   loadBrandSettings().catch(e => console.log('Brand settings error:', e));
 });
@@ -891,6 +895,7 @@ async function loadBrandSettings() {
       const branding = settings.value;
       if (branding.color) {
         applyBrandColor(branding.color);
+        localStorage.setItem('brand_color', branding.color);
       }
     }
   } catch (e) {
