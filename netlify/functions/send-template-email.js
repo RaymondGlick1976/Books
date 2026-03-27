@@ -63,10 +63,10 @@ exports.handler = async (event) => {
 
       if (!response.ok) {
         const errorData = await response.text();
-        console.error('Email send failed:', errorData);
+        console.error('Resend email send failed:', errorData);
         return {
           statusCode: 500, headers,
-          body: JSON.stringify({ error: 'Failed to send email', details: errorData })
+          body: JSON.stringify({ error: 'Failed to send email: ' + errorData })
         };
       }
     } else if (process.env.SENDGRID_API_KEY) {
@@ -87,10 +87,10 @@ exports.handler = async (event) => {
 
       if (!response.ok) {
         const errorData = await response.text();
-        console.error('Email send failed:', errorData);
+        console.error('SendGrid email send failed:', errorData);
         return {
           statusCode: 500, headers,
-          body: JSON.stringify({ error: 'Failed to send email', details: errorData })
+          body: JSON.stringify({ error: 'Failed to send email: ' + errorData })
         };
       }
     } else {
@@ -104,16 +104,20 @@ exports.handler = async (event) => {
     }
 
     // Log the sent email
-    await supabase.from('email_logs').insert({
-      template_id: template_id || null,
-      customer_id: customer_id || null,
-      deal_id: deal_id || null,
-      appointment_id: appointment_id || null,
-      to_email,
-      subject,
-      body,
-      sent_by: sent_by || null
-    });
+    try {
+      await supabase.from('email_logs').insert({
+        template_id: template_id || null,
+        customer_id: customer_id || null,
+        deal_id: deal_id || null,
+        appointment_id: appointment_id || null,
+        to_email,
+        subject,
+        body,
+        sent_by: sent_by || null
+      });
+    } catch (logErr) {
+      console.error('Failed to log email:', logErr);
+    }
 
     return {
       statusCode: 200, headers,
