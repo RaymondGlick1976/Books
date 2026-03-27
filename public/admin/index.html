@@ -454,7 +454,7 @@
           type: 'warning',
           text: `Quote expiring: ${q.quote_number}`,
           subtitle: `${q.customers?.name} - expires ${formatDate(q.expires_at)}`,
-          link: `/admin/quote.html?id=${q.id}`
+          link: `/admin/quote-detail.html?id=${q.id}`
         });
       });
       
@@ -530,7 +530,7 @@
           <td><span class="badge badge-${quote.status}">${quote.status}</span></td>
           <td>${formatDate(quote.created_at)}</td>
           <td class="table-actions">
-            <a href="/admin/quote.html?id=${quote.id}" class="btn btn-ghost btn-sm">View</a>
+            <a href="/admin/quote-detail.html?id=${quote.id}" class="btn btn-ghost btn-sm">View</a>
           </td>
         `;
         tbody.appendChild(row);
