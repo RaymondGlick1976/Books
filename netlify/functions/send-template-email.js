@@ -42,10 +42,14 @@ exports.handler = async (event) => {
     const fromEmail = company.email || process.env.FROM_EMAIL || 'noreply@example.com';
     const companyName = company.name || 'Homestead Cabinet Design';
 
-    // Send email via your email provider
-    // This example uses a generic fetch - replace with your provider (SendGrid, Resend, etc.)
-    
-    // For now, we'll use Resend if available, otherwise log
+    // Convert plain text body to HTML with clickable links
+    const htmlBody = body
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color: #6366f1;">$1</a>')
+      .replace(/\n/g, '<br>');
+    const emailHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 1.6; color: #333;">${htmlBody}</div>`;
+
+    // Send email via Resend or SendGrid
     if (process.env.RESEND_API_KEY) {
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -57,7 +61,7 @@ exports.handler = async (event) => {
           from: `${companyName} <${fromEmail}>`,
           to: [to_email],
           subject: subject,
-          text: body
+          html: emailHtml
         })
       });
 
@@ -70,7 +74,6 @@ exports.handler = async (event) => {
         };
       }
     } else if (process.env.SENDGRID_API_KEY) {
-      // SendGrid alternative
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: {
@@ -81,7 +84,7 @@ exports.handler = async (event) => {
           personalizations: [{ to: [{ email: to_email }] }],
           from: { email: fromEmail, name: companyName },
           subject: subject,
-          content: [{ type: 'text/plain', value: body }]
+          content: [{ type: 'text/html', value: emailHtml }]
         })
       });
 
