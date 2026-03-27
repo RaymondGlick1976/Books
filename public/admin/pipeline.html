@@ -418,6 +418,10 @@
           <div class="form-group"><label class="form-label">Link to Deal (optional)</label><select id="appt-deal" class="form-input"><option value="">No deal linked</option></select></div>
           <div class="form-group"><label class="form-label">Location</label><input type="text" id="appt-location" class="form-input" placeholder="Address or location"></div>
           <div class="form-group"><label class="form-label">Notes</label><textarea id="appt-notes" class="form-input" rows="2"></textarea></div>
+          <div id="appt-new-options" style="display:none; border-top: 1px solid var(--color-border); padding-top: var(--space-md); margin-top: var(--space-md);">
+            <label class="form-check" style="margin-bottom: var(--space-sm);"><input type="checkbox" id="appt-send-email" checked><span class="form-check-label">Send confirmation email to customer</span></label>
+            <label class="form-check"><input type="checkbox" id="appt-sync-gcal" checked><span class="form-check-label">Add to Google Calendar</span></label>
+          </div>
         </form>
       </div>
       <div class="modal-footer" style="justify-content: space-between;">
@@ -1601,30 +1605,34 @@
     function openApptModal(typeId = null, appt = null) {
       $$('.dropdown.open').forEach(d => d.classList.remove('open'));
       currentAppt = appt;
-      if (appt) { 
-        $('#appt-modal-title').textContent = 'Edit Appointment'; 
-        $('#delete-appt-btn').style.display = 'block'; 
-        $('#appt-id').value = appt.id; 
-        $('#appt-type').value = appt.appointment_type_id || ''; 
-        $('#appt-title').value = appt.title || ''; 
-        $('#appt-date').value = appt.appointment_date || ''; 
-        $('#appt-time').value = appt.appointment_time || ''; 
-        $('#appt-customer').value = appt.customer_id || ''; 
-        $('#appt-deal').value = appt.deal_id || ''; 
-        $('#appt-location').value = appt.location || ''; 
-        $('#appt-notes').value = appt.notes || ''; 
+      if (appt) {
+        $('#appt-modal-title').textContent = 'Edit Appointment';
+        $('#delete-appt-btn').style.display = 'block';
+        $('#appt-id').value = appt.id;
+        $('#appt-type').value = appt.appointment_type_id || '';
+        $('#appt-title').value = appt.title || '';
+        $('#appt-date').value = appt.appointment_date || '';
+        $('#appt-time').value = appt.appointment_time || '';
+        $('#appt-customer').value = appt.customer_id || '';
+        $('#appt-deal').value = appt.deal_id || '';
+        $('#appt-location').value = appt.location || '';
+        $('#appt-notes').value = appt.notes || '';
         // Show email button if appointment has customer with email
         const hasEmail = appt.customers?.email;
         $('#email-appt-btn').style.display = hasEmail ? 'block' : 'none';
+        $('#appt-new-options').style.display = 'none';
       }
-      else { 
-        $('#appt-modal-title').textContent = 'New Appointment'; 
-        $('#delete-appt-btn').style.display = 'none'; 
+      else {
+        $('#appt-modal-title').textContent = 'New Appointment';
+        $('#delete-appt-btn').style.display = 'none';
         $('#email-appt-btn').style.display = 'none';
-        $('#appt-form').reset(); 
-        $('#appt-id').value = ''; 
-        if (typeId) $('#appt-type').value = typeId; 
-        $('#appt-date').value = new Date().toISOString().split('T')[0]; 
+        $('#appt-form').reset();
+        $('#appt-id').value = '';
+        if (typeId) $('#appt-type').value = typeId;
+        $('#appt-date').value = new Date().toISOString().split('T')[0];
+        $('#appt-send-email').checked = true;
+        $('#appt-sync-gcal').checked = true;
+        $('#appt-new-options').style.display = '';
       }
       $('#appt-modal').classList.add('active');
     }
@@ -1645,7 +1653,21 @@
             try { await fetch(`/.netlify/functions/gcal-update-event?event_id=${encodeURIComponent(existing.gcal_event_id)}&date=${data.appointment_date}&time=${data.appointment_time}&title=${encodeURIComponent(data.title || '')}`, { method: 'POST' }); } catch (e) { console.error('GCal update failed:', e); }
           }
         } else {
-          await supabase.from('appointments').insert([data]);
+          const { data: newAppt } = await supabase.from('appointments').insert([data]).select().single();
+          // Send confirmation email + GCal sync for new appointments
+          if (newAppt) {
+            const sendEmail = $('#appt-send-email').checked && data.customer_id;
+            const syncGcal = $('#appt-sync-gcal').checked;
+            if (sendEmail || syncGcal) {
+              try {
+                await fetch('/.netlify/functions/send-appointment-confirmation', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ appointment_id: newAppt.id, send_email: sendEmail, sync_gcal: syncGcal })
+                });
+              } catch (e) { console.error('Confirmation/GCal failed:', e); }
+            }
+          }
         }
         closeApptModal(); await loadData(); renderCalendar(); showToast(id ? 'Appointment updated' : 'Appointment created', 'success');
       }
@@ -1927,6 +1949,7 @@
         .replace(/\{\{appointment_time\}\}/g, data.appointmentTime || '')
         .replace(/\{\{appointment_location\}\}/g, data.appointmentLocation || '')
         .replace(/\{\{location\}\}/g, data.appointmentLocation || '')
+        .replace(/\{\{reschedule_link\}\}/g, data.rescheduleLink || '')
         .replace(/\{\{installation_date\}\}/g, data.installationDate ? formatDate(data.installationDate) : '')
         .replace(/\{\{shop_date\}\}/g, data.shopDate ? formatDate(data.shopDate) : '')
         .replace(/\{\{#if [^}]+\}\}[\s\S]*?\{\{\/if\}\}/g, (match) => {
@@ -2020,9 +2043,10 @@
         appointmentType: apptType ? `${apptType.icon} ${apptType.name}` : 'Appointment',
         appointmentDate: currentAppt.appointment_date,
         appointmentTime: currentAppt.appointment_time,
-        appointmentLocation: currentAppt.location || ''
+        appointmentLocation: currentAppt.location || '',
+        rescheduleLink: `${window.location.origin}/schedule-manage.html?id=${currentAppt.id}`
       };
-      
+
       const subject = replaceEmailVariables(template.subject, data);
       const body = replaceEmailVariables(template.body, data);
       
