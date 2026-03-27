@@ -17,5 +17,5 @@ CREATE INDEX idx_punch_list_completed ON punch_list_items(is_completed);
 -- Enable RLS
 ALTER TABLE punch_list_items ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all for authenticated users" ON punch_list_items
-  FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow all access to punch_list_items" ON punch_list_items
+  FOR ALL USING (true) WITH CHECK (true);
