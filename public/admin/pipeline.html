@@ -885,6 +885,11 @@
       try { const supabase = await app.waitForSupabase(); await supabase.from('jobs').update({ stage: newStage, updated_at: new Date().toISOString() }).eq('id', dealId); const deal = deals.find(d => d.id === dealId); if (deal) deal.stage = newStage; renderPipeline(); showToast('Deal moved', 'success'); }
       catch (err) { console.error(err); showToast('Failed to move deal', 'error'); }
     }
+    async function changeViewStage(dealId, newStage) {
+      await updateDealStage(dealId, newStage);
+      const deal = deals.find(d => d.id === dealId);
+      if (deal && currentDeal && currentDeal.id === dealId) { currentDeal.stage = newStage; openDealView(deal); }
+    }
     
     let currentDeal = null; // Track the current deal for email
     
@@ -957,7 +962,7 @@
         infoHtml += `<div class="deal-view-field"><label>Job Number</label><p>${deal.job_number}</p></div>`;
       }
       infoHtml += `<div class="deal-view-field"><label>Customer</label><p>${customer ? `<a href="javascript:void(0)" onclick="viewCustomerDetail('${deal.customer_id}')" style="color:var(--color-primary);text-decoration:none;font-weight:500;">${customer.name}</a>` : '<span class="text-muted">—</span>'}</p></div>`;
-      infoHtml += `<div class="deal-view-field"><label>Stage</label><p><span class="badge" style="background:${stage?.color || '#666'};color:white;">${stage?.label || deal.stage}</span></p></div>`;
+      infoHtml += `<div class="deal-view-field"><label>Stage</label><p><select onchange="changeViewStage('${deal.id}', this.value)" style="padding:4px 8px;border-radius:var(--radius-md);border:1px solid var(--color-border);font-size:0.8rem;font-weight:600;color:white;background:${stage?.color || '#666'};cursor:pointer;">${stages.map(s => `<option value="${s.stage_id}" ${s.stage_id === deal.stage ? 'selected' : ''} style="background:${s.color || '#666'};color:white;">${s.label}</option>`).join('')}</select></p></div>`;
       if (deal.estimated_value) {
         infoHtml += `<div class="deal-view-field"><label>Estimated Value</label><p style="font-weight:600;color:var(--color-primary);">${formatCurrency(deal.estimated_value)}</p></div>`;
       }
