@@ -439,7 +439,28 @@
       </div>
     </div>
   </div>
-  
+
+  <!-- Appointment View Modal -->
+  <div id="appt-view-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="appt-view-title">Appointment Details</h3>
+        <button class="modal-close" onclick="closeApptView()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="deal-view-grid" id="appt-view-info"></div>
+        <div id="appt-view-notes" class="deal-view-section" style="display:none;">
+          <div class="deal-view-section-title">Notes</div>
+          <div id="appt-view-notes-content" style="white-space:pre-wrap;font-size:0.875rem;color:var(--color-text);"></div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeApptView()">Close</button>
+        <button type="button" class="btn btn-primary" id="appt-view-edit-btn" onclick="editFromApptView()">Edit</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Stage Settings Modal -->
   <div id="stage-modal" class="modal-overlay">
     <div class="modal">
@@ -489,11 +510,11 @@
         const supabase = await app.waitForSupabase();
         const [stagesRes, dealsRes, customersRes, quotesRes, apptTypesRes, apptsRes, eventTypesRes, dealEventsRes, templatesRes, settingsRes] = await Promise.all([
           supabase.from('job_stages').select('*').order('sort_order'),
-          supabase.from('jobs').select('*, customers(name, email, phone, first_name)').order('created_at', { ascending: false }),
+          supabase.from('jobs').select('*, customers(name, email, phone, first_name, address, city, state, zip)').order('created_at', { ascending: false }),
           supabase.from('customers').select('id, name, first_name, email').order('name'),
           supabase.from('quotes').select('id, quote_number, title, customer_id, total').in('status', ['sent', 'viewed', 'draft']).order('created_at', { ascending: false }),
           supabase.from('appointment_types').select('*').eq('is_active', true).order('sort_order'),
-          supabase.from('appointments').select('*, appointment_types(*), customers(name, email, first_name)').order('appointment_date'),
+          supabase.from('appointments').select('*, appointment_types(*), customers(name, email, phone, first_name, address, city, state, zip)').order('appointment_date'),
           supabase.from('job_event_types').select('*').eq('is_active', true).order('sort_order'),
           supabase.from('job_events').select('*, job_event_types(*)').order('event_date'),
           supabase.from('email_templates').select('*').eq('is_active', true),
@@ -962,6 +983,14 @@
         infoHtml += `<div class="deal-view-field"><label>Job Number</label><p>${deal.job_number}</p></div>`;
       }
       infoHtml += `<div class="deal-view-field"><label>Customer</label><p>${customer ? `<a href="javascript:void(0)" onclick="viewCustomerDetail('${deal.customer_id}')" style="color:var(--color-primary);text-decoration:none;font-weight:500;">${customer.name}</a>` : '<span class="text-muted">—</span>'}</p></div>`;
+      if (customer?.phone) {
+        infoHtml += `<div class="deal-view-field"><label>Phone</label><p><a href="tel:${customer.phone}" style="color:var(--color-primary);text-decoration:none;">${customer.phone}</a></p></div>`;
+      }
+      if (customer?.address || customer?.city) {
+        const addrParts = [customer.address, customer.city ? `${customer.city}, ${customer.state || ''}` : '', customer.zip].filter(Boolean).join(' ');
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addrParts)}`;
+        infoHtml += `<div class="deal-view-field"><label>Address</label><p><a href="${mapsUrl}" target="_blank" style="color:var(--color-primary);text-decoration:none;">${addrParts}</a></p></div>`;
+      }
       infoHtml += `<div class="deal-view-field"><label>Stage</label><p><select onchange="changeViewStage('${deal.id}', this.value)" style="padding:4px 8px;border-radius:var(--radius-md);border:1px solid var(--color-border);font-size:0.8rem;font-weight:600;color:white;background:${stage?.color || '#666'};cursor:pointer;">${stages.map(s => `<option value="${s.stage_id}" ${s.stage_id === deal.stage ? 'selected' : ''} style="background:${s.color || '#666'};color:white;">${s.label}</option>`).join('')}</select></p></div>`;
       if (deal.estimated_value) {
         infoHtml += `<div class="deal-view-field"><label>Estimated Value</label><p style="font-weight:600;color:var(--color-primary);">${formatCurrency(deal.estimated_value)}</p></div>`;
@@ -1643,7 +1672,65 @@
     }
     
     function closeApptModal() { $('#appt-modal').classList.remove('active'); }
-    
+
+    function openApptView(appt) {
+      if (!appt) return;
+      currentAppt = appt;
+      const type = appointmentTypes.find(t => t.id === appt.appointment_type_id);
+      const customer = appt.customers;
+      const deal = deals.find(d => d.id === appt.deal_id);
+
+      $('#appt-view-title').textContent = appt.title || type?.name || 'Appointment';
+
+      let infoHtml = '';
+      if (type) {
+        infoHtml += `<div class="deal-view-field"><label>Type</label><p>${type.icon || ''} ${type.name}</p></div>`;
+      }
+      infoHtml += `<div class="deal-view-field"><label>Date</label><p>${appt.appointment_date ? formatDate(appt.appointment_date) : '—'}</p></div>`;
+      if (appt.appointment_time) {
+        const [h, m] = appt.appointment_time.split(':');
+        const hr = parseInt(h), ampm = hr >= 12 ? 'PM' : 'AM', hr12 = hr % 12 || 12;
+        infoHtml += `<div class="deal-view-field"><label>Time</label><p>${hr12}:${m} ${ampm}</p></div>`;
+      }
+      if (customer) {
+        infoHtml += `<div class="deal-view-field"><label>Customer</label><p style="font-weight:500;">${customer.name}</p></div>`;
+      }
+      if (customer?.phone) {
+        infoHtml += `<div class="deal-view-field"><label>Phone</label><p><a href="tel:${customer.phone}" style="color:var(--color-primary);text-decoration:none;">${customer.phone}</a></p></div>`;
+      }
+      if (customer?.email) {
+        infoHtml += `<div class="deal-view-field"><label>Email</label><p><a href="mailto:${customer.email}" style="color:var(--color-primary);text-decoration:none;">${customer.email}</a></p></div>`;
+      }
+      if (customer?.address || customer?.city) {
+        const addrParts = [customer.address, customer.city ? `${customer.city}, ${customer.state || ''}` : '', customer.zip].filter(Boolean).join(' ');
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addrParts)}`;
+        infoHtml += `<div class="deal-view-field"><label>Address</label><p><a href="${mapsUrl}" target="_blank" style="color:var(--color-primary);text-decoration:none;">${addrParts}</a></p></div>`;
+      }
+      if (appt.location) {
+        infoHtml += `<div class="deal-view-field"><label>Location</label><p>${appt.location}</p></div>`;
+      }
+      if (deal) {
+        infoHtml += `<div class="deal-view-field"><label>Deal</label><p><a href="javascript:void(0)" onclick="closeApptView();openDealView(deals.find(d=>d.id==='${deal.id}'))" style="color:var(--color-primary);text-decoration:none;">${deal.name}</a></p></div>`;
+      }
+      $('#appt-view-info').innerHTML = infoHtml;
+
+      if (appt.notes) {
+        $('#appt-view-notes').style.display = '';
+        $('#appt-view-notes-content').textContent = appt.notes;
+      } else {
+        $('#appt-view-notes').style.display = 'none';
+      }
+
+      $('#appt-view-modal').classList.add('active');
+    }
+
+    function closeApptView() { $('#appt-view-modal').classList.remove('active'); }
+
+    function editFromApptView() {
+      closeApptView();
+      openApptModal(null, currentAppt);
+    }
+
     async function saveAppt() {
       const id = $('#appt-id').value;
       const data = { appointment_type_id: $('#appt-type').value || null, title: $('#appt-title').value, appointment_date: $('#appt-date').value, appointment_time: $('#appt-time').value || null, customer_id: $('#appt-customer').value || null, deal_id: $('#appt-deal').value || null, location: $('#appt-location').value, notes: $('#appt-notes').value, updated_at: new Date().toISOString() };
@@ -1917,7 +2004,7 @@
       const maxVisible = 3;
       let html = dayEvents.slice(0, maxVisible).map(e => {
         const bgColor = hexToRgba(e.color, 0.2);
-        const onclick = e.type === 'appointment' ? `openApptModal(null, appointments.find(a => a.id === '${e.data.id}'))` : `openDealView(deals.find(d => d.id === '${e.data.deal.id}'))`;
+        const onclick = e.type === 'appointment' ? `openApptView(appointments.find(a => a.id === '${e.data.id}'))` : `openDealView(deals.find(d => d.id === '${e.data.deal.id}'))`;
         // For range events, show icon on start, just label on middle/end
         const showIcon = !e.isRange || e.isStart;
         const displayLabel = showIcon ? `${e.icon} ${e.label}` : e.label;
