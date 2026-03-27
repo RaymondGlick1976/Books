@@ -168,6 +168,7 @@
           <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
           <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
           <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/punch-list.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Punch List</a></li>
         </ul>
         <div class="sidebar-section">
           <div class="sidebar-section-title">Lead Capture</div>
@@ -313,6 +314,10 @@
             <div class="form-section-title"><span>📦 Deal Items</span><button type="button" class="btn btn-secondary btn-sm" onclick="addDealItem()">+ Add Item</button></div>
             <div id="deal-items-container"><p class="text-muted text-sm">No items added.</p></div>
           </div>
+          <div class="form-section">
+            <div class="form-section-title"><span>✅ Punch List</span><button type="button" class="btn btn-secondary btn-sm" onclick="addPunchItem()">+ Add Item</button></div>
+            <div id="punch-items-container"><p class="text-muted text-sm">No punch list items.</p></div>
+          </div>
           <div class="form-section"><div class="form-group"><label class="form-label">Notes</label><textarea id="deal-notes" class="form-input" rows="3"></textarea></div></div>
           <div class="form-section" id="submission-section" style="display:none;">
             <div class="form-section-title" style="cursor:pointer;" onclick="this.parentElement.classList.toggle('collapsed')">
@@ -363,6 +368,10 @@
         <div id="deal-view-items" class="deal-view-section" style="display:none;">
           <div class="deal-view-section-title">Deal Items</div>
           <div id="deal-view-items-list"></div>
+        </div>
+        <div id="deal-view-punch" class="deal-view-section" style="display:none;">
+          <div class="deal-view-section-title">Punch List</div>
+          <div id="deal-view-punch-list"></div>
         </div>
         <div id="deal-view-notes" class="deal-view-section" style="display:none;">
           <div class="deal-view-section-title">Notes</div>
@@ -453,7 +462,7 @@
   <script src="/js/utils.js"></script>
   <script>
     let deals = [], stages = [], customers = [], quotes = [], appointments = [], appointmentTypes = [], eventTypes = [], dealEvents = [], emailTemplates = [], dealItemTypes = [], finishTypes = [];
-    let currentDealEvents = [], currentDealItems = [], currentDealFinishes = [], draggedDeal = null;
+    let currentDealEvents = [], currentDealItems = [], currentDealFinishes = [], currentPunchItems = [], draggedDeal = null;
     let selectedStages = new Set(); // For stage filtering
     
     async function init() { 
@@ -876,7 +885,7 @@
     let currentDeal = null; // Track the current deal for email
     
     async function openDealModal(deal = null) {
-      currentDealEvents = []; currentDealItems = []; currentDealFinishes = []; currentDeal = deal;
+      currentDealEvents = []; currentDealItems = []; currentDealFinishes = []; currentPunchItems = []; currentDeal = deal;
       // Hide submission section by default
       $('#submission-section').style.display = 'none';
       $('#submission-content').innerHTML = '';
@@ -903,6 +912,8 @@
         $('#print-deal-btn').style.display = 'block';
         // Load form submission data
         loadSubmissionData(deal.id);
+        // Load punch list items
+        loadPunchItems(deal.id);
       } else {
         $('#deal-modal-title').textContent = 'New Deal'; $('#delete-deal-btn').style.display = 'none'; $('#deal-form').reset(); $('#deal-id').value = ''; $('#deal-stage').value = stages[0]?.stage_id || '';
         // Clear customer search
@@ -912,7 +923,7 @@
         $('#email-deal-btn').style.display = 'none';
         $('#print-deal-btn').style.display = 'none';
       }
-      renderDealEvents(); renderDealItems(); renderDealFinishes(); $('#deal-modal').classList.add('active');
+      renderDealEvents(); renderDealItems(); renderDealFinishes(); renderPunchItems(); $('#deal-modal').classList.add('active');
     }
     
     function closeDealModal() { $('#deal-modal').classList.remove('active'); }
@@ -996,6 +1007,10 @@
       } else {
         $('#deal-view-items').style.display = 'none';
       }
+
+      // Punch List (load from DB)
+      $('#deal-view-punch').style.display = 'none';
+      loadPunchItemsForView(deal.id);
 
       // Notes
       if (deal.notes) {
@@ -1288,6 +1303,22 @@
   </div>`;
       }
       
+      // Punch List
+      if (currentPunchItems.length > 0) {
+        html += `
+  <div class="section">
+    <div class="section-title">Punch List</div>`;
+        currentPunchItems.forEach(p => {
+          html += `
+    <div class="item-row">
+      <span>${p.is_completed ? '☑' : '☐'}</span>
+      <span style="${p.is_completed ? 'text-decoration:line-through;' : ''}">${p.description || 'Unnamed'}</span>
+    </div>`;
+        });
+        html += `
+  </div>`;
+      }
+
       // Notes
       if (deal.notes) {
         html += `
@@ -1296,7 +1327,7 @@
     <div class="notes-box">${deal.notes}</div>
   </div>`;
       }
-      
+
       // Footer
       html += `
   <div class="footer">
@@ -1351,7 +1382,8 @@
         }
         
         await saveDealEvents(supabase, dealId);
-        
+        await savePunchItems(supabase, dealId);
+
         // Redirect to quote builder with deal info
         const params = new URLSearchParams();
         params.set('deal_id', dealId);
@@ -1373,7 +1405,7 @@
         const supabase = await app.waitForSupabase(); let dealId = id;
         if (id) await supabase.from('jobs').update(data).eq('id', id);
         else { const { data: numData } = await supabase.rpc('generate_job_number'); data.job_number = numData; const { data: newDeal } = await supabase.from('jobs').insert([data]).select().single(); dealId = newDeal.id; }
-        await saveDealEvents(supabase, dealId); closeDealModal(); await loadData(); renderPipeline(); showToast(id ? 'Deal updated' : 'Deal created', 'success');
+        await saveDealEvents(supabase, dealId); await savePunchItems(supabase, dealId); closeDealModal(); await loadData(); renderPipeline(); showToast(id ? 'Deal updated' : 'Deal created', 'success');
       } catch (err) { console.error(err); showToast('Failed to save deal', 'error'); }
     }
     
@@ -1509,7 +1541,63 @@
       }).join('');
     }
     function updateDealFinish(id, field, value) { const f = currentDealFinishes.find(x => x.id === id); if (f) f[field] = value; }
-    
+
+    // Punch List
+    async function loadPunchItems(jobId) {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data } = await supabase.from('punch_list_items').select('*').eq('job_id', jobId).order('sort_order').order('created_at');
+        currentPunchItems = (data || []).map(p => ({ ...p, isExisting: true }));
+        renderPunchItems();
+      } catch (err) { console.error('Failed to load punch items:', err); }
+    }
+    async function loadPunchItemsForView(jobId) {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data } = await supabase.from('punch_list_items').select('*').eq('job_id', jobId).order('sort_order').order('created_at');
+        if (data && data.length > 0) {
+          currentPunchItems = data.map(p => ({ ...p, isExisting: true }));
+          $('#deal-view-punch').style.display = '';
+          $('#deal-view-punch-list').innerHTML = data.map(p => `<div style="display:flex;align-items:center;gap:var(--space-sm);padding:var(--space-xs) 0;border-bottom:1px solid var(--color-border-light);">
+            <span style="font-size:1rem;">${p.is_completed ? '☑' : '☐'}</span>
+            <span style="${p.is_completed ? 'text-decoration:line-through;color:var(--color-text-muted);' : ''}">${p.description}</span>
+          </div>`).join('');
+        } else {
+          currentPunchItems = [];
+          $('#deal-view-punch').style.display = 'none';
+        }
+      } catch (err) { console.error('Failed to load punch items for view:', err); }
+    }
+    function addPunchItem() { currentPunchItems.push({ id: crypto.randomUUID(), description: '', is_completed: false, isExisting: false }); renderPunchItems(); }
+    function removePunchItem(id) { currentPunchItems = currentPunchItems.filter(p => p.id !== id); renderPunchItems(); }
+    function renderPunchItems() {
+      const container = $('#punch-items-container');
+      if (currentPunchItems.length === 0) { container.innerHTML = '<p class="text-muted text-sm">No punch list items.</p>'; return; }
+      container.innerHTML = currentPunchItems.map(p => `<div class="item-row" style="gap:var(--space-sm);">
+        <input type="checkbox" ${p.is_completed ? 'checked' : ''} onchange="togglePunchComplete('${p.id}', this.checked)" style="width:18px;height:18px;cursor:pointer;">
+        <input type="text" class="form-input" style="flex:1;${p.is_completed ? 'text-decoration:line-through;color:var(--color-text-muted);' : ''}" placeholder="Punch list item..." value="${(p.description || '').replace(/"/g, '&quot;')}" onchange="updatePunchItem('${p.id}','description',this.value)">
+        <button type="button" class="btn btn-sm" style="color:var(--color-danger);" onclick="removePunchItem('${p.id}')">×</button>
+      </div>`).join('');
+    }
+    function updatePunchItem(id, field, value) { const p = currentPunchItems.find(x => x.id === id); if (p) p[field] = value; }
+    function togglePunchComplete(id, checked) {
+      const p = currentPunchItems.find(x => x.id === id);
+      if (p) { p.is_completed = checked; p.completed_at = checked ? new Date().toISOString() : null; }
+      renderPunchItems();
+    }
+    async function savePunchItems(supabase, dealId) {
+      const currentIds = currentPunchItems.filter(p => p.isExisting).map(p => p.id);
+      const { data: dbItems } = await supabase.from('punch_list_items').select('id').eq('job_id', dealId);
+      const toDelete = (dbItems || []).map(p => p.id).filter(id => !currentIds.includes(id));
+      if (toDelete.length) await supabase.from('punch_list_items').delete().in('id', toDelete);
+      for (const item of currentPunchItems) {
+        if (!item.description) continue;
+        const itemData = { job_id: dealId, description: item.description, is_completed: item.is_completed || false, completed_at: item.completed_at || null, sort_order: currentPunchItems.indexOf(item) };
+        if (item.isExisting) await supabase.from('punch_list_items').update(itemData).eq('id', item.id);
+        else await supabase.from('punch_list_items').insert([itemData]);
+      }
+    }
+
     function openApptModal(typeId = null, appt = null) {
       $$('.dropdown.open').forEach(d => d.classList.remove('open'));
       currentAppt = appt;
