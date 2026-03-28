@@ -82,6 +82,42 @@ exports.handler = async (event) => {
       .eq('invoice_id', invoiceId)
       .order('sort_order');
     
+    // Find or create a generic "Services" item in QB for line items
+    let servicesItemId;
+    try {
+      const query = `SELECT * FROM Item WHERE Name = 'Services' AND Type = 'Service'`;
+      const searchResult = await qbRequest('GET', `/query?query=${encodeURIComponent(query)}`);
+      if (searchResult.QueryResponse?.Item?.length > 0) {
+        servicesItemId = searchResult.QueryResponse.Item[0].Id;
+      }
+    } catch (e) {
+      console.log('Item search failed:', e.message);
+    }
+
+    if (!servicesItemId) {
+      try {
+        // Look up an income account to attach the item to
+        let incomeAccountId;
+        const acctQuery = `SELECT * FROM Account WHERE AccountType = 'Income' MAXRESULTS 1`;
+        const acctResult = await qbRequest('GET', `/query?query=${encodeURIComponent(acctQuery)}`);
+        if (acctResult.QueryResponse?.Account?.length > 0) {
+          incomeAccountId = acctResult.QueryResponse.Account[0].Id;
+        }
+
+        const newItem = {
+          Name: 'Services',
+          Type: 'Service'
+        };
+        if (incomeAccountId) {
+          newItem.IncomeAccountRef = { value: incomeAccountId };
+        }
+        const itemResult = await qbRequest('POST', '/item', newItem);
+        servicesItemId = itemResult.Item.Id;
+      } catch (e) {
+        console.log('Failed to create Services item:', e.message);
+      }
+    }
+
     // Build QB invoice
     const qbInvoice = {
       CustomerRef: { value: qbCustomerId },
@@ -90,48 +126,57 @@ exports.handler = async (event) => {
       DueDate: invoice.due_date ? invoice.due_date.split('T')[0] : undefined,
       Line: []
     };
-    
+
     // Add line items
     if (lineItems && lineItems.length > 0) {
       for (const item of lineItems) {
+        const lineDetail = {
+          Qty: item.quantity || 1,
+          UnitPrice: item.unit_price || 0
+        };
+        if (servicesItemId) {
+          lineDetail.ItemRef = { value: servicesItemId, name: 'Services' };
+        }
         qbInvoice.Line.push({
           DetailType: 'SalesItemLineDetail',
           Amount: (item.quantity || 1) * (item.unit_price || 0),
           Description: item.description || '',
-          SalesItemLineDetail: {
-            Qty: item.quantity || 1,
-            UnitPrice: item.unit_price || 0
-          }
+          SalesItemLineDetail: lineDetail
         });
       }
     } else {
-      // If no line items, create single line from invoice total
+      const lineDetail = {
+        Qty: 1,
+        UnitPrice: invoice.subtotal || invoice.total || 0
+      };
+      if (servicesItemId) {
+        lineDetail.ItemRef = { value: servicesItemId, name: 'Services' };
+      }
       qbInvoice.Line.push({
         DetailType: 'SalesItemLineDetail',
         Amount: invoice.subtotal || invoice.total || 0,
         Description: invoice.title || 'Services',
-        SalesItemLineDetail: {
-          Qty: 1,
-          UnitPrice: invoice.subtotal || invoice.total || 0
-        }
+        SalesItemLineDetail: lineDetail
       });
     }
-    
-    // Add tax if present
-    if (invoice.tax && invoice.tax > 0) {
-      // Note: For proper tax handling, you'd need to set up Tax Codes in QB
-      // For simplicity, we'll add tax as a separate line item
+
+    // Add tax as a separate line item if present
+    if (invoice.tax_amount && invoice.tax_amount > 0) {
+      const taxDetail = {
+        Qty: 1,
+        UnitPrice: invoice.tax_amount
+      };
+      if (servicesItemId) {
+        taxDetail.ItemRef = { value: servicesItemId, name: 'Services' };
+      }
       qbInvoice.Line.push({
         DetailType: 'SalesItemLineDetail',
-        Amount: invoice.tax,
-        Description: 'Sales Tax',
-        SalesItemLineDetail: {
-          Qty: 1,
-          UnitPrice: invoice.tax
-        }
+        Amount: invoice.tax_amount,
+        Description: `Sales Tax (${((invoice.tax_rate || 0) * 100).toFixed(2)}%)`,
+        SalesItemLineDetail: taxDetail
       });
     }
-    
+
     // Create invoice in QuickBooks
     const result = await qbRequest('POST', '/invoice', qbInvoice);
     const qbInvoiceId = result.Invoice.Id;
