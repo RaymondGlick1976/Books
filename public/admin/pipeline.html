@@ -301,6 +301,10 @@
                 <button type="button" class="btn btn-secondary btn-sm" onclick="createQuoteForDeal()" title="Create new quote for this deal">+ New Quote</button>
               </div>
             </div>
+            <div id="deal-invoice-link" class="form-group" style="display:none;">
+              <label class="form-label">Linked Invoice</label>
+              <div id="deal-invoice-info"></div>
+            </div>
           </div>
           <div class="form-section">
             <div class="form-section-title"><span>📅 Scheduled Dates</span><button type="button" class="btn btn-secondary btn-sm" onclick="addDealEvent()">+ Add Date</button></div>
@@ -503,7 +507,7 @@
   
   <script src="/js/utils.js"></script>
   <script>
-    let deals = [], stages = [], customers = [], quotes = [], appointments = [], appointmentTypes = [], eventTypes = [], dealEvents = [], emailTemplates = [], dealItemTypes = [], finishTypes = [];
+    let deals = [], stages = [], customers = [], quotes = [], invoices = [], appointments = [], appointmentTypes = [], eventTypes = [], dealEvents = [], emailTemplates = [], dealItemTypes = [], finishTypes = [];
     let currentDealEvents = [], currentDealItems = [], currentDealFinishes = [], currentPunchItems = [], draggedDeal = null;
     let selectedStages = new Set(); // For stage filtering
     
@@ -525,11 +529,12 @@
     async function loadData() {
       try {
         const supabase = await app.waitForSupabase();
-        const [stagesRes, dealsRes, customersRes, quotesRes, apptTypesRes, apptsRes, eventTypesRes, dealEventsRes, templatesRes, settingsRes] = await Promise.all([
+        const [stagesRes, dealsRes, customersRes, quotesRes, invoicesRes, apptTypesRes, apptsRes, eventTypesRes, dealEventsRes, templatesRes, settingsRes] = await Promise.all([
           supabase.from('job_stages').select('*').order('sort_order'),
           supabase.from('jobs').select('*, customers(name, email, phone, first_name, address, city, state, zip)').order('created_at', { ascending: false }),
           supabase.from('customers').select('id, name, first_name, email').order('name'),
           supabase.from('quotes').select('id, quote_number, title, customer_id, total').in('status', ['sent', 'viewed', 'draft']).order('created_at', { ascending: false }),
+          supabase.from('invoices').select('id, invoice_number, title, quote_id, total, status').order('created_at', { ascending: false }),
           supabase.from('appointment_types').select('*').eq('is_active', true).order('sort_order'),
           supabase.from('appointments').select('*, appointment_types(*), customers(name, email, phone, first_name, address, city, state, zip)').order('appointment_date'),
           supabase.from('job_event_types').select('*').eq('is_active', true).order('sort_order'),
@@ -537,7 +542,7 @@
           supabase.from('email_templates').select('*').eq('is_active', true),
           supabase.from('settings').select('*').in('key', ['deal_item_types', 'finish_types'])
         ]);
-        stages = stagesRes.data || []; deals = dealsRes.data || []; customers = customersRes.data || []; quotes = quotesRes.data || [];
+        stages = stagesRes.data || []; deals = dealsRes.data || []; customers = customersRes.data || []; quotes = quotesRes.data || []; invoices = invoicesRes.data || [];
         appointmentTypes = apptTypesRes.data || []; appointments = apptsRes.data || []; dealEvents = dealEventsRes.data || [];
         // Deduplicate event types by name (in case of duplicate entries)
         const seenEventTypes = new Set();
@@ -950,6 +955,15 @@
         }
         $('#deal-stage').value = deal.stage || stages[0]?.stage_id;
         $('#deal-value').value = deal.estimated_value || ''; $('#deal-quote').value = deal.quote_id || ''; $('#deal-notes').value = deal.notes || '';
+        // Show linked invoice if exists
+        const linkedInv = deal.quote_id ? invoices.find(inv => inv.quote_id === deal.quote_id) : null;
+        if (linkedInv) {
+          const statusColor = linkedInv.status === 'paid' ? 'var(--color-success)' : linkedInv.status === 'partial' ? '#f59e0b' : '#6b7280';
+          $('#deal-invoice-info').innerHTML = `<a href="/admin/invoices.html" style="color:var(--color-primary);text-decoration:none;font-weight:500;">${linkedInv.invoice_number} - ${linkedInv.title}</a> <span class="badge" style="background:${statusColor};color:white;font-size:0.65rem;">${linkedInv.status || 'draft'}</span> <span class="text-muted text-sm">${formatCurrency(linkedInv.total)}</span>`;
+          $('#deal-invoice-link').style.display = '';
+        } else {
+          $('#deal-invoice-link').style.display = 'none';
+        }
         currentDealItems = deal.job_items || [];
         currentDealFinishes = deal.job_finishes || [];
         currentDealEvents = dealEvents.filter(e => e.job_id === deal.id).map(e => ({ id: e.id, event_type_id: e.event_type_id, event_date: e.event_date, event_end_date: e.event_end_date || '', event_name: e.event_name || '', event_color: e.event_color || '', notes: e.notes || '', isExisting: true }));
@@ -1018,6 +1032,11 @@
       }
       if (quote) {
         infoHtml += `<div class="deal-view-field"><label>Linked Quote</label><p><a href="/admin/quote-builder.html?id=${quote.id}" style="color:var(--color-primary);text-decoration:none;">${quote.quote_number} - ${quote.title}</a></p></div>`;
+      }
+      const linkedInvoice = deal.quote_id ? invoices.find(inv => inv.quote_id === deal.quote_id) : null;
+      if (linkedInvoice) {
+        const invStatus = linkedInvoice.status ? `<span class="badge" style="background:${linkedInvoice.status === 'paid' ? 'var(--color-success)' : linkedInvoice.status === 'partial' ? '#f59e0b' : '#6b7280'};color:white;font-size:0.65rem;margin-left:6px;">${linkedInvoice.status}</span>` : '';
+        infoHtml += `<div class="deal-view-field"><label>Linked Invoice</label><p><a href="/admin/invoices.html" style="color:var(--color-primary);text-decoration:none;">${linkedInvoice.invoice_number} - ${linkedInvoice.title}</a>${invStatus}</p></div>`;
       }
       $('#deal-view-info').innerHTML = infoHtml;
 
