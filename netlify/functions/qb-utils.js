@@ -99,8 +99,12 @@ async function qbRequest(method, endpoint, body = null) {
   const data = await response.json();
   
   if (!response.ok) {
-    console.error('QB API Error:', data);
-    throw new Error(data.Fault?.Error?.[0]?.Message || 'QuickBooks API error');
+    console.error('QB API Error:', JSON.stringify(data, null, 2));
+    const faultError = data.Fault?.Error?.[0];
+    const detail = faultError
+      ? `${faultError.Message || 'Unknown'}: ${faultError.Detail || ''}`
+      : JSON.stringify(data);
+    throw new Error(detail);
   }
   
   return data;
