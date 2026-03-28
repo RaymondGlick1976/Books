@@ -276,9 +276,17 @@
               <div class="flex justify-between items-center" style="padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-border-light);">
                 <div>
                   <div>${formatCurrency(p.amount)}</div>
-                  <div class="text-sm text-muted">${formatDate(p.payment_date)} • ${p.payment_method || 'Card'}</div>
+                  <div class="text-sm text-muted">${formatDate(p.payment_date)} • ${p.payment_method || 'Card'}${p.reference_number ? ' • Ref: ' + p.reference_number : ''}${p.notes ? ' • ' + p.notes : ''}</div>
                 </div>
-                <span class="badge badge-paid">Paid</span>
+                <div style="display:flex;gap:var(--space-xs);align-items:center;">
+                  <span class="badge badge-paid">Paid</span>
+                  <button class="btn btn-ghost btn-sm" onclick="editPayment('${p.id}','${id}')" title="Edit payment" style="padding:2px 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button class="btn btn-ghost btn-sm" onclick="deletePayment('${p.id}','${id}')" title="Delete payment" style="padding:2px 6px;color:var(--color-danger);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                  </button>
+                </div>
               </div>
             `).join('')}
           </div>
@@ -523,6 +531,125 @@
       }
     }
     
+    window.editPayment = async (paymentId, invoiceId) => {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: payment } = await supabase.from('payments').select('*').eq('id', paymentId).single();
+        if (!payment) { showToast('Payment not found', 'error'); return; }
+
+        // Close the invoice view modal first
+        document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+
+        const content = createElement('form', { id: 'edit-payment-form' });
+        content.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Payment Amount *</label>
+            <input type="number" name="amount" class="form-input" value="${payment.amount}" step="0.01" min="0.01" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Method *</label>
+            <select name="payment_method" class="form-select" required>
+              <option value="cash" ${payment.payment_method === 'cash' ? 'selected' : ''}>Cash</option>
+              <option value="check" ${payment.payment_method === 'check' ? 'selected' : ''}>Check</option>
+              <option value="card" ${payment.payment_method === 'card' ? 'selected' : ''}>Credit/Debit Card</option>
+              <option value="bank_transfer" ${payment.payment_method === 'bank_transfer' ? 'selected' : ''}>Bank Transfer</option>
+              <option value="other" ${payment.payment_method === 'other' ? 'selected' : ''}>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reference # (optional)</label>
+            <input type="text" name="reference" class="form-input" value="${payment.reference_number || ''}" placeholder="Check number, transaction ID, etc.">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Date</label>
+            <input type="date" name="payment_date" class="form-input" value="${payment.payment_date || ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes (optional)</label>
+            <textarea name="notes" class="form-textarea" rows="2">${payment.notes || ''}</textarea>
+          </div>
+        `;
+
+        const footer = createElement('div', { className: 'btn-group' });
+        const cancelBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+        const saveBtn = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: 'Save Changes' });
+        footer.appendChild(cancelBtn);
+        footer.appendChild(saveBtn);
+
+        const modal = createModal({ title: 'Edit Payment', content, footer });
+
+        cancelBtn.addEventListener('click', () => closeModal(modal));
+        saveBtn.addEventListener('click', async () => {
+          if (!content.checkValidity()) { content.reportValidity(); return; }
+
+          try {
+            const newAmount = parseFloat(content.querySelector('[name="amount"]').value);
+            const oldAmount = parseFloat(payment.amount);
+            const diff = newAmount - oldAmount;
+
+            await supabase.from('payments').update({
+              amount: newAmount,
+              payment_method: content.querySelector('[name="payment_method"]').value,
+              reference_number: content.querySelector('[name="reference"]').value || null,
+              payment_date: content.querySelector('[name="payment_date"]').value,
+              notes: content.querySelector('[name="notes"]').value || null
+            }).eq('id', paymentId);
+
+            // Recalculate invoice totals
+            const invoice = invoices.find(i => i.id === invoiceId);
+            const newPaid = parseFloat(invoice.amount_paid || 0) + diff;
+            const newDue = parseFloat(invoice.total) - newPaid;
+            const newStatus = newDue <= 0 ? 'paid' : newPaid > 0 ? 'partial' : 'draft';
+            await supabase.from('invoices').update({
+              amount_paid: newPaid,
+              amount_due: Math.max(0, newDue),
+              status: newStatus
+            }).eq('id', invoiceId);
+
+            showToast('Payment updated', 'success');
+            closeModal(modal);
+            loadInvoices();
+          } catch (err) {
+            console.error(err);
+            showToast('Failed to update payment: ' + err.message, 'error');
+          }
+        });
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to load payment', 'error');
+      }
+    };
+
+    window.deletePayment = async (paymentId, invoiceId) => {
+      if (!confirm('Delete this payment? The invoice balance will be updated.')) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: payment } = await supabase.from('payments').select('amount').eq('id', paymentId).single();
+        if (!payment) { showToast('Payment not found', 'error'); return; }
+
+        await supabase.from('payments').delete().eq('id', paymentId);
+
+        // Recalculate invoice totals
+        const invoice = invoices.find(i => i.id === invoiceId);
+        const newPaid = Math.max(0, parseFloat(invoice.amount_paid || 0) - parseFloat(payment.amount));
+        const newDue = parseFloat(invoice.total) - newPaid;
+        const newStatus = newDue <= 0 ? 'paid' : newPaid > 0 ? 'partial' : 'draft';
+        await supabase.from('invoices').update({
+          amount_paid: newPaid,
+          amount_due: Math.max(0, newDue),
+          status: newStatus
+        }).eq('id', invoiceId);
+
+        showToast('Payment deleted', 'success');
+        // Close view modal and refresh
+        document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+        loadInvoices();
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to delete payment: ' + err.message, 'error');
+      }
+    };
+
     // Sync invoice to QuickBooks
     async function syncInvoiceToQB(invoiceId) {
       try {
