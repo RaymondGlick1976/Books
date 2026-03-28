@@ -11,14 +11,14 @@
 }
 
 :root {
-  /* Color Palette - Purple/Indigo with white */
-  --color-primary: #6366f1;
-  --color-primary-light: #818cf8;
-  --color-primary-dark: #4f46e5;
-  
-  --color-accent: #6366f1;
-  --color-accent-light: #818cf8;
-  --color-accent-dark: #4f46e5;
+  /* Color Palette - Green with white */
+  --color-primary: #38571a;
+  --color-primary-light: #4a7223;
+  --color-primary-dark: #2a4213;
+
+  --color-accent: #38571a;
+  --color-accent-light: #4a7223;
+  --color-accent-dark: #2a4213;
   
   --color-success: #10b981;
   --color-success-light: #34d399;
@@ -29,7 +29,7 @@
   --color-bg: #ffffff;
   --color-bg-alt: #f8fafc;
   --color-bg-card: #ffffff;
-  --color-bg-dark: #1e1b4b;
+  --color-bg-dark: #1a2e0d;
   --color-bg-soft: #f1f5f9;
   
   --color-text: #1e293b;

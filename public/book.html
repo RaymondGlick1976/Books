@@ -21,14 +21,14 @@
     .form-label { display: block; font-size: 0.875rem; font-weight: 500; color: #333; margin-bottom: 6px; }
     .form-label .required { color: #e53e3e; }
     .form-input, .form-select, .form-textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; transition: border-color 0.2s; }
-    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--primary-color, #6366f1); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--primary-color, #38571a); box-shadow: 0 0 0 3px rgba(56, 87, 26, 0.1); }
     .form-textarea { min-height: 100px; resize: vertical; }
     .form-help { font-size: 0.75rem; color: #e53e3e; margin-top: 4px; }
     
     .upload-zone { border: 2px dashed #ddd; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
-    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary-color, #6366f1); background: rgba(99, 102, 241, 0.05); }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary-color, #38571a); background: rgba(56, 87, 26, 0.05); }
     .upload-zone-text { color: #999; margin-bottom: 10px; }
-    .upload-btn { background: var(--primary-color, #6366f1); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
+    .upload-btn { background: var(--primary-color, #38571a); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
     .upload-btn:hover { opacity: 0.9; }
     .upload-preview { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
     .upload-item { position: relative; width: 80px; height: 80px; border-radius: 6px; overflow: hidden; }
@@ -41,7 +41,7 @@
     .consent-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; }
     .consent-check input { margin-top: 3px; }
     
-    .submit-btn { width: 100%; padding: 16px; font-size: 1rem; font-weight: 600; color: white; background: var(--primary-color, #6366f1); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .submit-btn { width: 100%; padding: 16px; font-size: 1rem; font-weight: 600; color: white; background: var(--primary-color, #38571a); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
     .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); }
     .submit-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
     
@@ -51,7 +51,7 @@
     .thank-you-message { color: #666; font-size: 1.1rem; }
     
     .loading { display: none; text-align: center; padding: 40px; }
-    .spinner { width: 40px; height: 40px; border: 3px solid #eee; border-top-color: var(--primary-color, #6366f1); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #eee; border-top-color: var(--primary-color, #38571a); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     
     .radio-group label, .checkbox-label { display: flex; align-items: center; gap: 8px; padding: 8px 0; cursor: pointer; }
@@ -189,7 +189,7 @@
         <div class="thank-you-icon">✓</div>
         <h2 class="thank-you-title" id="thank-you-title">Thank You!</h2>
         <p class="thank-you-message" id="thank-you-message">We have received your request and will contact you shortly.</p>
-        <a id="schedule-link" href="/schedule" style="display:none; margin-top: 20px; background: var(--primary, #6366f1); color: white; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 1rem;">Pick A Time Slot</a>
+        <a id="schedule-link" href="/schedule" style="display:none; margin-top: 20px; background: var(--primary, #38571a); color: white; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 1rem;">Pick A Time Slot</a>
       </div>
     </div>
   </div>
@@ -227,8 +227,8 @@
       if (!formConfig) return;
       
       // Set colors
-      document.documentElement.style.setProperty('--primary-color', formConfig.primary_color || '#6366f1');
-      document.querySelector('.header').style.background = formConfig.primary_color || '#6366f1';
+      document.documentElement.style.setProperty('--primary-color', formConfig.primary_color || '#38571a');
+      document.querySelector('.header').style.background = formConfig.primary_color || '#38571a';
       
       // Set header
       document.getElementById('form-title').textContent = formConfig.header_title || 'Appointment Request';
@@ -268,7 +268,7 @@
         const schedLink = document.getElementById('schedule-link');
         if (schedLink) {
           schedLink.style.display = 'inline-block';
-          schedLink.style.background = formConfig.primary_color || '#6366f1';
+          schedLink.style.background = formConfig.primary_color || '#38571a';
         }
       }
 

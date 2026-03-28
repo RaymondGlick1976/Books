@@ -20,7 +20,7 @@
     .column-count { background: var(--color-bg); color: var(--color-text-muted); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
     .column-content { flex: 1; overflow-y: auto; padding: var(--space-sm); }
     .deal-card { background: white; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-md); margin-bottom: var(--space-sm); cursor: grab; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-    .deal-card:hover { border-color: var(--color-primary); box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15); }
+    .deal-card:hover { border-color: var(--color-primary); box-shadow: 0 2px 8px rgba(56, 87, 26, 0.15); }
     .deal-card.dragging { opacity: 0.5; cursor: grabbing; }
     .deal-card-title { font-weight: 600; font-size: 0.875rem; color: var(--color-text); margin-bottom: 4px; }
     .deal-card-customer { font-size: 0.8125rem; color: var(--color-text-muted); margin-bottom: var(--space-sm); }
@@ -30,7 +30,7 @@
     .deal-card-value { font-size: 0.8125rem; font-weight: 600; color: var(--color-primary); margin-top: var(--space-sm); }
     .empty-column { text-align: center; padding: var(--space-xl); color: var(--color-text-muted); font-size: 0.8125rem; }
     .drop-zone { min-height: 100px; border: 2px dashed transparent; border-radius: var(--radius-md); transition: all 0.2s; }
-    .drop-zone.drag-over { border-color: var(--color-primary); background: rgba(99, 102, 241, 0.05); }
+    .drop-zone.drag-over { border-color: var(--color-primary); background: rgba(56, 87, 26, 0.05); }
     .deal-card.dragging { opacity: 0.5; }
     .touch-ghost { position: fixed; pointer-events: none; z-index: 9999; opacity: 0.9; transform: rotate(3deg); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
     
@@ -66,7 +66,7 @@
     .calendar-day:nth-child(7n) { border-right: none; }
     .calendar-day.other-month { background: var(--color-bg-soft); }
     .calendar-day.other-month .calendar-day-number { color: var(--color-text-muted); }
-    .calendar-day.today { background: rgba(99, 102, 241, 0.05); }
+    .calendar-day.today { background: rgba(56, 87, 26, 0.05); }
     .calendar-day.today .calendar-day-number { background: var(--color-primary); color: white; }
     .calendar-day-number { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; font-size: 0.8rem; font-weight: 500; color: var(--color-text); margin-bottom: var(--space-xs); }
     .calendar-events { display: flex; flex-direction: column; gap: 2px; }
@@ -488,7 +488,7 @@
         <div class="mt-lg" id="add-stage-form" style="display:none;">
           <div class="flex gap-sm">
             <input type="text" id="new-stage-label" class="form-input" placeholder="Stage name">
-            <input type="color" id="new-stage-color" value="#6366f1" style="width:50px;height:38px;">
+            <input type="color" id="new-stage-color" value="#38571a" style="width:50px;height:38px;">
             <button class="btn btn-primary" onclick="saveNewStage()">Add</button>
             <button class="btn btn-secondary" onclick="$('#add-stage-form').style.display='none'">Cancel</button>
           </div>
@@ -797,7 +797,7 @@
         thisEvents.forEach(e => { 
           const et = e.job_event_types || eventTypes.find(t => t.id === e.event_type_id); 
           if (et) {
-            const eventColor = e.event_color || et.color || '#6366f1';
+            const eventColor = e.event_color || et.color || '#38571a';
             const eventLabel = e.event_name || et.name;
             const dateDisplay = e.event_end_date && e.event_end_date !== e.event_date 
               ? `${formatDate(e.event_date)} - ${formatDate(e.event_end_date)}`
@@ -1026,7 +1026,7 @@
         $('#deal-view-events').style.display = '';
         $('#deal-view-events-list').innerHTML = currentDealEvents.map(e => {
           const et = eventTypes.find(t => t.id === e.event_type_id);
-          const eventColor = e.event_color || et?.color || '#6366f1';
+          const eventColor = e.event_color || et?.color || '#38571a';
           const eventLabel = e.event_name || et?.name || 'Event';
           const dateDisplay = e.event_end_date && e.event_end_date !== e.event_date
             ? `${formatDate(e.event_date)} - ${formatDate(e.event_end_date)}`
@@ -1309,7 +1309,7 @@
           const dateStr = e.event_end_date && e.event_end_date !== e.event_date 
             ? `${formatDate(e.event_date)} - ${formatDate(e.event_end_date)}`
             : formatDate(e.event_date);
-          const eventColor = e.event_color || e.eventType?.color || '#6366f1';
+          const eventColor = e.event_color || e.eventType?.color || '#38571a';
           const eventLabel = e.event_name ? `<span style="color:#666;font-weight:normal;"> (${e.event_name})</span>` : '';
           html += `
     <div class="event-item" style="border-left: 3px solid ${eventColor}; padding-left: 8px;">
@@ -1513,7 +1513,7 @@
         event_date: '', 
         event_end_date: '', 
         event_name: '',
-        event_color: defaultType?.color || '#6366f1',
+        event_color: defaultType?.color || '#38571a',
         notes: '', 
         isExisting: false 
       }); 
@@ -1524,11 +1524,11 @@
       const container = $('#deal-events-container');
       if (currentDealEvents.length === 0) { container.innerHTML = '<p class="text-muted text-sm">No dates scheduled.</p>'; return; }
       
-      const defaultColors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+      const defaultColors = ['#38571a', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
       
       container.innerHTML = currentDealEvents.map(e => {
         const selectedType = eventTypes.find(t => t.id === e.event_type_id);
-        const currentColor = e.event_color || selectedType?.color || '#6366f1';
+        const currentColor = e.event_color || selectedType?.color || '#38571a';
         
         return `
         <div class="event-card" style="background: var(--color-bg-soft); border-radius: var(--radius-md); padding: var(--space-sm); margin-bottom: var(--space-sm); border-left: 4px solid ${currentColor};">
@@ -2176,7 +2176,7 @@
     
     function buildEventsLookup() {
       const events = {};
-      appointments.forEach(appt => { const dateStr = appt.appointment_date, type = appt.appointment_types || appointmentTypes.find(t => t.id === appt.appointment_type_id); if (!events[dateStr]) events[dateStr] = []; events[dateStr].push({ type: 'appointment', data: appt, color: type?.color || '#6366f1', icon: type?.icon || '📅', label: appt.title }); });
+      appointments.forEach(appt => { const dateStr = appt.appointment_date, type = appt.appointment_types || appointmentTypes.find(t => t.id === appt.appointment_type_id); if (!events[dateStr]) events[dateStr] = []; events[dateStr].push({ type: 'appointment', data: appt, color: type?.color || '#38571a', icon: type?.icon || '📅', label: appt.title }); });
       
       // Deal events - support date ranges and show customer last name + event type
       // Filter by selected stages
@@ -2197,7 +2197,7 @@
         const label = event.event_name || `${lastName} - ${type.name}`;
         
         // Use custom event_color if set, otherwise use type color
-        const eventColor = event.event_color || type?.color || '#6366f1';
+        const eventColor = event.event_color || type?.color || '#38571a';
         
         // Get start and end dates
         const startDate = event.event_date;

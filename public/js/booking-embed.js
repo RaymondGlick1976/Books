@@ -20,7 +20,7 @@
   let formConfig = null;
   let questions = [];
   let uploadedFiles = [];
-  let primaryColor = '#6366f1';
+  let primaryColor = '#38571a';
 
   // Wait for DOM to be ready
   function ready(fn) {
@@ -41,7 +41,7 @@
       .hcd-booking-form * { box-sizing: border-box; margin: 0; padding: 0; }
       .hcd-booking-form { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; padding: 24px; border-radius: 8px; }
       .hcd-form-header { text-align: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
-      .hcd-form-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; color: var(--hcd-primary, #6366f1); }
+      .hcd-form-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; color: var(--hcd-primary, #38571a); }
       .hcd-form-desc { color: #666; font-size: 0.95rem; }
       .hcd-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
       .hcd-form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
@@ -55,8 +55,8 @@
         font-family: inherit;
       }
       .hcd-form-input:focus, .hcd-form-select:focus, .hcd-form-textarea:focus {
-        outline: none; border-color: var(--hcd-primary, #6366f1);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        outline: none; border-color: var(--hcd-primary, #38571a);
+        box-shadow: 0 0 0 3px rgba(56, 87, 26, 0.1);
       }
       .hcd-form-textarea { min-height: 100px; resize: vertical; }
       .hcd-upload-zone {
@@ -64,11 +64,11 @@
         text-align: center; cursor: pointer; transition: all 0.2s;
       }
       .hcd-upload-zone:hover, .hcd-upload-zone.drag-over {
-        border-color: var(--hcd-primary, #6366f1); background: rgba(99, 102, 241, 0.05);
+        border-color: var(--hcd-primary, #38571a); background: rgba(56, 87, 26, 0.05);
       }
       .hcd-upload-text { color: #999; margin-bottom: 10px; }
       .hcd-upload-btn {
-        background: var(--hcd-primary, #6366f1); color: white; border: none;
+        background: var(--hcd-primary, #38571a); color: white; border: none;
         padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem;
       }
       .hcd-upload-preview { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
@@ -85,7 +85,7 @@
       .hcd-consent-check input { margin-top: 3px; }
       .hcd-submit-btn {
         width: 100%; padding: 14px; font-size: 1rem; font-weight: 600;
-        color: white; background: var(--hcd-primary, #6366f1); border: none;
+        color: white; background: var(--hcd-primary, #38571a); border: none;
         border-radius: 6px; cursor: pointer; transition: all 0.2s;
       }
       .hcd-submit-btn:hover { opacity: 0.9; }
@@ -97,7 +97,7 @@
       .hcd-loading { text-align: center; padding: 40px; }
       .hcd-spinner {
         width: 36px; height: 36px; border: 3px solid #eee;
-        border-top-color: var(--hcd-primary, #6366f1); border-radius: 50%;
+        border-top-color: var(--hcd-primary, #38571a); border-radius: 50%;
         animation: hcd-spin 1s linear infinite; margin: 0 auto 16px;
       }
       @keyframes hcd-spin { to { transform: rotate(360deg); } }
@@ -118,7 +118,7 @@
       const data = await response.json();
       formConfig = data.form;
       questions = data.questions || [];
-      primaryColor = formConfig.primary_color || '#6366f1';
+      primaryColor = formConfig.primary_color || '#38571a';
       return true;
     } catch (err) {
       console.error('HCD Booking Form Error:', err);
