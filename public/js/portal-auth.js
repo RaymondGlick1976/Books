@@ -46,15 +46,15 @@
   // Add auth check to all API calls
   const originalFetch = window.fetch;
   window.fetch = async function(url, options = {}) {
-    // Add credentials to portal API calls
-    if (url.startsWith('/api/portal')) {
+    // Add credentials to all API calls (portal, stripe, etc.)
+    if (url.startsWith('/api/')) {
       options.credentials = 'include';
     }
-    
+
     const response = await originalFetch(url, options);
-    
+
     // If we get a 401, redirect to login
-    if (response.status === 401 && url.startsWith('/api/portal')) {
+    if (response.status === 401 && url.startsWith('/api/')) {
       localStorage.removeItem('portal_logged_in');
       window.location.href = '/portal/login.html?error=session_expired';
       return;
