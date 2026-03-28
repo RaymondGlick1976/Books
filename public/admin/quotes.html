@@ -229,6 +229,7 @@
             <a href="/admin/quote-builder.html?id=${quote.id}" class="btn btn-ghost btn-sm">Edit</a>
             ${quote.access_token ? `<a href="/portal/quote.html?token=${quote.access_token}" target="_blank" class="btn btn-ghost btn-sm" title="View as customer">👁️</a>` : `<button class="btn btn-ghost btn-sm" onclick="generateToken('${quote.id}')" title="Generate customer link">🔗</button>`}
             <button class="btn btn-ghost btn-sm" onclick="duplicateQuote('${quote.id}')">Duplicate</button>
+            ${['draft', 'sent', 'viewed'].includes(quote.status) ? `<button class="btn btn-ghost btn-sm" onclick="markAccepted('${quote.id}')">✓ Accept</button>` : ''}
             ${quote.status === 'accepted' ? `<button class="btn btn-ghost btn-sm" onclick="createInvoice('${quote.id}')">→ Invoice</button>` : ''}
             <button class="btn btn-ghost btn-sm" onclick="syncEstimateToQB('${quote.id}', this)" title="${quote.qb_synced_at ? 'Synced ' + new Date(quote.qb_synced_at).toLocaleDateString() : 'Sync to QuickBooks'}">${quote.qb_estimate_id ? '✅ QB' : '📤 QB'}</button>
             ${quote.status === 'archived' 
@@ -343,6 +344,20 @@
       }
     };
     
+    window.markAccepted = async (quoteId) => {
+      if (!confirm('Mark this quote as accepted?')) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('quotes').update({ status: 'accepted' }).eq('id', quoteId);
+        if (error) throw error;
+        showToast('Quote marked as accepted', 'success');
+        loadQuotes();
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to update quote status', 'error');
+      }
+    };
+
     window.createInvoice = async (quoteId) => {
       if (!confirm('Create an invoice from this quote?')) return;
       

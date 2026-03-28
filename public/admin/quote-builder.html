@@ -888,6 +888,11 @@
     async function autosave() {
       // Don't autosave if already saving or nothing changed
       if (isSaving || !isDirty) return;
+
+      // Never autosave locked quotes (accepted/converted)
+      if (quoteId && window._loadedQuoteStatus && ['accepted', 'converted'].includes(window._loadedQuoteStatus)) {
+        return;
+      }
       
       // Must have minimum data to autosave
       const customerId = $('#customer-select').value;
@@ -961,7 +966,7 @@
           title: title || 'Untitled Quote',
           description: $('#quote-description').value.trim() || null,
           quote_type: 'final',
-          status: 'draft', // Autosave always saves as draft
+          status: window._loadedQuoteStatus || 'draft',
           valid_days: validDays,
           expires_at: expiresAt.toISOString(),
           deposit_type: depositType,
