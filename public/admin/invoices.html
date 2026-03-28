@@ -171,7 +171,9 @@
             <button class="btn btn-ghost btn-sm" onclick="viewInvoice('${invoice.id}')">View</button>
             ${invoice.status === 'draft' ? `<button class="btn btn-ghost btn-sm" onclick="sendInvoice('${invoice.id}')">Send</button>` : ''}
             ${invoice.amount_due > 0 ? `<button class="btn btn-ghost btn-sm" onclick="recordPayment('${invoice.id}')">Record Payment</button>` : ''}
-            ${!invoice.qb_invoice_id ? `<button class="btn btn-ghost btn-sm" onclick="syncInvoiceToQB('${invoice.id}').then(loadInvoices)" title="Sync to QuickBooks">QB</button>` : ''}
+            ${!invoice.qb_invoice_id
+              ? `<button class="btn btn-ghost btn-sm" onclick="syncInvoiceToQB('${invoice.id}').then(loadInvoices)" title="Sync to QuickBooks">QB</button>`
+              : `<button class="btn btn-ghost btn-sm" onclick="syncInvoiceToQB('${invoice.id}').then(loadInvoices)" title="Re-sync payments to QuickBooks" style="color: var(--color-success);">✓QB</button>`}
             ${invoice.status === 'archived' 
               ? `<button class="btn btn-ghost btn-sm" onclick="unarchiveInvoice('${invoice.id}')" title="Unarchive">📤</button>`
               : `<button class="btn btn-ghost btn-sm" onclick="archiveInvoice('${invoice.id}')" title="Archive">📥</button>`}
