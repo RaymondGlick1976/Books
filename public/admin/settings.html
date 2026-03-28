@@ -99,8 +99,8 @@
                 <div class="form-group">
                   <label class="form-label">Primary Brand Color</label>
                   <div style="display: flex; gap: var(--space-sm); align-items: center;">
-                    <input type="color" id="brand-color" value="#6366f1" style="width: 50px; height: 38px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer;">
-                    <input type="text" id="brand-color-hex" class="form-input" value="#6366f1" style="width: 100px;">
+                    <input type="color" id="brand-color" value="#38571a" style="width: 50px; height: 38px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer;">
+                    <input type="text" id="brand-color-hex" class="form-input" value="#38571a" style="width: 100px;">
                   </div>
                 </div>
               </div>
@@ -785,7 +785,7 @@
           }
           
           .toggle-switch input:focus + .toggle-slider {
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            box-shadow: 0 0 0 3px rgba(56, 87, 26, 0.2);
           }
         </style>
         
@@ -1102,8 +1102,8 @@
         if (settings.branding) {
           const branding = settings.branding;
           $('#company-tagline').value = branding.tagline || 'Love your kitchen again';
-          $('#brand-color').value = branding.color || '#6366f1';
-          $('#brand-color-hex').value = branding.color || '#6366f1';
+          $('#brand-color').value = branding.color || '#38571a';
+          $('#brand-color-hex').value = branding.color || '#38571a';
         }
         
         if (settings.quotes) {
@@ -1548,7 +1548,7 @@
     // ==========================================
     let appointmentTypes = [];
     const defaultIcons = ['📅', '📏', '🏠', '👁️', '✅', '🔍', '💰', '🚚', '📞', '🔨', '⭐', '📋'];
-    const defaultColors = ['#6366f1', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#f97316', '#ec4899', '#64748b'];
+    const defaultColors = ['#38571a', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#f97316', '#ec4899', '#64748b'];
     
     async function loadAppointmentTypes() {
       try {
@@ -1585,7 +1585,7 @@
               <span style="color: var(--color-text-muted); cursor: grab;">⋮⋮</span>
               <span style="font-size: 1.25rem;">${at.icon || '📅'}</span>
               <span style="flex: 1; font-weight: 500;">${at.name}</span>
-              <span style="width: 20px; height: 20px; border-radius: 4px; background: ${at.color || '#6366f1'};"></span>
+              <span style="width: 20px; height: 20px; border-radius: 4px; background: ${at.color || '#38571a'};"></span>
               <label style="display: flex; align-items: center; gap: var(--space-xs); font-size: 0.75rem; color: var(--color-text-muted);">
                 <input type="checkbox" ${at.is_active ? 'checked' : ''} onchange="toggleAppointmentType('${at.id}', this.checked)">
                 Active
@@ -1686,7 +1686,7 @@
               </button>
             `).join('')}
           </div>
-          <input type="color" id="at-color" value="${apptType?.color || '#6366f1'}" style="width: 60px; height: 38px;">
+          <input type="color" id="at-color" value="${apptType?.color || '#38571a'}" style="width: 60px; height: 38px;">
         </div>
       `;
       
@@ -2173,7 +2173,7 @@
               <span style="color: var(--color-text-muted); cursor: grab;">⋮⋮</span>
               <span style="font-size: 1.25rem;">${et.icon || '📅'}</span>
               <span style="flex: 1; font-weight: 500;">${et.name}</span>
-              <span style="width: 20px; height: 20px; border-radius: 4px; background: ${et.color || '#6366f1'};"></span>
+              <span style="width: 20px; height: 20px; border-radius: 4px; background: ${et.color || '#38571a'};"></span>
               <label style="display: flex; align-items: center; gap: var(--space-xs); font-size: 0.75rem; color: var(--color-text-muted);">
                 <input type="checkbox" ${et.is_active ? 'checked' : ''} onchange="toggleEventType('${et.id}', this.checked)">
                 Active
@@ -2274,7 +2274,7 @@
               </button>
             `).join('')}
           </div>
-          <input type="color" id="et-color" value="${eventType?.color || '#6366f1'}" style="width: 60px; height: 38px;">
+          <input type="color" id="et-color" value="${eventType?.color || '#38571a'}" style="width: 60px; height: 38px;">
         </div>
       `;
       
