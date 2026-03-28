@@ -169,6 +169,7 @@
           <td>${invoice.due_date ? formatDate(invoice.due_date) : '—'}</td>
           <td class="table-actions">
             <button class="btn btn-ghost btn-sm" onclick="viewInvoice('${invoice.id}')">View</button>
+            <button class="btn btn-ghost btn-sm" onclick="printInvoiceById('${invoice.id}')" title="Print">🖨️</button>
             ${invoice.status === 'draft' ? `<button class="btn btn-ghost btn-sm" onclick="sendInvoice('${invoice.id}')">Send</button>` : ''}
             ${invoice.amount_due > 0 ? `<button class="btn btn-ghost btn-sm" onclick="recordPayment('${invoice.id}')">Record Payment</button>` : ''}
             ${!invoice.qb_invoice_id
@@ -865,6 +866,21 @@
       }
     }
     
+    window.printInvoiceById = async (id) => {
+      try {
+        const supabase = await app.waitForSupabase();
+        const invoice = invoices.find(i => i.id === id);
+        if (!invoice) return;
+        const { data: lineItems } = await supabase.from('invoice_line_items').select('*').eq('invoice_id', id).order('sort_order');
+        const { data: payments } = await supabase.from('payments').select('*').eq('invoice_id', id).eq('status', 'succeeded').order('payment_date');
+        const { data: companySetting } = await supabase.from('settings').select('value').eq('key', 'company').single();
+        const company = companySetting?.value || {};
+        printInvoice(invoice, lineItems || [], payments || [], company);
+      } catch (err) {
+        showToast('Failed to load invoice for print', 'error');
+      }
+    };
+
     window.archiveInvoice = async (id) => {
       if (!confirm('Archive this invoice? It will be hidden from the default view.')) return;
       
