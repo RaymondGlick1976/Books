@@ -450,24 +450,22 @@
         textContent: 'Cancel'
       });
       const saveBtn = createElement('button', {
-        type: 'submit',
+        type: 'button',
         className: 'btn btn-primary',
         textContent: 'Record Payment'
       });
       footer.appendChild(cancelBtn);
       footer.appendChild(saveBtn);
-      
+
       const modal = createModal({
         title: `Record Payment - ${invoice.invoice_number}`,
         content: content,
         footer: footer
       });
-      
+
       cancelBtn.addEventListener('click', () => closeModal(modal));
-      
-      content.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
+
+      saveBtn.addEventListener('click', async () => {
         if (content.checkValidity()) {
           const formData = new FormData(content);
           await savePayment(id, formData);
