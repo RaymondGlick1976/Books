@@ -897,6 +897,9 @@ async function loadBrandSettings() {
         applyBrandColor(branding.color);
         localStorage.setItem('brand_color', branding.color);
       }
+    } else {
+      // No branding saved in DB — clear stale cache so CSS defaults apply
+      localStorage.removeItem('brand_color');
     }
   } catch (e) {
     // Silently fail - will use default colors
