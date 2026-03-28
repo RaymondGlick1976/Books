@@ -39,15 +39,61 @@ exports.handler = async (event) => {
       };
     }
     
-    // Check if invoice already synced
+    // Check if invoice already synced — still sync any new payments
     if (invoice.qb_invoice_id) {
+      const custId = invoice.customers?.qb_customer_id;
+      let paymentsSynced = 0;
+
+      if (custId) {
+        const { data: payments } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('invoice_id', invoiceId)
+          .eq('status', 'succeeded')
+          .is('qb_payment_id', null)
+          .order('payment_date');
+
+        if (payments && payments.length > 0) {
+          for (const payment of payments) {
+            try {
+              const qbPayment = {
+                CustomerRef: { value: custId },
+                TotalAmt: payment.amount,
+                TxnDate: payment.payment_date ? payment.payment_date.split('T')[0] : new Date().toISOString().split('T')[0],
+                Line: [{
+                  Amount: payment.amount,
+                  LinkedTxn: [{
+                    TxnId: invoice.qb_invoice_id,
+                    TxnType: 'Invoice'
+                  }]
+                }]
+              };
+              if (payment.reference_number) {
+                qbPayment.PaymentRefNum = payment.reference_number;
+              }
+              const payResult = await qbRequest('POST', '/payment', qbPayment);
+              await supabase
+                .from('payments')
+                .update({ qb_payment_id: payResult.Payment.Id })
+                .eq('id', payment.id);
+              paymentsSynced++;
+            } catch (payErr) {
+              console.error('Failed to sync payment:', payment.id, payErr.message);
+            }
+          }
+        }
+      }
+
       return {
         statusCode: 200,
         headers: corsHeaders(),
-        body: JSON.stringify({ 
-          success: true, 
+        body: JSON.stringify({
+          success: true,
           qb_invoice_id: invoice.qb_invoice_id,
-          message: 'Invoice already synced to QuickBooks'
+          payments_synced: paymentsSynced,
+          message: paymentsSynced > 0
+            ? `Invoice already synced. ${paymentsSynced} new payment(s) synced.`
+            : 'Invoice already synced to QuickBooks'
         })
       };
     }
@@ -184,19 +230,84 @@ exports.handler = async (event) => {
     // Update our invoice with QB ID
     await supabase
       .from('invoices')
-      .update({ 
+      .update({
         qb_invoice_id: qbInvoiceId,
         qb_synced_at: new Date().toISOString()
       })
       .eq('id', invoiceId);
-    
+
+    // Sync payments for this invoice
+    let paymentsSynced = 0;
+    const { data: payments } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('invoice_id', invoiceId)
+      .eq('status', 'succeeded')
+      .order('payment_date');
+
+    if (payments && payments.length > 0) {
+      for (const payment of payments) {
+        // Skip if already synced
+        if (payment.qb_payment_id) {
+          paymentsSynced++;
+          continue;
+        }
+
+        try {
+          const qbPayment = {
+            CustomerRef: { value: qbCustomerId },
+            TotalAmt: payment.amount,
+            TxnDate: payment.payment_date ? payment.payment_date.split('T')[0] : new Date().toISOString().split('T')[0],
+            Line: [{
+              Amount: payment.amount,
+              LinkedTxn: [{
+                TxnId: qbInvoiceId,
+                TxnType: 'Invoice'
+              }]
+            }]
+          };
+
+          // Map payment method
+          if (payment.payment_method) {
+            const methodMap = {
+              'credit_card': 'CreditCard',
+              'cash': 'Cash',
+              'check': 'Check',
+              'bank_transfer': 'EFT',
+              'ach': 'EFT',
+              'other': 'Other'
+            };
+            const qbMethod = methodMap[payment.payment_method] || payment.payment_method;
+            qbPayment.PaymentMethodRef = { value: qbMethod };
+          }
+
+          if (payment.reference_number) {
+            qbPayment.PaymentRefNum = payment.reference_number;
+          }
+
+          const payResult = await qbRequest('POST', '/payment', qbPayment);
+
+          // Update payment with QB ID
+          await supabase
+            .from('payments')
+            .update({ qb_payment_id: payResult.Payment.Id })
+            .eq('id', payment.id);
+
+          paymentsSynced++;
+        } catch (payErr) {
+          console.error('Failed to sync payment:', payment.id, payErr.message);
+        }
+      }
+    }
+
     return {
       statusCode: 200,
       headers: corsHeaders(),
-      body: JSON.stringify({ 
-        success: true, 
+      body: JSON.stringify({
+        success: true,
         qb_invoice_id: qbInvoiceId,
-        message: 'Invoice created in QuickBooks'
+        payments_synced: paymentsSynced,
+        message: `Invoice and ${paymentsSynced} payment(s) synced to QuickBooks`
       })
     };
     
