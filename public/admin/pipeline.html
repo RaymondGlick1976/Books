@@ -1010,7 +1010,7 @@
       }
       infoHtml += `<div class="deal-view-field"><label>Customer</label><p>${customer ? `<a href="javascript:void(0)" onclick="viewCustomerDetail('${deal.customer_id}')" style="color:var(--color-primary);text-decoration:none;font-weight:500;">${customer.name}</a>` : '<span class="text-muted">—</span>'}</p></div>`;
       if (customer?.phone) {
-        infoHtml += `<div class="deal-view-field"><label>Phone</label><p><a href="tel:${customer.phone}" style="color:var(--color-primary);text-decoration:none;">${customer.phone}</a></p></div>`;
+        infoHtml += `<div class="deal-view-field"><label>Phone</label><p><a href="tel:${customer.phone}" class="phone-link" data-phone="${customer.phone.replace(/\D/g,'')}" style="color:var(--color-primary);text-decoration:none;">${customer.phone}</a></p></div>`;
       }
       if (customer?.address || customer?.city) {
         const addrParts = [customer.address, customer.city ? `${customer.city}, ${customer.state || ''}` : '', customer.zip].filter(Boolean).join(' ');
@@ -1202,7 +1202,7 @@
             </div>
             <div>
               <div style="${fieldStyle}">Phone</div>
-              <div style="margin-top:2px;">${customer.phone ? `<a href="tel:${customer.phone}">${customer.phone}</a>` : '—'}</div>
+              <div style="margin-top:2px;">${customer.phone ? `<a href="tel:${customer.phone}" class="phone-link" data-phone="${customer.phone.replace(/\D/g,'')}">${customer.phone}</a>` : '—'}</div>
             </div>
             <div style="grid-column:1/-1;">
               <div style="${fieldStyle}">Address</div>
@@ -1928,7 +1928,7 @@
         infoHtml += `<div class="deal-view-field"><label>Customer</label><p style="font-weight:500;">${customer.name}</p></div>`;
       }
       if (customer?.phone) {
-        infoHtml += `<div class="deal-view-field"><label>Phone</label><p><a href="tel:${customer.phone}" style="color:var(--color-primary);text-decoration:none;">${customer.phone}</a></p></div>`;
+        infoHtml += `<div class="deal-view-field"><label>Phone</label><p><a href="tel:${customer.phone}" class="phone-link" data-phone="${customer.phone.replace(/\D/g,'')}" style="color:var(--color-primary);text-decoration:none;">${customer.phone}</a></p></div>`;
       }
       if (customer?.email) {
         infoHtml += `<div class="deal-view-field"><label>Email</label><p><a href="mailto:${customer.email}" style="color:var(--color-primary);text-decoration:none;">${customer.email}</a></p></div>`;
