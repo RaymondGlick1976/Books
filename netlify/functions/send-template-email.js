@@ -39,7 +39,7 @@ exports.handler = async (event) => {
       .single();
 
     const company = settings?.value || {};
-    const fromEmail = company.email || process.env.FROM_EMAIL || 'noreply@example.com';
+    const fromEmail = company.from_email || company.email || process.env.FROM_EMAIL || 'noreply@homesteadcabinetdesign.com';
     const companyName = company.name || 'Homestead Cabinet Design';
 
     // Convert plain text body to HTML with clickable links
@@ -68,10 +68,10 @@ exports.handler = async (event) => {
 
       if (!response.ok) {
         const errorData = await response.text();
-        console.error('Resend email send failed:', errorData);
+        console.error('Resend email send failed:', errorData, 'From:', fromEmail, 'To:', to_email);
         return {
           statusCode: 500, headers,
-          body: JSON.stringify({ error: 'Failed to send email: ' + errorData })
+          body: JSON.stringify({ error: `Email failed (from: ${fromEmail}): ${errorData}` })
         };
       }
     } else if (process.env.SENDGRID_API_KEY) {

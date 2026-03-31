@@ -145,13 +145,21 @@
               </div>
               <div class="grid grid-cols-2 gap-lg">
                 <div class="form-group">
+                  <label class="form-label">Sending Email (From Address)</label>
+                  <input type="email" name="from_email" id="company-from-email" class="form-input" placeholder="noreply@homesteadcabinetdesign.com">
+                  <p class="form-help">Must match your verified Resend domain. Emails are sent from this address.</p>
+                </div>
+                <div class="form-group">
                   <label class="form-label">Notification Email</label>
                   <input type="email" name="notification_email" id="company-notification-email" class="form-input" placeholder="Where to send new lead alerts (defaults to company email)">
                 </div>
+              </div>
+              <div class="grid grid-cols-2 gap-lg">
                 <div class="form-group">
                   <label class="form-label">Phone</label>
                   <input type="tel" name="phone" id="company-phone" class="form-input">
                 </div>
+                <div class="form-group"></div>
               </div>
               <div class="grid grid-cols-2 gap-lg">
                 <div class="form-group">
@@ -1090,6 +1098,7 @@
           const company = settings.company;
           $('#company-name').value = company.name || '';
           $('#company-email').value = company.email || '';
+          $('#company-from-email').value = company.from_email || '';
           $('#company-notification-email').value = company.notification_email || '';
           $('#company-phone').value = company.phone || '';
           $('#company-website').value = company.website || '';
@@ -1177,6 +1186,7 @@
       const value = {
         name: $('#company-name').value,
         email: $('#company-email').value,
+        from_email: $('#company-from-email').value,
         notification_email: $('#company-notification-email').value,
         phone: $('#company-phone').value,
         website: $('#company-website').value,

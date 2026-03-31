@@ -106,7 +106,7 @@ exports.handler = async (event) => {
 
     const company = companySetting?.value || {};
     const companyName = company.name || 'Homestead Cabinet Design';
-    const fromEmail = company.email || 'noreply@homesteadcabinetdesign.com';
+    const fromEmail = company.from_email || company.email || 'noreply@homesteadcabinetdesign.com';
     const siteUrl = process.env.SITE_URL || 'https://hcdbooks.netlify.app';
 
     let sentCount = 0;

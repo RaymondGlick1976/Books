@@ -86,7 +86,7 @@ exports.handler = async (event) => {
     
     const company = settingsData?.value || {};
     const companyName = company.name || 'Homestead Cabinet Design';
-    const companyEmail = company.email || 'raymond@homesteadcabinetdesign.com';
+    const companyEmail = company.from_email || company.email || 'noreply@homesteadcabinetdesign.com';
     const companyTagline = company.tagline || 'Love your kitchen again';
     const companyAddress = company.service_area || 'Western MA & Northern CT';
 

@@ -317,7 +317,7 @@ exports.handler = async (event) => {
     // 6. Send customer HTML confirmation email
     try {
       const companyName = company.name || 'Homestead Cabinet Design';
-      const fromEmail = company.email || 'noreply@homesteadcabinetdesign.com';
+      const fromEmail = company.from_email || company.email || 'noreply@homesteadcabinetdesign.com';
       const formattedDate = formatDate(data.date);
       const formattedTime = formatTime(data.time);
 
@@ -440,7 +440,7 @@ exports.handler = async (event) => {
     try {
       if (notifications.new_appointment !== false) {
         const companyName = company.name || 'Homestead Cabinet Design';
-        const fromEmail = company.email || 'noreply@homesteadcabinetdesign.com';
+        const fromEmail = company.from_email || company.email || 'noreply@homesteadcabinetdesign.com';
         const notificationEmail = company.notification_email || company.email || process.env.ADMIN_EMAIL;
 
         if (notificationEmail) {

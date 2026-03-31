@@ -154,7 +154,11 @@ async function handleCheckoutComplete(supabase, session) {
   ]);
   
   // Send immediate confirmation emails
-  await sendPaymentConfirmation(supabase, quote.customer_id, session.amount_total / 100, invoice);
+  try {
+    await sendPaymentConfirmation(supabase, quote.customer_id, session.amount_total / 100, invoice);
+  } catch (emailErr) {
+    console.error('Failed to send payment confirmation email:', emailErr);
+  }
 }
 
 async function handlePaymentSuccess(supabase, paymentIntent) {
@@ -200,7 +204,11 @@ async function handlePaymentSuccess(supabase, paymentIntent) {
       .single();
     
     // Send confirmation
-    await sendPaymentConfirmation(supabase, invoice.customer_id, paymentAmount, updatedInvoice || invoice);
+    try {
+      await sendPaymentConfirmation(supabase, invoice.customer_id, paymentAmount, updatedInvoice || invoice);
+    } catch (emailErr) {
+      console.error('Failed to send payment confirmation email:', emailErr);
+    }
   }
 }
 
@@ -218,14 +226,25 @@ async function sendPaymentConfirmation(supabase, customerId, amount, invoice) {
     .select('*')
     .eq('id', customerId)
     .single();
-  
+
   if (!customer || !process.env.RESEND_API_KEY) return;
-  
+
+  // Get company settings for from email
+  const { data: settings } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'company')
+    .single();
+
+  const company = settings?.value || {};
+  const companyName = company.name || 'Homestead Cabinet Design';
+  const fromEmail = company.from_email || company.email || process.env.FROM_EMAIL || 'noreply@homesteadcabinetdesign.com';
+
   const resend = new Resend(process.env.RESEND_API_KEY);
-  
+
   // Email to customer
   await resend.emails.send({
-    from: 'Homestead Cabinet Design <noreply@homesteadcabinetdesign.com>',
+    from: `${companyName} <${fromEmail}>`,
     to: customer.email,
     subject: 'Payment Confirmation - Homestead Cabinet Design',
     html: `
@@ -255,7 +274,7 @@ async function sendPaymentConfirmation(supabase, customerId, amount, invoice) {
   // Email to admin
   if (process.env.ADMIN_EMAIL) {
     await resend.emails.send({
-      from: 'Homestead Cabinet Design <noreply@homesteadcabinetdesign.com>',
+      from: `${companyName} <${fromEmail}>`,
       to: process.env.ADMIN_EMAIL,
       subject: `Payment Received: $${amount.toFixed(2)} from ${customer.name}`,
       html: `

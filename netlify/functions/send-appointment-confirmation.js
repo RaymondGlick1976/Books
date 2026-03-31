@@ -55,7 +55,7 @@ exports.handler = async (event) => {
     const notifications = notifRes.data?.value || {};
     const scheduling = schedRes.data?.value || {};
     const companyName = company.name || 'Homestead Cabinet Design';
-    const fromEmail = company.email || 'noreply@homesteadcabinetdesign.com';
+    const fromEmail = company.from_email || company.email || 'noreply@homesteadcabinetdesign.com';
     const typeName = appt.appointment_types?.name || appt.title || 'Appointment';
     const typeIcon = appt.appointment_types?.icon || '';
 

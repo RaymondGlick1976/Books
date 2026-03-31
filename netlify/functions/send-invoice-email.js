@@ -42,6 +42,17 @@ exports.handler = async (event) => {
       return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
     };
 
+    // Get company settings for from email
+    const { data: settingsData } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'company')
+      .single();
+
+    const company = settingsData?.value || {};
+    const companyName = company.name || 'Homestead Cabinet Design';
+    const fromEmail = company.from_email || company.email || 'noreply@homesteadcabinetdesign.com';
+
     // Send email via Resend
     const resendApiKey = process.env.RESEND_API_KEY;
     if (!resendApiKey) {
@@ -107,7 +118,7 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Homestead Cabinet Design <raymond@homesteadcabinetdesign.com>',
+        from: `${companyName} <${fromEmail}>`,
         to: customer.email,
         subject: `Invoice #${invoice.invoice_number}: ${invoice.title}`,
         html: emailHtml

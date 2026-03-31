@@ -177,7 +177,7 @@ exports.handler = async (event) => {
         const notificationEmail = company.notification_email || company.email || process.env.ADMIN_EMAIL;
         
         if (notificationEmail) {
-          const fromEmail = company.email || process.env.FROM_EMAIL || 'noreply@homesteadcabinetdesign.com';
+          const fromEmail = company.from_email || company.email || process.env.FROM_EMAIL || 'noreply@homesteadcabinetdesign.com';
           const companyName = company.name || 'Homestead Cabinet Design';
         
         // Build email body
@@ -229,7 +229,7 @@ exports.handler = async (event) => {
         
         // Send via Resend or SendGrid
         if (process.env.RESEND_API_KEY) {
-          await fetch('https://api.resend.com/emails', {
+          const emailRes = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
@@ -242,7 +242,12 @@ exports.handler = async (event) => {
               text: emailBody
             })
           });
-          console.log('Notification email sent to:', notificationEmail);
+          if (!emailRes.ok) {
+            const errText = await emailRes.text();
+            console.error('Failed to send notification email:', errText);
+          } else {
+            console.log('Notification email sent to:', notificationEmail);
+          }
         } else if (process.env.SENDGRID_API_KEY) {
           await fetch('https://api.sendgrid.com/v3/mail/send', {
             method: 'POST',
