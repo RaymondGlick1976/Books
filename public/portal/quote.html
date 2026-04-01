@@ -804,9 +804,11 @@
         break-after: avoid;
       }
       
-      /* Line items can break across pages if needed */
+      /* Keep each line item box together on the same page */
       .line-item {
         grid-template-columns: 60px 1fr auto !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
       }
       
       /* Totals section should stay together and not break */
