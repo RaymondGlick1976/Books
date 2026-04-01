@@ -729,9 +729,9 @@
         display: none !important;
       }
 
-      /* Show packages/bundles in print - allow splitting across pages */
-      #packages-section,
-      .packages-section {
+      /* Show packages/bundles in print only when active (JS adds .has-packages) */
+      #packages-section.has-packages,
+      .packages-section.has-packages {
         display: block !important;
         margin-bottom: 30px !important;
       }
@@ -1617,7 +1617,8 @@
       if (packages && packages.length > 0) {
         // Show packages section
         $('#packages-section').style.display = 'block';
-        
+        $('#packages-section').classList.add('has-packages');
+
         // IMPORTANT: Set selectedPackageId BEFORE rendering so totals calculate correctly
         // Check for both boolean true and string 'true' (database may return either)
         selectedPackageId = quote.selected_package_id || 
@@ -1642,6 +1643,7 @@
         // If packages exist but not enabled, still show them (for preview)
         if (packages && packages.length > 0) {
           $('#packages-section').style.display = 'block';
+          $('#packages-section').classList.add('has-packages');
           renderPackages();
         }
       }
