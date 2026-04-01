@@ -729,18 +729,17 @@
         display: none !important;
       }
 
-      /* Show packages/bundles in print */
+      /* Show packages/bundles in print - allow splitting across pages */
       #packages-section,
       .packages-section {
         display: block !important;
-        break-inside: avoid;
-        page-break-inside: avoid;
       }
 
       .packages-section h2 {
         font-size: 16pt !important;
         text-align: center !important;
         margin-bottom: 4px !important;
+        break-after: avoid;
       }
 
       .packages-subtitle {
