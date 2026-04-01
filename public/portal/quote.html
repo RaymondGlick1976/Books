@@ -707,6 +707,8 @@
       #accept-btn,
       .line-item-action,
       .package-select-btn,
+      .package-radio,
+      .package-recommended-badge,
       #status-banner,
       #loading-state,
       .skeleton,
@@ -714,25 +716,70 @@
       #quote-slider-top *,
       #quote-slider-bottom,
       #quote-slider-bottom *,
-      #packages-section,
-      #packages-section *,
-      .packages-section,
-      .packages-section *,
-      #packages-grid,
-      .packages-grid,
-      .package-card,
       .package-warning,
       #ba-slider-container-top,
       #ba-slider-container-bottom,
       .no-print {
         display: none !important;
       }
-      
-      /* Double-ensure slider/packages sections are hidden with all their content */
+
+      /* Double-ensure slider sections are hidden */
       div[id^="quote-slider"],
-      div[id^="packages"],
       div[id^="ba-slider"] {
         display: none !important;
+      }
+
+      /* Show packages/bundles in print */
+      #packages-section,
+      .packages-section {
+        display: block !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .packages-section h2 {
+        font-size: 16pt !important;
+        text-align: center !important;
+        margin-bottom: 4px !important;
+      }
+
+      .packages-subtitle {
+        text-align: center !important;
+        margin-bottom: 12px !important;
+      }
+
+      .packages-grid,
+      #packages-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+      }
+
+      .package-card {
+        display: block !important;
+        border: 1px solid #ccc !important;
+        border-radius: 8px !important;
+        padding: 12px !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .package-card.selected {
+        border: 2px solid #38571a !important;
+      }
+
+      .package-name {
+        font-weight: bold !important;
+        font-size: 11pt !important;
+        text-align: center !important;
+      }
+
+      .package-price {
+        text-align: center !important;
+        font-size: 14pt !important;
+        font-weight: bold !important;
+        margin: 8px 0 !important;
       }
       
       .portal-container {

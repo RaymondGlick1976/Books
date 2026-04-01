@@ -57,107 +57,149 @@ exports.handler = async (event) => {
 
 async function handleCheckoutComplete(supabase, session) {
   const { quote_id, customer_id, payment_type } = session.metadata;
-  
-  if (!quote_id) return;
-  
+
+  console.log('handleCheckoutComplete:', { quote_id, customer_id, payment_type, amount: session.amount_total });
+
+  if (!quote_id) {
+    console.error('No quote_id in session metadata');
+    return;
+  }
+
   // Get quote
-  const { data: quote } = await supabase
+  const { data: quote, error: quoteError } = await supabase
     .from('quotes')
     .select('*')
     .eq('id', quote_id)
     .single();
-  
-  if (!quote) return;
-  
-  // Update quote status
-  await supabase
+
+  if (quoteError || !quote) {
+    console.error('Quote not found:', quote_id, quoteError);
+    return;
+  }
+
+  // CRITICAL: Update quote status first - this must succeed
+  const { error: statusError } = await supabase
     .from('quotes')
     .update({
       status: 'accepted',
       accepted_at: new Date().toISOString(),
     })
     .eq('id', quote_id);
-  
-  // Create invoice from quote
-  const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
-  
-  const { data: invoice } = await supabase
-    .from('invoices')
-    .insert({
-      invoice_number: invoiceNumber,
-      quote_id,
-      customer_id: quote.customer_id,
-      title: quote.title,
-      status: 'partial',
-      subtotal: quote.subtotal,
-      tax_rate: quote.tax_rate,
-      tax_amount: quote.tax_amount,
-      total: quote.total,
-      amount_paid: session.amount_total / 100,
-      amount_due: quote.total - (session.amount_total / 100),
-      due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      sent_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-  
-  // Copy line items to invoice
-  const { data: quoteItems } = await supabase
-    .from('quote_line_items')
-    .select('*')
-    .eq('quote_id', quote_id)
-    .or('is_optional.eq.false,is_selected.eq.true');
-  
-  if (quoteItems && quoteItems.length > 0) {
-    const invoiceItems = quoteItems.map(item => ({
-      invoice_id: invoice.id,
-      description: item.description,
-      details: item.details,
-      quantity: item.quantity,
-      unit: item.unit,
-      unit_price: item.unit_price,
-      line_total: item.line_total,
-      is_taxable: item.is_taxable,
-      sort_order: item.sort_order,
-    }));
-    
-    await supabase.from('invoice_line_items').insert(invoiceItems);
+
+  if (statusError) {
+    console.error('CRITICAL: Failed to update quote status:', statusError);
+    throw statusError; // Only throw for the critical operation
   }
-  
-  // Record payment
-  await supabase
-    .from('payments')
-    .insert({
-      invoice_id: invoice.id,
-      customer_id: quote.customer_id,
-      amount: session.amount_total / 100,
-      payment_type: 'deposit',
-      stripe_payment_intent_id: session.payment_intent,
-      status: 'succeeded',
-    });
-  
-  // Queue notifications
-  await supabase.from('notification_queue').insert([
-    {
-      customer_id: quote.customer_id,
-      notification_type: 'quote_accepted',
-      reference_type: 'quote',
-      reference_id: quote_id,
-      is_admin_notification: true,
-    },
-    {
-      customer_id: quote.customer_id,
-      notification_type: 'payment_received',
-      reference_type: 'payment',
-      reference_id: invoice.id,
-    },
-  ]);
-  
-  // Send immediate confirmation emails
+
+  console.log('Quote marked as accepted:', quote_id);
+
+  // Create invoice from quote (non-critical - don't crash webhook)
+  let invoice = null;
   try {
-    await sendPaymentConfirmation(supabase, quote.customer_id, session.amount_total / 100, invoice);
+    const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
+
+    const { data: inv, error: invError } = await supabase
+      .from('invoices')
+      .insert({
+        invoice_number: invoiceNumber,
+        quote_id,
+        customer_id: quote.customer_id,
+        title: quote.title,
+        status: 'partial',
+        subtotal: quote.subtotal,
+        tax_rate: quote.tax_rate,
+        tax_amount: quote.tax_amount,
+        total: quote.total,
+        amount_paid: session.amount_total / 100,
+        amount_due: quote.total - (session.amount_total / 100),
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        sent_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (invError) {
+      console.error('Failed to create invoice:', invError);
+    } else {
+      invoice = inv;
+      console.log('Invoice created:', invoice.invoice_number);
+    }
+
+    // Copy line items to invoice
+    if (invoice) {
+      const { data: quoteItems } = await supabase
+        .from('quote_line_items')
+        .select('*')
+        .eq('quote_id', quote_id)
+        .or('is_optional.eq.false,is_selected.eq.true');
+
+      if (quoteItems && quoteItems.length > 0) {
+        const invoiceItems = quoteItems.map(item => ({
+          invoice_id: invoice.id,
+          description: item.description,
+          details: item.details,
+          quantity: item.quantity,
+          unit: item.unit,
+          unit_price: item.unit_price,
+          line_total: item.line_total,
+          is_taxable: item.is_taxable,
+          sort_order: item.sort_order,
+        }));
+
+        await supabase.from('invoice_line_items').insert(invoiceItems);
+      }
+    }
+  } catch (invoiceErr) {
+    console.error('Invoice creation error (non-fatal):', invoiceErr);
+  }
+
+  // Record payment (non-critical)
+  try {
+    if (invoice) {
+      await supabase
+        .from('payments')
+        .insert({
+          invoice_id: invoice.id,
+          customer_id: quote.customer_id,
+          amount: session.amount_total / 100,
+          payment_type: 'deposit',
+          stripe_payment_intent_id: session.payment_intent,
+          status: 'succeeded',
+        });
+      console.log('Payment recorded');
+    }
+  } catch (payErr) {
+    console.error('Payment recording error (non-fatal):', payErr);
+  }
+
+  // Queue notifications (non-critical)
+  try {
+    await supabase.from('notification_queue').insert([
+      {
+        customer_id: quote.customer_id,
+        notification_type: 'quote_accepted',
+        reference_type: 'quote',
+        reference_id: quote_id,
+        is_admin_notification: true,
+      },
+      ...(invoice ? [{
+        customer_id: quote.customer_id,
+        notification_type: 'payment_received',
+        reference_type: 'payment',
+        reference_id: invoice.id,
+      }] : []),
+    ]);
+  } catch (notifErr) {
+    console.error('Notification queue error (non-fatal):', notifErr);
+  }
+
+  // Send confirmation emails (non-critical)
+  try {
+    if (invoice) {
+      await sendPaymentConfirmation(supabase, quote.customer_id, session.amount_total / 100, invoice);
+    }
   } catch (emailErr) {
-    console.error('Failed to send payment confirmation email:', emailErr);
+    console.error('Email send error (non-fatal):', emailErr);
   }
 }
 

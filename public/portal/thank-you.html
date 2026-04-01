@@ -185,6 +185,16 @@
         backLink.href = `/portal/quote.html?id=${quoteId}`;
       }
     }
+
+    // Verify checkout session completed - fallback in case webhook is delayed
+    const sessionId = params.get('session_id');
+    if (sessionId) {
+      fetch('/.netlify/functions/verify-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+      }).catch(() => {}); // Fire and forget
+    }
   </script>
 </body>
 </html>
