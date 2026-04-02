@@ -1923,8 +1923,11 @@
         content.querySelectorAll('.attr-select').forEach(sel => {
           sel.addEventListener('change', (e) => {
             const idx = parseInt(e.target.dataset.idx);
-            attributeInstances[idx].optionId = e.target.value;
-            attributeInstances[idx].unitPriceOverride = null; // Reset override when option changes
+            const newOptionId = e.target.value;
+            if (attributeInstances[idx].optionId !== newOptionId) {
+              attributeInstances[idx].optionId = newOptionId;
+              attributeInstances[idx].unitPriceOverride = null;
+            }
             renderAttributeSelectors();
           });
         });
@@ -2302,8 +2305,11 @@
         content.querySelectorAll('.attr-select').forEach(sel => {
           sel.addEventListener('change', (e) => {
             const idx = parseInt(e.target.dataset.idx);
-            attributeInstances[idx].optionId = e.target.value;
-            attributeInstances[idx].unitPriceOverride = null;
+            const newOptionId = e.target.value;
+            if (attributeInstances[idx].optionId !== newOptionId) {
+              attributeInstances[idx].optionId = newOptionId;
+              attributeInstances[idx].unitPriceOverride = null;
+            }
             renderAttributeSelectors();
           });
         });
