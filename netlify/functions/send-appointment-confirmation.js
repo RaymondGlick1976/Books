@@ -62,22 +62,34 @@ exports.handler = async (event) => {
     const results = { email_sent: false, gcal_synced: false };
 
     // Google Calendar sync
-    if (sync_gcal && appt.appointment_date && appt.appointment_time) {
+    if (sync_gcal && appt.appointment_date) {
       try {
         const { gcalRequest } = require('./gcal-utils');
-        const slotDuration = scheduling.slot_duration || 60;
-        const startMinutes = parseInt(appt.appointment_time.split(':')[0]) * 60 + parseInt(appt.appointment_time.split(':')[1]);
-        const endMinutes = startMinutes + slotDuration;
-        const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
         const timeZone = company.timezone || 'America/New_York';
         const customerName = appt.customers?.name || '';
+        const description = customerName ? `Customer: ${customerName}\nEmail: ${appt.customers?.email || 'N/A'}\nPhone: ${appt.customers?.phone || 'N/A'}${appt.notes ? '\nNotes: ' + appt.notes : ''}` : (appt.notes || '');
 
-        const eventBody = {
-          summary: `${typeName}${customerName ? ' - ' + customerName : ''}`,
-          start: { dateTime: `${appt.appointment_date}T${appt.appointment_time}:00`, timeZone },
-          end: { dateTime: `${appt.appointment_date}T${endTime}:00`, timeZone },
-          description: customerName ? `Customer: ${customerName}\nEmail: ${appt.customers?.email || 'N/A'}\nPhone: ${appt.customers?.phone || 'N/A'}${appt.notes ? '\nNotes: ' + appt.notes : ''}` : (appt.notes || '')
-        };
+        let eventBody;
+        if (appt.appointment_time) {
+          const slotDuration = scheduling.slot_duration || 60;
+          const startMinutes = parseInt(appt.appointment_time.split(':')[0]) * 60 + parseInt(appt.appointment_time.split(':')[1]);
+          const endMinutes = startMinutes + slotDuration;
+          const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+          eventBody = {
+            summary: `${typeName}${customerName ? ' - ' + customerName : ''}`,
+            start: { dateTime: `${appt.appointment_date}T${appt.appointment_time}:00`, timeZone },
+            end: { dateTime: `${appt.appointment_date}T${endTime}:00`, timeZone },
+            description
+          };
+        } else {
+          // All-day event when no time is set
+          eventBody = {
+            summary: `${typeName}${customerName ? ' - ' + customerName : ''}`,
+            start: { date: appt.appointment_date },
+            end: { date: appt.appointment_date },
+            description
+          };
+        }
 
         const gcalEvent = await gcalRequest('POST', '/calendars/primary/events', eventBody);
         if (gcalEvent && gcalEvent.id) {
@@ -87,6 +99,7 @@ exports.handler = async (event) => {
         }
       } catch (gcalErr) {
         console.error('GCal sync failed:', gcalErr.message);
+        results.gcal_error = gcalErr.message;
       }
     }
 

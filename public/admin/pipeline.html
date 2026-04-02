@@ -450,17 +450,21 @@
           </div>
         </form>
       </div>
-      <div class="modal-footer" style="justify-content: space-between;">
-        <div>
+      <div class="modal-footer" style="justify-content: space-between; flex-wrap: wrap;">
+        <div style="display: flex; gap: var(--space-sm);">
           <button type="button" class="btn btn-secondary" id="email-appt-btn" style="display:none;" onclick="openApptEmailModal()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             Send Reminder
           </button>
+          <button type="button" class="btn btn-secondary" id="push-gcal-btn" style="display:none;" onclick="pushToGcal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Push to GCal
+          </button>
         </div>
-        <div class="btn-group">
+        <div style="display: flex; gap: var(--space-sm);">
           <button type="button" class="btn btn-secondary" onclick="closeApptModal()">Cancel</button>
           <button type="button" class="btn btn-danger" id="delete-appt-btn" style="display:none;" onclick="deleteAppt()">Delete</button>
-          <button type="button" class="btn btn-primary" onclick="saveAppt()">Save Appointment</button>
+          <button type="button" class="btn btn-primary" onclick="saveAppt()">Save</button>
         </div>
       </div>
     </div>
@@ -1905,12 +1909,15 @@
         // Show email button if appointment has customer with email
         const hasEmail = appt.customers?.email;
         $('#email-appt-btn').style.display = hasEmail ? 'block' : 'none';
+        // Show push-to-GCal button if not already synced
+        $('#push-gcal-btn').style.display = appt.gcal_event_id ? 'none' : 'block';
         $('#appt-new-options').style.display = 'none';
       }
       else {
         $('#appt-modal-title').textContent = 'New Appointment';
         $('#delete-appt-btn').style.display = 'none';
         $('#email-appt-btn').style.display = 'none';
+        $('#push-gcal-btn').style.display = 'none';
         $('#appt-form').reset();
         $('#appt-id').value = '';
         if (typeId) $('#appt-type').value = typeId;
@@ -2001,15 +2008,25 @@
           if (newAppt) {
             const sendEmail = $('#appt-send-email').checked && data.customer_id;
             const syncGcal = $('#appt-sync-gcal').checked;
+            let gcalFailed = false;
             if (sendEmail || syncGcal) {
               try {
-                await fetch('/.netlify/functions/send-appointment-confirmation', {
+                const confirmRes = await fetch('/.netlify/functions/send-appointment-confirmation', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ appointment_id: newAppt.id, send_email: sendEmail, sync_gcal: syncGcal })
                 });
-              } catch (e) { console.error('Confirmation/GCal failed:', e); }
+                const confirmResult = await confirmRes.json();
+                if (syncGcal && !confirmResult.gcal_synced) gcalFailed = confirmResult.gcal_error || true;
+              } catch (e) { console.error('Confirmation/GCal failed:', e); if (syncGcal) gcalFailed = true; }
             }
+            closeApptModal(); await loadData(); renderCalendar();
+            if (gcalFailed) {
+              showToast(typeof gcalFailed === 'string' ? 'Appointment saved but GCal sync failed: ' + gcalFailed : 'Appointment saved but Google Calendar sync failed', 'warning');
+            } else {
+              showToast(syncGcal ? 'Appointment created and added to Google Calendar' : 'Appointment created', 'success');
+            }
+            return;
           }
         }
         closeApptModal(); await loadData(); renderCalendar(); showToast(id ? 'Appointment updated' : 'Appointment created', 'success');
@@ -2031,7 +2048,35 @@
       }
       catch (err) { showToast('Failed to delete', 'error'); }
     }
-    
+
+    async function pushToGcal() {
+      const id = $('#appt-id').value;
+      if (!id) return;
+      const btn = $('#push-gcal-btn');
+      btn.disabled = true;
+      btn.textContent = 'Syncing...';
+      try {
+        const res = await fetch('/.netlify/functions/send-appointment-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appointment_id: id, send_email: false, sync_gcal: true })
+        });
+        const result = await res.json();
+        if (result.gcal_synced) {
+          showToast('Added to Google Calendar', 'success');
+          btn.style.display = 'none';
+          if (currentAppt) currentAppt.gcal_event_id = 'synced';
+          await loadData(); renderCalendar();
+        } else {
+          showToast(result.gcal_error ? 'GCal sync failed: ' + result.gcal_error : 'Google Calendar sync failed', 'error');
+        }
+      } catch (err) {
+        showToast('Failed to sync with Google Calendar', 'error');
+      }
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Push to Google Calendar';
+    }
+
     function openStageSettings() { renderStageList(); $('#stage-modal').classList.add('active'); }
     function closeStageSettings() { $('#stage-modal').classList.remove('active'); $('#add-stage-form').style.display = 'none'; }
     
