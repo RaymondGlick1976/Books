@@ -230,6 +230,111 @@ exports.handler = async (event) => {
       return success({ success: true, package_id });
     }
     
+    // Handle attribute selection change (must be checked before item_id)
+    if (item_id && attribute_change) {
+      const { attribute_id, new_option_id } = attribute_change;
+
+      if (!attribute_id || !new_option_id) {
+        return error('attribute_id and new_option_id required', 400);
+      }
+
+      // Get the line item
+      const { data: lineItem, error: itemError } = await supabase
+        .from('quote_line_items')
+        .select('id, unit_price, quantity, attribute_selections, base_price, is_taxable')
+        .eq('id', item_id)
+        .eq('quote_id', quote_id)
+        .single();
+
+      if (itemError || !lineItem) {
+        return error('Line item not found', 404);
+      }
+
+      const attrSelections = lineItem.attribute_selections || [];
+      const selIndex = attrSelections.findIndex(s => s.attribute_id === attribute_id && s.is_public);
+
+      if (selIndex === -1) {
+        return error('Public attribute not found on this item', 404);
+      }
+
+      const sel = attrSelections[selIndex];
+      const newOption = (sel.available_options || []).find(o => o.option_id === new_option_id);
+      if (!newOption) {
+        return error('Invalid option', 400);
+      }
+
+      // Calculate base price
+      let basePrice = lineItem.base_price;
+      if (basePrice === null || basePrice === undefined) {
+        const totalAttrValue = attrSelections.reduce((sum, s) => sum + (parseFloat(s.line_total) || 0), 0);
+        basePrice = (parseFloat(lineItem.unit_price) || 0) - totalAttrValue;
+      }
+
+      // Only update price when option actually changes; preserve admin override otherwise
+      const optionChanged = sel.option_id !== new_option_id;
+      sel.option_id = newOption.option_id;
+      sel.option_name = newOption.option_name;
+      if (optionChanged) {
+        sel.unit_price = newOption.unit_price;
+      }
+      sel.pricing_type = newOption.pricing_type;
+
+      // Recalculate line_total for this attribute
+      if (sel.pricing_type === 'percentage') {
+        sel.line_total = basePrice * (sel.unit_price / 100);
+      } else {
+        sel.line_total = sel.unit_price * (sel.quantity || 1);
+      }
+
+      // Recalculate item price
+      const newAttrTotal = attrSelections.reduce((sum, s) => sum + (parseFloat(s.line_total) || 0), 0);
+      const newUnitPrice = Math.round((basePrice + newAttrTotal) * 100) / 100;
+      const newLineTotal = Math.round(newUnitPrice * (lineItem.quantity || 1) * 100) / 100;
+
+      // Update the line item
+      const { error: attrUpdateError } = await supabase
+        .from('quote_line_items')
+        .update({
+          attribute_selections: attrSelections,
+          unit_price: newUnitPrice,
+          line_total: newLineTotal,
+          line_total_low: newLineTotal,
+          line_total_high: newLineTotal
+        })
+        .eq('id', item_id);
+
+      if (attrUpdateError) throw attrUpdateError;
+
+      // Recalculate quote totals
+      const { data: allItems } = await supabase
+        .from('quote_line_items')
+        .select('*')
+        .eq('quote_id', quote_id);
+
+      let attrSubtotal = 0;
+      let attrTaxableSubtotal = 0;
+
+      (allItems || []).forEach(it => {
+        const includeInTotal = !it.is_optional || it.is_selected;
+        if (includeInTotal) {
+          const lt = it.id === item_id ? newLineTotal : ((parseFloat(it.unit_price) || 0) * (it.quantity || 1));
+          attrSubtotal += lt;
+          if (it.is_taxable) attrTaxableSubtotal += lt;
+        }
+      });
+
+      const attrTaxRate = quote.tax_rate || 0.0625;
+      const attrTaxAmount = attrTaxableSubtotal * attrTaxRate;
+      const attrTotal = attrSubtotal + attrTaxAmount;
+
+      await supabase
+        .from('quotes')
+        .update({ subtotal: attrSubtotal, tax_amount: attrTaxAmount, total: attrTotal })
+        .eq('id', quote_id);
+
+      return success({ success: true, unit_price: newUnitPrice, line_total: newLineTotal, total: attrTotal, subtotal: attrSubtotal, tax_amount: attrTaxAmount });
+    }
+
     // Handle item selection
     if (item_id) {
       const { error: updateError } = await supabase
@@ -281,108 +386,6 @@ exports.handler = async (event) => {
       return success({ success: true, total, subtotal, tax_amount: taxAmount });
     }
     
-    // Handle attribute selection change
-    if (item_id && attribute_change) {
-      const { attribute_id, new_option_id } = attribute_change;
-
-      if (!attribute_id || !new_option_id) {
-        return error('attribute_id and new_option_id required', 400);
-      }
-
-      // Get the line item
-      const { data: lineItem, error: itemError } = await supabase
-        .from('quote_line_items')
-        .select('id, unit_price, quantity, attribute_selections, base_price, is_taxable')
-        .eq('id', item_id)
-        .eq('quote_id', quote_id)
-        .single();
-
-      if (itemError || !lineItem) {
-        return error('Line item not found', 404);
-      }
-
-      const attrSelections = lineItem.attribute_selections || [];
-      const selIndex = attrSelections.findIndex(s => s.attribute_id === attribute_id && s.is_public);
-
-      if (selIndex === -1) {
-        return error('Public attribute not found on this item', 404);
-      }
-
-      const sel = attrSelections[selIndex];
-      const newOption = (sel.available_options || []).find(o => o.option_id === new_option_id);
-      if (!newOption) {
-        return error('Invalid option', 400);
-      }
-
-      // Calculate base price
-      let basePrice = lineItem.base_price;
-      if (basePrice === null || basePrice === undefined) {
-        const totalAttrValue = attrSelections.reduce((sum, s) => sum + (parseFloat(s.line_total) || 0), 0);
-        basePrice = (parseFloat(lineItem.unit_price) || 0) - totalAttrValue;
-      }
-
-      // Update the selection
-      sel.option_id = newOption.option_id;
-      sel.option_name = newOption.option_name;
-      sel.unit_price = newOption.unit_price;
-      sel.pricing_type = newOption.pricing_type;
-
-      // Recalculate line_total for this attribute
-      if (sel.pricing_type === 'percentage') {
-        sel.line_total = basePrice * (sel.unit_price / 100);
-      } else {
-        sel.line_total = sel.unit_price * (sel.quantity || 1);
-      }
-
-      // Recalculate item price
-      const newAttrTotal = attrSelections.reduce((sum, s) => sum + (parseFloat(s.line_total) || 0), 0);
-      const newUnitPrice = Math.round((basePrice + newAttrTotal) * 100) / 100;
-      const newLineTotal = Math.round(newUnitPrice * (lineItem.quantity || 1) * 100) / 100;
-
-      // Update the line item
-      const { error: updateError } = await supabase
-        .from('quote_line_items')
-        .update({
-          attribute_selections: attrSelections,
-          unit_price: newUnitPrice,
-          line_total: newLineTotal,
-          line_total_low: newLineTotal,
-          line_total_high: newLineTotal
-        })
-        .eq('id', item_id);
-
-      if (updateError) throw updateError;
-
-      // Recalculate quote totals
-      const { data: allItems } = await supabase
-        .from('quote_line_items')
-        .select('*')
-        .eq('quote_id', quote_id);
-
-      let subtotal = 0;
-      let taxableSubtotal = 0;
-
-      (allItems || []).forEach(it => {
-        const includeInTotal = !it.is_optional || it.is_selected;
-        if (includeInTotal) {
-          const lt = it.id === item_id ? newLineTotal : ((parseFloat(it.unit_price) || 0) * (it.quantity || 1));
-          subtotal += lt;
-          if (it.is_taxable) taxableSubtotal += lt;
-        }
-      });
-
-      const taxRate = quote.tax_rate || 0.0625;
-      const taxAmount = taxableSubtotal * taxRate;
-      const total = subtotal + taxAmount;
-
-      await supabase
-        .from('quotes')
-        .update({ subtotal, tax_amount: taxAmount, total })
-        .eq('id', quote_id);
-
-      return success({ success: true, unit_price: newUnitPrice, line_total: newLineTotal, total, subtotal, tax_amount: taxAmount });
-    }
-
     return error('Missing item_id or package_id', 400);
 
   } catch (err) {

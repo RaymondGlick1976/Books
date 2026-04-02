@@ -1525,6 +1525,21 @@
         
         quote = response.quote;
         lineItems = response.line_items;
+
+        // Sync admin price overrides into available_options so dropdown
+        // reselection preserves the admin-set price instead of reverting
+        // to the catalog default.
+        (lineItems || []).forEach(item => {
+          (item.attribute_selections || []).forEach(sel => {
+            if (sel.available_options && sel.option_id && sel.unit_price != null) {
+              const matchingOpt = sel.available_options.find(o => o.option_id === sel.option_id);
+              if (matchingOpt) {
+                matchingOpt.unit_price = sel.unit_price;
+              }
+            }
+          });
+        });
+
         attachments = response.attachments;
         changeOrders = response.change_orders || [];
         payments = response.payments || [];
