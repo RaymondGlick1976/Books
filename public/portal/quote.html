@@ -2305,12 +2305,15 @@
         basePrice = (parseFloat(item.unit_price) || 0) - totalAttrValue;
       }
 
-      // Update selection
+      // Update selection — preserve admin price override when same option is reselected
+      const optionChanged = sel.option_id !== newOptionId;
       sel.option_id = newOption.option_id;
       sel.option_name = newOption.option_name;
-      sel.unit_price = newOption.unit_price;
+      if (optionChanged) {
+        sel.unit_price = newOption.unit_price;
+      }
       sel.pricing_type = newOption.pricing_type;
-      sel.line_total = calculateAttributeLineTotal(newOption.unit_price, newOption.pricing_type, sel.quantity || 1, basePrice);
+      sel.line_total = calculateAttributeLineTotal(sel.unit_price, sel.pricing_type, sel.quantity || 1, basePrice);
 
       // Recalculate item price
       const newAttrTotal = attrSelections.reduce((sum, s) => sum + (parseFloat(s.line_total) || 0), 0);
