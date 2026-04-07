@@ -72,12 +72,13 @@ exports.handler = async (event) => {
         let eventBody;
         if (appt.appointment_time) {
           const slotDuration = scheduling.slot_duration || 60;
-          const startMinutes = parseInt(appt.appointment_time.split(':')[0]) * 60 + parseInt(appt.appointment_time.split(':')[1]);
+          const timePart = appt.appointment_time.substring(0, 5); // Normalize HH:MM:SS to HH:MM
+          const startMinutes = parseInt(timePart.split(':')[0]) * 60 + parseInt(timePart.split(':')[1]);
           const endMinutes = startMinutes + slotDuration;
           const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
           eventBody = {
             summary: `${typeName}${customerName ? ' - ' + customerName : ''}`,
-            start: { dateTime: `${appt.appointment_date}T${appt.appointment_time}:00`, timeZone },
+            start: { dateTime: `${appt.appointment_date}T${timePart}:00`, timeZone },
             end: { dateTime: `${appt.appointment_date}T${endTime}:00`, timeZone },
             description
           };

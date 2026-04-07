@@ -27,14 +27,15 @@ exports.handler = async (event) => {
     const timeZone = company.timezone || 'America/New_York';
 
     // Default to 60 min duration
-    const startMinutes = parseInt(time.split(':')[0]) * 60 + parseInt(time.split(':')[1]);
+    const timePart = time.substring(0, 5); // Normalize HH:MM:SS to HH:MM
+    const startMinutes = parseInt(timePart.split(':')[0]) * 60 + parseInt(timePart.split(':')[1]);
     const endMinutes = startMinutes + 60;
     const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
     const endMin = String(endMinutes % 60).padStart(2, '0');
     const endTime = `${endHour}:${endMin}`;
 
     const patch = {
-      start: { dateTime: `${date}T${time}:00`, timeZone },
+      start: { dateTime: `${date}T${timePart}:00`, timeZone },
       end: { dateTime: `${date}T${endTime}:00`, timeZone }
     };
     if (title) patch.summary = title;
