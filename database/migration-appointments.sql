@@ -44,9 +44,15 @@ CREATE TABLE IF NOT EXISTS appointments (
   location TEXT,
   notes TEXT,
   status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled', 'no-show')),
+  confirmation_email_sent_at TIMESTAMPTZ,
+  gcal_event_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- NOTE: If table already exists, run these manually in Supabase:
+-- ALTER TABLE appointments ADD COLUMN IF NOT EXISTS confirmation_email_sent_at TIMESTAMPTZ;
+-- ALTER TABLE appointments ADD COLUMN IF NOT EXISTS gcal_event_id TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date);
 CREATE INDEX IF NOT EXISTS idx_appointments_customer ON appointments(customer_id);

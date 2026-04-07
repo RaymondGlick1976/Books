@@ -431,6 +431,7 @@
         <h3 class="modal-title" id="appt-modal-title">New Appointment</h3>
         <button class="modal-close" onclick="closeApptModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
+      <div id="appt-edit-badges" style="padding: 0 var(--space-lg); display: none;"><div style="display: flex; gap: var(--space-xs);"></div></div>
       <div class="modal-body">
         <form id="appt-form">
           <input type="hidden" id="appt-id">
@@ -478,6 +479,7 @@
         <button class="modal-close" onclick="closeApptView()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
+        <div id="appt-view-badges" style="margin-bottom: var(--space-md); display: flex; gap: var(--space-xs);"></div>
         <div class="deal-view-grid" id="appt-view-info"></div>
         <div id="appt-view-notes" class="deal-view-section" style="display:none;">
           <div class="deal-view-section-title">Notes</div>
@@ -1912,12 +1914,20 @@
         // Show push-to-GCal button if not already synced
         $('#push-gcal-btn').style.display = appt.gcal_event_id ? 'none' : 'block';
         $('#appt-new-options').style.display = 'none';
+        // Status badges
+        const emailBc = appt.confirmation_email_sent_at ? 'badge-accepted' : 'badge-draft';
+        const emailBt = appt.confirmation_email_sent_at ? 'Email Sent' : 'Email Not Sent';
+        const gcalBc = appt.gcal_event_id ? 'badge-accepted' : 'badge-draft';
+        const gcalBt = appt.gcal_event_id ? 'GCal Synced' : 'GCal Not Synced';
+        $('#appt-edit-badges').style.display = '';
+        $('#appt-edit-badges > div').innerHTML = `<span class="badge ${emailBc}">${emailBt}</span> <span class="badge ${gcalBc}">${gcalBt}</span>`;
       }
       else {
         $('#appt-modal-title').textContent = 'New Appointment';
         $('#delete-appt-btn').style.display = 'none';
         $('#email-appt-btn').style.display = 'none';
         $('#push-gcal-btn').style.display = 'none';
+        $('#appt-edit-badges').style.display = 'none';
         $('#appt-form').reset();
         $('#appt-id').value = '';
         if (typeId) $('#appt-type').value = typeId;
@@ -1939,6 +1949,13 @@
       const deal = deals.find(d => d.id === appt.deal_id);
 
       $('#appt-view-title').textContent = appt.title || type?.name || 'Appointment';
+
+      // Status badges
+      const emailBadgeClass = appt.confirmation_email_sent_at ? 'badge-accepted' : 'badge-draft';
+      const emailBadgeText = appt.confirmation_email_sent_at ? 'Email Sent' : 'Email Not Sent';
+      const gcalBadgeClass = appt.gcal_event_id ? 'badge-accepted' : 'badge-draft';
+      const gcalBadgeText = appt.gcal_event_id ? 'GCal Synced' : 'GCal Not Synced';
+      $('#appt-view-badges').innerHTML = `<span class="badge ${emailBadgeClass}">${emailBadgeText}</span> <span class="badge ${gcalBadgeClass}">${gcalBadgeText}</span>`;
 
       let infoHtml = '';
       if (type) {
@@ -2009,6 +2026,7 @@
             const sendEmail = $('#appt-send-email').checked && data.customer_id;
             const syncGcal = $('#appt-sync-gcal').checked;
             let gcalFailed = false;
+            let emailFailed = false;
             if (sendEmail || syncGcal) {
               try {
                 const confirmRes = await fetch('/.netlify/functions/send-appointment-confirmation', {
@@ -2018,11 +2036,16 @@
                 });
                 const confirmResult = await confirmRes.json();
                 if (syncGcal && !confirmResult.gcal_synced) gcalFailed = confirmResult.gcal_error || true;
-              } catch (e) { console.error('Confirmation/GCal failed:', e); if (syncGcal) gcalFailed = true; }
+                if (sendEmail && !confirmResult.email_sent) emailFailed = true;
+              } catch (e) { console.error('Confirmation/GCal failed:', e); if (syncGcal) gcalFailed = true; if (sendEmail) emailFailed = true; }
             }
             closeApptModal(); await loadData(); renderCalendar();
-            if (gcalFailed) {
+            if (gcalFailed && emailFailed) {
+              showToast('Appointment saved but email and GCal sync failed', 'warning');
+            } else if (gcalFailed) {
               showToast(typeof gcalFailed === 'string' ? 'Appointment saved but GCal sync failed: ' + gcalFailed : 'Appointment saved but Google Calendar sync failed', 'warning');
+            } else if (emailFailed) {
+              showToast('Appointment saved but confirmation email failed to send', 'warning');
             } else {
               showToast(syncGcal ? 'Appointment created and added to Google Calendar' : 'Appointment created', 'success');
             }

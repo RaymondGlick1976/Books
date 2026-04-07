@@ -187,7 +187,11 @@ exports.handler = async (event) => {
             headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ from: `${companyName} <${fromEmail}>`, to: [appt.customers.email], subject: emailSubject, html: customerHtml })
           });
-          if (res.ok) { results.email_sent = true; console.log('Confirmation email sent to:', appt.customers.email); }
+          if (res.ok) {
+            results.email_sent = true;
+            console.log('Confirmation email sent to:', appt.customers.email);
+            await supabase.from('appointments').update({ confirmation_email_sent_at: new Date().toISOString() }).eq('id', appointment_id);
+          }
           else { console.error('Resend error:', await res.text()); }
         } else if (process.env.SENDGRID_API_KEY) {
           const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -195,7 +199,11 @@ exports.handler = async (event) => {
             headers: { 'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ personalizations: [{ to: [{ email: appt.customers.email }] }], from: { email: fromEmail, name: companyName }, subject: emailSubject, content: [{ type: 'text/html', value: customerHtml }] })
           });
-          if (res.ok || res.status === 202) { results.email_sent = true; console.log('Confirmation email sent to:', appt.customers.email); }
+          if (res.ok || res.status === 202) {
+            results.email_sent = true;
+            console.log('Confirmation email sent to:', appt.customers.email);
+            await supabase.from('appointments').update({ confirmation_email_sent_at: new Date().toISOString() }).eq('id', appointment_id);
+          }
           else { console.error('SendGrid error:', await res.text()); }
         }
       } catch (emailErr) {
