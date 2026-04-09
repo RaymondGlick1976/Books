@@ -271,6 +271,7 @@
           schedLink.style.background = formConfig.primary_color || '#38571a';
           if (formConfig.thank_you_redirect_url) {
             schedLink.href = '/schedule?redirect=' + encodeURIComponent(formConfig.thank_you_redirect_url);
+            try { sessionStorage.setItem('booking_redirect_url', formConfig.thank_you_redirect_url); } catch(e) {}
           }
         }
       }
