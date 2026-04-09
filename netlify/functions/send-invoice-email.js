@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -33,9 +34,36 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'Customer email not found' }) };
     }
 
-    // Generate portal link (remove trailing slash from SITE_URL if present)
+    // Generate access token if not exists
+    let accessToken = invoice.access_token;
+    if (!accessToken) {
+      accessToken = crypto.randomBytes(32).toString('hex');
+      console.log('Generated new access token for invoice:', invoiceId);
+
+      const { error: updateError } = await supabase
+        .from('invoices')
+        .update({ access_token: accessToken })
+        .eq('id', invoiceId);
+
+      if (updateError) {
+        console.error('Failed to save access token:', updateError);
+        return {
+          statusCode: 500,
+          body: JSON.stringify({
+            error: 'Failed to generate access token. Make sure the access_token column exists in the invoices table.',
+            details: updateError.message
+          })
+        };
+      }
+
+      console.log('Saved access token successfully');
+    } else {
+      console.log('Using existing access token for invoice:', invoiceId);
+    }
+
+    // Generate direct invoice link (remove trailing slash from SITE_URL if present)
     const siteUrl = (process.env.SITE_URL || 'https://hcdbooks.netlify.app').replace(/\/+$/, '');
-    const portalLink = `${siteUrl}/portal/login.html`;
+    const portalLink = `${siteUrl}/portal/invoice.html?token=${accessToken}`;
 
     // Format currency
     const formatCurrency = (amount) => {
@@ -99,7 +127,7 @@ exports.handler = async (event) => {
           </div>
           
           <p style="color: #94a3b8; font-size: 14px;">
-            You'll be asked to enter your email address to access your portal.
+            This link will take you directly to your invoice where you can view details and make a payment.
           </p>
         </div>
         

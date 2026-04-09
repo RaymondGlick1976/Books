@@ -170,7 +170,7 @@
           <td class="table-actions">
             <button class="btn btn-ghost btn-sm" onclick="viewInvoice('${invoice.id}')">View</button>
             <button class="btn btn-ghost btn-sm" onclick="printInvoiceById('${invoice.id}')" title="Print">🖨️</button>
-            ${invoice.status === 'draft' ? `<button class="btn btn-ghost btn-sm" onclick="sendInvoice('${invoice.id}')">Send</button>` : ''}
+            ${invoice.status !== 'paid' && invoice.status !== 'cancelled' && invoice.status !== 'archived' ? `<button class="btn btn-ghost btn-sm" onclick="sendInvoice('${invoice.id}')">${invoice.sent_at ? 'Resend' : 'Send'}</button>` : ''}
             ${invoice.amount_due > 0 ? `<button class="btn btn-ghost btn-sm" onclick="recordPayment('${invoice.id}')">Record Payment</button>` : ''}
             ${!invoice.qb_invoice_id
               ? `<button class="btn btn-ghost btn-sm" onclick="syncInvoiceToQB('${invoice.id}').then(loadInvoices)" title="Sync to QuickBooks">QB</button>`
@@ -392,6 +392,30 @@
       const printBtn = createElement('button', { className: 'btn btn-secondary' });
       printBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print';
       leftBtns.appendChild(printBtn);
+
+      const customerViewBtn = createElement('button', { className: 'btn btn-secondary' });
+      customerViewBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Customer View';
+      customerViewBtn.addEventListener('click', async () => {
+        customerViewBtn.disabled = true;
+        customerViewBtn.textContent = 'Generating link...';
+        try {
+          let token = invoice.access_token;
+          if (!token) {
+            // Generate access token
+            const supabase = await app.waitForSupabase();
+            token = Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join('');
+            await supabase.from('invoices').update({ access_token: token }).eq('id', id);
+            invoice.access_token = token;
+          }
+          window.open(`/portal/invoice.html?token=${token}`, '_blank');
+        } catch (err) {
+          console.error('Customer view error:', err);
+          showToast('Failed to generate customer link', 'error');
+        }
+        customerViewBtn.disabled = false;
+        customerViewBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Customer View';
+      });
+      leftBtns.appendChild(customerViewBtn);
       footer.appendChild(leftBtns);
 
       const rightBtns = createElement('div', { className: 'btn-group' });
