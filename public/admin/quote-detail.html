@@ -745,10 +745,16 @@
         if (packages && packages.length > 0) {
           // Package-based: use the selectedItems we built above
           selectedItems.forEach((item, index) => {
+            let details = item.details || '';
+            const attrs = (item.attribute_selections || [])
+              .filter(sel => sel.option_name)
+              .map(sel => sel.attribute_name + ': ' + sel.option_name)
+              .join('\n');
+            if (attrs) details = details ? details + '\n' + attrs : attrs;
             allInvoiceItems.push({
               invoice_id: invoice.id,
               description: item.description,
-              details: item.details,
+              details: details,
               quantity: item.quantity,
               unit_price: item.unit_price,
               line_total: item.line_total,
@@ -758,10 +764,16 @@
           });
         } else {
           selectedItems.forEach((item, index) => {
+            let details = item.details || '';
+            const attrs = (item.attribute_selections || [])
+              .filter(sel => sel.option_name)
+              .map(sel => sel.attribute_name + ': ' + sel.option_name)
+              .join('\n');
+            if (attrs) details = details ? details + '\n' + attrs : attrs;
             allInvoiceItems.push({
               invoice_id: invoice.id,
               description: item.description,
-              details: item.details,
+              details: details,
               quantity: item.quantity,
               unit_price: item.unit_price || item.price_range_low,
               line_total: (item.unit_price || item.price_range_low) * item.quantity,

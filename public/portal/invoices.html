@@ -516,7 +516,10 @@
       const companyName = company.name || 'Homestead Cabinet Design';
       const itemsHtml = lineItems.length > 0 ? lineItems.map(item => `
         <tr>
-          <td style="padding:8px 0;border-bottom:1px solid #eee;">${item.description || ''}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #eee;">
+            ${item.description || ''}
+            ${item.details ? `<div style="color:#666;font-size:12px;white-space:pre-line;margin-top:2px;">${item.details}</div>` : ''}
+          </td>
           <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${item.quantity}</td>
           <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${formatCurrency(item.unit_price)}</td>
           <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${formatCurrency(item.line_total)}</td>

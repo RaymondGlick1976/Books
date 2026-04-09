@@ -318,6 +318,12 @@
       }
     }
 
+    .attribute-readonly {
+      font-size: 0.875rem;
+      color: var(--color-text-light);
+      margin-top: var(--space-xs);
+    }
+
     .attribute-selector {
       display: flex;
       align-items: center;
@@ -2217,29 +2223,40 @@
         // Render public attribute selectors
         const attrSelections = item.attribute_selections || [];
         const publicAttrs = attrSelections.filter(sel => sel.is_public && sel.available_options && sel.available_options.length > 1);
-        if (publicAttrs.length > 0 && canSelect) {
-          publicAttrs.forEach((sel, idx) => {
-            const attrIndex = attrSelections.indexOf(sel);
-            const selectorDiv = createElement('div', { className: 'attribute-selector' });
-            selectorDiv.appendChild(createElement('label', { textContent: sel.attribute_name + ':' }));
+        if (publicAttrs.length > 0) {
+          if (canSelect) {
+            publicAttrs.forEach((sel, idx) => {
+              const attrIndex = attrSelections.indexOf(sel);
+              const selectorDiv = createElement('div', { className: 'attribute-selector' });
+              selectorDiv.appendChild(createElement('label', { textContent: sel.attribute_name + ':' }));
 
-            const select = document.createElement('select');
-            select.dataset.itemId = itemId;
-            select.dataset.attrIndex = attrIndex.toString();
-            select.dataset.attributeId = sel.attribute_id;
-            select.dataset.action = 'change-attribute';
+              const select = document.createElement('select');
+              select.dataset.itemId = itemId;
+              select.dataset.attrIndex = attrIndex.toString();
+              select.dataset.attributeId = sel.attribute_id;
+              select.dataset.action = 'change-attribute';
 
-            sel.available_options.forEach(opt => {
-              const option = document.createElement('option');
-              option.value = opt.option_id;
-              option.textContent = opt.option_name;
-              if (opt.option_id === sel.option_id) option.selected = true;
-              select.appendChild(option);
+              sel.available_options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.option_id;
+                option.textContent = opt.option_name;
+                if (opt.option_id === sel.option_id) option.selected = true;
+                select.appendChild(option);
+              });
+
+              selectorDiv.appendChild(select);
+              content.appendChild(selectorDiv);
             });
-
-            selectorDiv.appendChild(select);
-            content.appendChild(selectorDiv);
-          });
+          } else {
+            publicAttrs.forEach(sel => {
+              if (sel.option_name) {
+                content.appendChild(createElement('div', {
+                  className: 'attribute-readonly',
+                  textContent: sel.attribute_name + ': ' + sel.option_name
+                }));
+              }
+            });
+          }
         }
 
         itemEl.appendChild(content);
