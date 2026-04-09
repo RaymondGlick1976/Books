@@ -21,13 +21,12 @@ exports.handler = async (event) => {
       .from('payments')
       .select(`
         *,
-        invoices(invoice_number, title),
-        quotes(quote_number, title)
+        invoices(invoice_number, title)
       `)
       .eq('customer_id', customer.id)
       .eq('status', 'succeeded')
       .order('created_at', { ascending: false });
-    
+
     if (paymentsError) throw paymentsError;
     
     return success({ payments: payments || [] });

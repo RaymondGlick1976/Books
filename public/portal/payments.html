@@ -174,20 +174,13 @@
   <script src="/js/portal-auth.js"></script>
   <script>
     let payments = [];
-    let quotes = {};
-    
+
     async function init() {
       try {
         // Load payments
         const response = await apiCall('portal-payments');
         payments = response.payments || [];
-        
-        // Load quotes to get titles
-        const quotesResponse = await apiCall('portal-quotes');
-        (quotesResponse.quotes || []).forEach(q => {
-          quotes[q.id] = q;
-        });
-        
+
         render();
         
       } catch (err) {
@@ -217,19 +210,9 @@
         let title = 'Payment';
         let link = '#';
         
-        if (payment.quotes) {
-          title = `Quote #${payment.quotes.quote_number} - ${payment.quotes.title}`;
-          link = `/portal/quote.html?id=${payment.quote_id}`;
-        } else if (payment.invoices) {
+        if (payment.invoices) {
           title = `Invoice #${payment.invoices.invoice_number} - ${payment.invoices.title}`;
-          link = `/portal/invoices.html`;
-        } else if (payment.quote_id) {
-          // Fallback - quote data might be in separate lookup
-          const quote = quotes[payment.quote_id];
-          if (quote) {
-            title = `Quote #${quote.quote_number} - ${quote.title}`;
-            link = `/portal/quote.html?id=${quote.id}`;
-          }
+          link = `/portal/invoice.html?id=${payment.invoice_id}`;
         }
         
         return `
