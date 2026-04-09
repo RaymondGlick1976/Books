@@ -210,8 +210,8 @@
         });
       });
       
-      // Add payments
-      data.payments.forEach(payment => {
+      // Add payments (only succeeded ones)
+      data.payments.filter(p => p.status === 'succeeded').forEach(payment => {
         activities.push({
           type: 'payment',
           title: `Payment received`,

@@ -3665,6 +3665,59 @@
             if (terms.invoice) $('#invoice-terms').value = terms.invoice;
             return;
           }
+          // Handle company settings
+          if (s.key === 'company' && s.value) {
+            const company = s.value;
+            $('#company-name').value = company.name || '';
+            $('#company-email').value = company.email || '';
+            $('#company-from-email').value = company.from_email || '';
+            $('#company-notification-email').value = company.notification_email || '';
+            $('#company-phone').value = company.phone || '';
+            $('#company-website').value = company.website || '';
+            $('#company-address').value = company.address || '';
+            $('#company-city').value = company.city || '';
+            $('#company-state').value = company.state || '';
+            $('#company-zip').value = company.zip || '';
+            return;
+          }
+          // Handle branding settings
+          if (s.key === 'branding' && s.value) {
+            const branding = s.value;
+            $('#company-tagline').value = branding.tagline || 'Love your kitchen again';
+            $('#brand-color').value = branding.color || '#38571a';
+            $('#brand-color-hex').value = branding.color || '#38571a';
+            return;
+          }
+          // Handle notification settings
+          if (s.key === 'notifications' && s.value) {
+            const notifs = s.value;
+            $('#notify-new-appointment').checked = notifs.new_appointment !== false;
+            $('#notify-new-booking').checked = notifs.new_booking !== false;
+            $('#notify-quote-accepted').checked = notifs.quote_accepted !== false;
+            $('#notify-quote-declined').checked = notifs.quote_declined !== false;
+            $('#notify-quote-viewed').checked = notifs.quote_viewed !== false;
+            $('#notify-invoice-viewed').checked = notifs.invoice_viewed !== false;
+            $('#notify-payment-received').checked = notifs.payment_received !== false;
+            $('#notify-customer-upload').checked = notifs.customer_upload !== false;
+            $('#notify-job-stage-changed').checked = notifs.job_stage_changed === true;
+            if (notifs.reminder_hours != null) $('#reminder-hours').value = notifs.reminder_hours;
+            return;
+          }
+          // Handle invoice settings
+          if (s.key === 'invoices' && s.value) {
+            const invoices = s.value;
+            $('#default-payment-terms').value = invoices.default_payment_terms || 30;
+            $('#late-fee-percent').value = invoices.late_fee_percent || 0;
+            return;
+          }
+          // Handle quote settings
+          if (s.key === 'quotes' && s.value) {
+            const quotes = s.value;
+            $('#default-valid-days').value = quotes.default_valid_days || 30;
+            $('#default-tax-rate').value = quotes.default_tax_rate || 6.25;
+            $('#default-deposit').value = quotes.default_deposit || 50;
+            return;
+          }
           const input = document.getElementById(s.key);
           if (input) {
             if (input.type === 'checkbox') input.checked = s.value === 'true';
