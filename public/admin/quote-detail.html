@@ -154,6 +154,7 @@
               <div class="dropdown-menu" style="right: 0; left: auto;">
                 <a href="#" class="dropdown-item" onclick="event.preventDefault(); duplicateQuote()">📋 Duplicate Quote</a>
                 <a href="#" class="dropdown-item" id="archive-btn" onclick="event.preventDefault(); archiveQuote()">📥 Archive Quote</a>
+                <a href="#" class="dropdown-item" id="unconvert-btn" style="display:none; color: var(--color-danger);" onclick="event.preventDefault(); unconvertQuote()">↩️ Unconvert to Quote</a>
                 <div style="border-top: 1px solid var(--color-border-light); margin: 4px 0;"></div>
                 <a href="#" class="dropdown-item" style="color: var(--color-danger);" onclick="event.preventDefault(); deleteQuote()">🗑️ Delete Quote</a>
               </div>
@@ -506,6 +507,11 @@
         $('#convert-invoice-btn').style.display = '';
       }
 
+      // Show unconvert button for converted quotes
+      if (quote.status === 'converted') {
+        $('#unconvert-btn').style.display = '';
+      }
+
       // Check for existing invoice and wire up View Invoice button
       checkForInvoice();
 
@@ -821,6 +827,64 @@
       } catch (err) {
         console.error(err);
         showToast('Failed to create invoice: ' + err.message, 'error');
+      }
+    }
+
+    async function unconvertQuote() {
+      if (!confirm('This will delete the invoice created from this quote and set the quote back to accepted. Continue?')) return;
+
+      try {
+        const supabase = await app.waitForSupabase();
+
+        // Find the invoice linked to this quote
+        const { data: invoices } = await supabase
+          .from('invoices')
+          .select('id, invoice_number, status')
+          .eq('quote_id', quote.id);
+
+        if (!invoices || invoices.length === 0) {
+          showToast('No linked invoice found', 'error');
+          return;
+        }
+
+        const invoice = invoices[0];
+
+        // Check for payments against this invoice
+        const { data: payments } = await supabase
+          .from('payments')
+          .select('id')
+          .eq('invoice_id', invoice.id)
+          .eq('status', 'succeeded')
+          .limit(1);
+
+        if (payments && payments.length > 0) {
+          showToast('Cannot unconvert — invoice has payments recorded. Delete payments first.', 'error');
+          return;
+        }
+
+        // Delete invoice line items then the invoice
+        await supabase.from('invoice_line_items').delete().eq('invoice_id', invoice.id);
+        await supabase.from('invoices').delete().eq('id', invoice.id);
+
+        // Set quote status back to accepted
+        await supabase.from('quotes').update({ status: 'accepted' }).eq('id', quote.id);
+
+        showToast('Invoice deleted and quote restored to accepted', 'success');
+
+        // Update UI
+        quote.status = 'accepted';
+        $('#convert-invoice-btn').style.display = '';
+        $('#view-invoice-btn').style.display = 'none';
+        $('#qb-invoice-btn').style.display = 'none';
+        $('#unconvert-btn').style.display = 'none';
+
+        const statusEl = $('#quote-status');
+        statusEl.textContent = 'Accepted';
+        statusEl.className = 'status-badge status-accepted';
+
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to unconvert: ' + err.message, 'error');
       }
     }
 

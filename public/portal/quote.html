@@ -2216,13 +2216,12 @@
         }
         content.appendChild(title);
 
-        if (item.details) {
-          content.appendChild(createElement('div', { className: 'line-item-details', textContent: item.details }));
-        }
-
         // Render public attribute selectors
         const attrSelections = item.attribute_selections || [];
         if (canSelect) {
+          if (item.details) {
+            content.appendChild(createElement('div', { className: 'line-item-details', textContent: item.details }));
+          }
           const publicAttrs = attrSelections.filter(sel => sel.is_public && sel.available_options && sel.available_options.length > 1);
           if (publicAttrs.length > 0) {
             publicAttrs.forEach((sel, idx) => {
@@ -2250,6 +2249,18 @@
           }
         } else {
           const readonlyAttrs = attrSelections.filter(sel => sel.is_public && sel.option_name);
+          // Strip attribute option listings from details text when showing readonly selections
+          let cleanDetails = item.details || '';
+          if (readonlyAttrs.length > 0) {
+            readonlyAttrs.forEach(sel => {
+              const escaped = sel.attribute_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              cleanDetails = cleanDetails.replace(new RegExp('[,\\s]*' + escaped + ':[^,]*'), '');
+            });
+            cleanDetails = cleanDetails.replace(/\s*[-–]\s*$/, '').trim();
+          }
+          if (cleanDetails) {
+            content.appendChild(createElement('div', { className: 'line-item-details', textContent: cleanDetails }));
+          }
           readonlyAttrs.forEach(sel => {
             content.appendChild(createElement('div', {
               className: 'attribute-readonly',
