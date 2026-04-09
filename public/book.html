@@ -269,6 +269,9 @@
         if (schedLink) {
           schedLink.style.display = 'inline-block';
           schedLink.style.background = formConfig.primary_color || '#38571a';
+          if (formConfig.thank_you_redirect_url) {
+            schedLink.href = '/schedule?redirect=' + encodeURIComponent(formConfig.thank_you_redirect_url);
+          }
         }
       }
 
@@ -436,6 +439,15 @@
         // Show thank you
         document.getElementById('form-content').style.display = 'none';
         document.getElementById('thank-you').style.display = 'block';
+
+        // Auto-redirect if scheduling is disabled and redirect URL is set
+        if (!formConfig.show_scheduler && formConfig.thank_you_redirect_url) {
+          const redirectNote = document.createElement('p');
+          redirectNote.style.cssText = 'color:#999; font-size:0.875rem; margin-top:16px;';
+          redirectNote.textContent = 'Redirecting you shortly...';
+          document.getElementById('thank-you').appendChild(redirectNote);
+          setTimeout(() => { window.location.href = formConfig.thank_you_redirect_url; }, 3000);
+        }
         
       } catch (err) {
         console.error(err);

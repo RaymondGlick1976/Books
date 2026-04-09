@@ -756,6 +756,16 @@
       `;
       document.getElementById('confirm-email').textContent =
         'A confirmation email has been sent to ' + email;
+
+      // Check for redirect URL param (passed from booking form)
+      const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
+      if (redirectUrl) {
+        const note = document.createElement('p');
+        note.style.cssText = 'color:#6b7280; font-size:0.875rem; margin-top:16px;';
+        note.textContent = 'Redirecting you shortly...';
+        document.querySelector('#step-5 .confirmation').appendChild(note);
+        setTimeout(() => { window.location.href = redirectUrl; }, 3000);
+      }
     }
 
     function resetWizard() {

@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS appointments (
 -- NOTE: If table already exists, run these manually in Supabase:
 -- ALTER TABLE appointments ADD COLUMN IF NOT EXISTS confirmation_email_sent_at TIMESTAMPTZ;
 -- ALTER TABLE appointments ADD COLUMN IF NOT EXISTS gcal_event_id TEXT;
+-- ALTER TABLE booking_forms ADD COLUMN IF NOT EXISTS thank_you_redirect_url TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date);
 CREATE INDEX IF NOT EXISTS idx_appointments_customer ON appointments(customer_id);
@@ -93,6 +94,7 @@ CREATE TABLE IF NOT EXISTS booking_forms (
   -- Thank you page
   thank_you_title VARCHAR(255) DEFAULT 'Thank You!',
   thank_you_message TEXT DEFAULT 'We have received your request and will contact you shortly.',
+  thank_you_redirect_url TEXT,
   
   -- Pipeline integration
   default_stage VARCHAR(50) DEFAULT 'new-lead',
