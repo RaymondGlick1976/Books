@@ -2222,9 +2222,9 @@
 
         // Render public attribute selectors
         const attrSelections = item.attribute_selections || [];
-        const publicAttrs = attrSelections.filter(sel => sel.is_public && sel.available_options && sel.available_options.length > 1);
-        if (publicAttrs.length > 0) {
-          if (canSelect) {
+        if (canSelect) {
+          const publicAttrs = attrSelections.filter(sel => sel.is_public && sel.available_options && sel.available_options.length > 1);
+          if (publicAttrs.length > 0) {
             publicAttrs.forEach((sel, idx) => {
               const attrIndex = attrSelections.indexOf(sel);
               const selectorDiv = createElement('div', { className: 'attribute-selector' });
@@ -2247,16 +2247,15 @@
               selectorDiv.appendChild(select);
               content.appendChild(selectorDiv);
             });
-          } else {
-            publicAttrs.forEach(sel => {
-              if (sel.option_name) {
-                content.appendChild(createElement('div', {
-                  className: 'attribute-readonly',
-                  textContent: sel.attribute_name + ': ' + sel.option_name
-                }));
-              }
-            });
           }
+        } else {
+          const readonlyAttrs = attrSelections.filter(sel => sel.is_public && sel.option_name);
+          readonlyAttrs.forEach(sel => {
+            content.appendChild(createElement('div', {
+              className: 'attribute-readonly',
+              textContent: sel.attribute_name + ': ' + sel.option_name
+            }));
+          });
         }
 
         itemEl.appendChild(content);
