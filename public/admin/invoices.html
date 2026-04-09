@@ -921,7 +921,11 @@
     };
     
     // Initialize
-    loadInvoices();
+    loadInvoices().then(() => {
+      const params = new URLSearchParams(window.location.search);
+      const openId = params.get('id');
+      if (openId) viewInvoice(openId);
+    });
   </script>
 </body>
 </html>
