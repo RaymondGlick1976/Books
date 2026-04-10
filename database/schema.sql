@@ -354,31 +354,41 @@ DECLARE
   calc_subtotal DECIMAL(10,2);
   calc_subtotal_low DECIMAL(10,2);
   calc_subtotal_high DECIMAL(10,2);
+  calc_taxable_subtotal DECIMAL(10,2);
+  calc_taxable_subtotal_low DECIMAL(10,2);
+  calc_taxable_subtotal_high DECIMAL(10,2);
   calc_tax DECIMAL(10,2);
   calc_total DECIMAL(10,2);
   calc_total_low DECIMAL(10,2);
   calc_total_high DECIMAL(10,2);
   calc_deposit DECIMAL(10,2);
   has_ranges BOOLEAN;
+  effective_tax_rate DECIMAL(10,6);
 BEGIN
   -- Get quote settings
   SELECT * INTO quote_record FROM quotes WHERE id = COALESCE(NEW.quote_id, OLD.quote_id);
-  
-  -- Calculate subtotals
-  SELECT 
+  effective_tax_rate := COALESCE(quote_record.tax_rate, 0);
+
+  -- Calculate subtotals (all selected items + taxable-only sums)
+  SELECT
     COALESCE(SUM(CASE WHEN NOT is_optional OR is_selected THEN line_total ELSE 0 END), 0),
     COALESCE(SUM(CASE WHEN NOT is_optional OR is_selected THEN COALESCE(line_total_low, line_total) ELSE 0 END), 0),
     COALESCE(SUM(CASE WHEN NOT is_optional OR is_selected THEN COALESCE(line_total_high, line_total) ELSE 0 END), 0),
+    COALESCE(SUM(CASE WHEN (NOT is_optional OR is_selected) AND is_taxable THEN line_total ELSE 0 END), 0),
+    COALESCE(SUM(CASE WHEN (NOT is_optional OR is_selected) AND is_taxable THEN COALESCE(line_total_low, line_total) ELSE 0 END), 0),
+    COALESCE(SUM(CASE WHEN (NOT is_optional OR is_selected) AND is_taxable THEN COALESCE(line_total_high, line_total) ELSE 0 END), 0),
     BOOL_OR(is_range_pricing)
-  INTO calc_subtotal, calc_subtotal_low, calc_subtotal_high, has_ranges
-  FROM quote_line_items 
+  INTO calc_subtotal, calc_subtotal_low, calc_subtotal_high,
+       calc_taxable_subtotal, calc_taxable_subtotal_low, calc_taxable_subtotal_high,
+       has_ranges
+  FROM quote_line_items
   WHERE quote_id = quote_record.id;
-  
-  -- Calculate tax and totals
-  calc_tax := calc_subtotal * quote_record.tax_rate;
+
+  -- Calculate tax and totals (only taxable items get tax applied)
+  calc_tax := calc_taxable_subtotal * effective_tax_rate;
   calc_total := calc_subtotal + calc_tax;
-  calc_total_low := calc_subtotal_low + (calc_subtotal_low * quote_record.tax_rate);
-  calc_total_high := calc_subtotal_high + (calc_subtotal_high * quote_record.tax_rate);
+  calc_total_low := calc_subtotal_low + (calc_taxable_subtotal_low * effective_tax_rate);
+  calc_total_high := calc_subtotal_high + (calc_taxable_subtotal_high * effective_tax_rate);
   
   -- Calculate deposit
   IF quote_record.deposit_type = 'percentage' THEN
@@ -415,17 +425,22 @@ RETURNS TRIGGER AS $$
 DECLARE
   invoice_record RECORD;
   calc_subtotal DECIMAL(10,2);
+  calc_taxable_subtotal DECIMAL(10,2);
   calc_tax DECIMAL(10,2);
   calc_total DECIMAL(10,2);
 BEGIN
   SELECT * INTO invoice_record FROM invoices WHERE id = COALESCE(NEW.invoice_id, OLD.invoice_id);
-  
-  SELECT COALESCE(SUM(line_total), 0) INTO calc_subtotal
-  FROM invoice_line_items WHERE invoice_id = invoice_record.id;
-  
-  calc_tax := calc_subtotal * invoice_record.tax_rate;
+
+  SELECT
+    COALESCE(SUM(line_total), 0),
+    COALESCE(SUM(CASE WHEN is_taxable THEN line_total ELSE 0 END), 0)
+  INTO calc_subtotal, calc_taxable_subtotal
+  FROM invoice_line_items
+  WHERE invoice_id = invoice_record.id;
+
+  calc_tax := calc_taxable_subtotal * COALESCE(invoice_record.tax_rate, 0);
   calc_total := calc_subtotal + calc_tax;
-  
+
   UPDATE invoices SET
     subtotal = calc_subtotal,
     tax_amount = calc_tax,
@@ -433,7 +448,7 @@ BEGIN
     amount_due = calc_total - amount_paid,
     updated_at = NOW()
   WHERE id = invoice_record.id;
-  
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
