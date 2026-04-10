@@ -2261,7 +2261,7 @@
             });
           }
         } else {
-          const readonlyAttrs = attrSelections.filter(sel => sel.is_public && sel.option_name);
+          const readonlyAttrs = attrSelections.filter(sel => sel.option_name);
           // Strip attribute option listings from details text when showing readonly selections
           let cleanDetails = item.details || '';
           if (readonlyAttrs.length > 0) {

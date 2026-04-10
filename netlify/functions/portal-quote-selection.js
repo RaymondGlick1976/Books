@@ -101,7 +101,7 @@ exports.handler = async (event) => {
 
           if (selectedPkg) {
             invoiceSubtotal = parseFloat(selectedPkg.price) || 0;
-            const taxRate = parseFloat(quote.tax_rate) || 0.0625;
+            const taxRate = parseFloat(quote.tax_rate ?? 0);
             invoiceTaxAmount = invoiceSubtotal * taxRate;
             invoiceTotal = invoiceSubtotal + invoiceTaxAmount;
           }
@@ -119,7 +119,7 @@ exports.handler = async (event) => {
             invoiceSubtotal += lineTotal;
             if (item.is_taxable) taxableSubtotal += lineTotal;
           });
-          const taxRate = parseFloat(quote.tax_rate) || 0.0625;
+          const taxRate = parseFloat(quote.tax_rate ?? 0);
           invoiceTaxAmount = taxableSubtotal * taxRate;
           invoiceTotal = invoiceSubtotal + invoiceTaxAmount;
         }
@@ -137,7 +137,7 @@ exports.handler = async (event) => {
             title: quote.title,
             status: 'sent',
             subtotal: invoiceSubtotal,
-            tax_rate: quote.tax_rate || 0.0625,
+            tax_rate: quote.tax_rate ?? 0,
             tax_amount: invoiceTaxAmount,
             total: invoiceTotal,
             amount_paid: 0,
@@ -324,7 +324,7 @@ exports.handler = async (event) => {
         }
       });
 
-      const attrTaxRate = quote.tax_rate || 0.0625;
+      const attrTaxRate = parseFloat(quote.tax_rate ?? 0);
       const attrTaxAmount = attrTaxableSubtotal * attrTaxRate;
       const attrTotal = attrSubtotal + attrTaxAmount;
 
@@ -370,7 +370,7 @@ exports.handler = async (event) => {
         }
       });
       
-      const taxRate = quote.tax_rate || 0.0625;
+      const taxRate = parseFloat(quote.tax_rate ?? 0);
       const taxAmount = taxableSubtotal * taxRate;
       const total = subtotal + taxAmount;
       

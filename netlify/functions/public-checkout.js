@@ -93,7 +93,7 @@ exports.handler = async (event) => {
         }
       }
       
-      const taxAmount = taxableSubtotal * parseFloat(quote.tax_rate || 0.0625);
+      const taxAmount = taxableSubtotal * parseFloat(quote.tax_rate ?? 0);
       total = subtotal + taxAmount;
       
     } else {
