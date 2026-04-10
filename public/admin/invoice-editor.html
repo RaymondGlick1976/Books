@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HCD Books">
+  <title>Edit Invoice | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css?v=50">
+  <style>
+    .save-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      padding: 4px 12px;
+      border-radius: var(--radius-md);
+      background: var(--color-bg-soft);
+    }
+    .save-status.saving { color: var(--color-primary); }
+    .save-status.saved { color: var(--color-success); }
+    .save-status.unsaved { color: var(--color-warning); }
+    .save-status.error { color: var(--color-danger); }
+    .save-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .save-status.saving .save-status-dot {
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .builder-layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: var(--space-xl);
+    }
+
+    .line-items-list { min-height: 200px; }
+
+    .line-item-row {
+      display: grid;
+      grid-template-columns: 30px 1fr 100px 110px 100px auto;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border-light);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-sm);
+      align-items: start;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+    }
+    .line-item-row.dragging {
+      opacity: 0.5;
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .line-item-row.drag-over {
+      border-color: var(--color-primary);
+      border-style: dashed;
+    }
+    .drag-handle {
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-muted);
+      padding: 8px 0;
+    }
+    .drag-handle:active { cursor: grabbing; }
+    .drag-handle:hover { color: var(--color-primary); }
+
+    .summary-card {
+      position: sticky;
+      top: var(--space-lg);
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-sm) 0;
+      font-size: 0.95rem;
+    }
+    .summary-row.total {
+      border-top: 2px solid var(--color-text);
+      margin-top: var(--space-sm);
+      padding-top: var(--space-md);
+      font-weight: 700;
+      font-size: 1.125rem;
+    }
+
+    .warning-banner {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: var(--space-md) var(--space-lg);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--space-lg);
+      color: #78350f;
+    }
+    .warning-banner strong { color: #78350f; }
+  </style>
+</head>
+<body>
+  <script>
+    const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+    if (!user) {
+      window.location.href = '/admin/login.html';
+    } else if (!user.permissions?.can_view_invoices) {
+      window.location.href = user.permissions?.can_view_pipeline ? '/admin/pipeline.html' : '/admin/index.html';
+    }
+  </script>
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <img src="/images/logo.gif" alt="Homestead Cabinet Design" style="height: 40px; filter: brightness(0) invert(1);">
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Deals Pipeline</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="app-main">
+      <div class="app-header">
+        <h1 id="page-title">Edit Invoice</h1>
+        <div style="display: flex; align-items: center; gap: var(--space-md);">
+          <div id="save-status" class="save-status" style="display: none;">
+            <span class="save-status-dot"></span>
+            <span class="save-status-text">Saved</span>
+          </div>
+          <a href="/admin/invoices.html" class="btn btn-secondary">← Back to Invoices</a>
+          <button class="btn btn-primary" id="save-btn" onclick="saveNow()">Save</button>
+        </div>
+      </div>
+
+      <div class="app-content">
+        <div id="loading-state" class="text-center p-xl text-muted">Loading invoice...</div>
+
+        <div id="editor-content" style="display: none;">
+          <!-- Warning banner for paid invoices -->
+          <div id="paid-warning" class="warning-banner" style="display: none;">
+            <strong>⚠ This invoice has payments recorded.</strong> Edits to line items, tax rate, or totals may cause discrepancies between the invoice and recorded payments. Proceed with caution.
+          </div>
+
+          <div class="builder-layout">
+            <div>
+              <!-- Customer & Invoice Info -->
+              <div class="card mb-xl">
+                <div class="card-header">
+                  <h3 class="card-title">Invoice Details</h3>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label class="form-label">Customer *</label>
+                    <select id="customer-select" class="form-select">
+                      <option value="">Select customer...</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" id="invoice-title" class="form-input" placeholder="e.g., Kitchen Cabinet Refacing" required>
+                  </div>
+
+                  <div class="grid grid-cols-3 gap-lg">
+                    <div class="form-group">
+                      <label class="form-label">Status</label>
+                      <select id="invoice-status" class="form-select">
+                        <option value="draft">Draft</option>
+                        <option value="sent">Sent</option>
+                        <option value="viewed">Viewed</option>
+                        <option value="partial">Partial</option>
+                        <option value="paid">Paid</option>
+                        <option value="overdue">Overdue</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="archived">Archived</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Due Date</label>
+                      <input type="date" id="invoice-due-date" class="form-input">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Tax Rate (%)</label>
+                      <input type="number" id="invoice-tax-rate" class="form-input" min="0" step="0.01">
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Linked Quote <span class="form-label-optional">(optional)</span></label>
+                    <select id="invoice-quote-link" class="form-select">
+                      <option value="">No linked quote</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Line Items -->
+              <div class="card mb-xl">
+                <div class="card-header">
+                  <h3 class="card-title">Line Items</h3>
+                  <button class="btn btn-secondary btn-sm" onclick="addCustomItem()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Item
+                  </button>
+                </div>
+                <div class="card-body">
+                  <div class="text-center text-muted p-xl" id="empty-items">
+                    No line items yet. Click "Add Item" to add one.
+                  </div>
+                  <div class="line-items-list" id="line-items-container"></div>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div class="card mb-xl">
+                <div class="card-header">
+                  <h3 class="card-title">Notes</h3>
+                </div>
+                <div class="card-body">
+                  <div class="form-group">
+                    <label class="form-label">Notes for Customer <span class="form-label-optional">(visible on invoice)</span></label>
+                    <textarea id="invoice-notes" class="form-textarea" rows="3" placeholder="Notes shown to the customer..."></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Internal Notes <span class="form-label-optional">(not visible to customer)</span></label>
+                    <textarea id="invoice-internal-notes" class="form-textarea" rows="2" placeholder="Notes for your reference only..."></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column - Summary -->
+            <div>
+              <div class="card summary-card">
+                <div class="card-header">
+                  <h3 class="card-title">Invoice Summary</h3>
+                </div>
+                <div class="card-body">
+                  <div id="summary-meta" class="text-muted text-sm mb-md"></div>
+
+                  <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span id="summary-subtotal">$0.00</span>
+                  </div>
+                  <div class="summary-row">
+                    <span>Tax (<span id="summary-tax-rate">0</span>%)</span>
+                    <span id="summary-tax">$0.00</span>
+                  </div>
+                  <div class="summary-row total">
+                    <span>Total</span>
+                    <span id="summary-total">$0.00</span>
+                  </div>
+
+                  <div class="mt-lg p-md" style="background: var(--color-bg-alt); border-radius: var(--radius-md);">
+                    <div class="flex justify-between text-sm mb-xs">
+                      <span>Amount Paid</span>
+                      <span id="summary-paid">$0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm" style="font-weight: 600;">
+                      <span>Amount Due</span>
+                      <span id="summary-due">$0.00</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    let invoiceId = null;
+    let invoice = null;
+    let customers = [];
+    let quotes = [];
+    let lineItems = [];
+
+    let isDirty = false;
+    let isSaving = false;
+    let autosaveTimer = null;
+    let initialLoadComplete = false;
+    const AUTOSAVE_DELAY = 3000;
+
+    function updateSaveStatus(status, message) {
+      const statusEl = $('#save-status');
+      const textEl = statusEl.querySelector('.save-status-text');
+      statusEl.style.display = 'inline-flex';
+      statusEl.className = 'save-status ' + status;
+      textEl.textContent = message;
+    }
+
+    function markDirty() {
+      if (!initialLoadComplete) return;
+      if (!isDirty) {
+        isDirty = true;
+        updateSaveStatus('unsaved', 'Unsaved changes');
+      }
+      scheduleAutosave();
+    }
+
+    function scheduleAutosave() {
+      if (autosaveTimer) clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => save(), AUTOSAVE_DELAY);
+    }
+
+    async function saveNow() {
+      if (autosaveTimer) clearTimeout(autosaveTimer);
+      await save(true);
+    }
+
+    async function save(force = false) {
+      if (isSaving) return;
+      if (!force && !isDirty) return;
+
+      const customerId = $('#customer-select').value;
+      const title = $('#invoice-title').value.trim();
+
+      if (!customerId) {
+        showToast('Customer is required', 'error');
+        return;
+      }
+      if (!title) {
+        showToast('Title is required', 'error');
+        return;
+      }
+
+      isSaving = true;
+      updateSaveStatus('saving', 'Saving...');
+
+      try {
+        const supabase = await app.waitForSupabase();
+
+        // Calculate totals from line items
+        let subtotal = 0;
+        let taxableSubtotal = 0;
+        lineItems.forEach(item => {
+          const lineTotal = (item.unitPrice || 0) * (item.quantity || 1);
+          subtotal += lineTotal;
+          if (item.isTaxable) taxableSubtotal += lineTotal;
+        });
+
+        const taxRateVal = parseFloat($('#invoice-tax-rate').value);
+        const taxRate = (isNaN(taxRateVal) ? 0 : taxRateVal) / 100;
+        const taxAmount = taxableSubtotal * taxRate;
+        const total = subtotal + taxAmount;
+        const amountPaid = parseFloat(invoice.amount_paid || 0);
+        const amountDue = Math.max(0, total - amountPaid);
+
+        const dueDate = $('#invoice-due-date').value || null;
+        const linkedQuoteId = $('#invoice-quote-link').value || null;
+
+        const invoiceData = {
+          customer_id: customerId,
+          title,
+          status: $('#invoice-status').value,
+          due_date: dueDate,
+          tax_rate: taxRate,
+          subtotal,
+          tax_amount: taxAmount,
+          total,
+          amount_due: amountDue,
+          notes: $('#invoice-notes').value.trim() || null,
+          internal_notes: $('#invoice-internal-notes').value.trim() || null,
+          quote_id: linkedQuoteId,
+        };
+
+        const { error: updateErr } = await supabase
+          .from('invoices')
+          .update(invoiceData)
+          .eq('id', invoiceId);
+
+        if (updateErr) throw updateErr;
+
+        // Replace line items
+        await supabase.from('invoice_line_items').delete().eq('invoice_id', invoiceId);
+
+        if (lineItems.length > 0) {
+          const itemsToInsert = lineItems.map((item, index) => ({
+            invoice_id: invoiceId,
+            description: item.description || '',
+            details: item.details || null,
+            quantity: item.quantity || 1,
+            unit: item.unit || 'each',
+            unit_price: item.unitPrice || 0,
+            line_total: (item.unitPrice || 0) * (item.quantity || 1),
+            is_taxable: item.isTaxable !== false,
+            sort_order: index,
+            attribute_selections: item.attributeSelections || [],
+          }));
+
+          const { error: itemsErr } = await supabase
+            .from('invoice_line_items')
+            .insert(itemsToInsert);
+
+          if (itemsErr) throw itemsErr;
+        }
+
+        // Update local invoice state
+        Object.assign(invoice, invoiceData);
+
+        isDirty = false;
+        updateSaveStatus('saved', 'All changes saved');
+      } catch (err) {
+        console.error('Save error:', err);
+        updateSaveStatus('error', 'Save failed');
+        showToast('Failed to save: ' + err.message, 'error');
+      } finally {
+        isSaving = false;
+      }
+    }
+
+    function renderLineItems() {
+      const container = $('#line-items-container');
+      const emptyState = $('#empty-items');
+
+      clearElement(container);
+
+      if (lineItems.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+      emptyState.style.display = 'none';
+
+      lineItems.forEach((item, index) => {
+        const row = createElement('div', {
+          className: 'line-item-row',
+          dataset: { index },
+          draggable: true,
+        });
+
+        // Drag handle
+        const dragHandle = createElement('div', {
+          className: 'drag-handle',
+          innerHTML: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>',
+        });
+        row.appendChild(dragHandle);
+
+        row.addEventListener('dragstart', (e) => {
+          row.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', index.toString());
+        });
+        row.addEventListener('dragend', () => {
+          row.classList.remove('dragging');
+          $$('.line-item-row.drag-over').forEach(r => r.classList.remove('drag-over'));
+        });
+        row.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if ($('.line-item-row.dragging') !== row) row.classList.add('drag-over');
+        });
+        row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+        row.addEventListener('drop', (e) => {
+          e.preventDefault();
+          row.classList.remove('drag-over');
+          const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+          const toIndex = parseInt(row.dataset.index);
+          if (fromIndex !== toIndex) {
+            const [moved] = lineItems.splice(fromIndex, 1);
+            lineItems.splice(toIndex, 0, moved);
+            renderLineItems();
+            updateSummary();
+            markDirty();
+          }
+        });
+
+        // Description + details
+        const descCell = createElement('div');
+        descCell.appendChild(createElement('input', {
+          type: 'text',
+          className: 'form-input mb-sm',
+          value: item.description,
+          placeholder: 'Item description',
+          onInput: (e) => {
+            lineItems[index].description = e.target.value;
+            markDirty();
+          },
+        }));
+        descCell.appendChild(createElement('input', {
+          type: 'text',
+          className: 'form-input',
+          value: item.details || '',
+          placeholder: 'Details (optional)',
+          style: 'font-size: 0.875rem;',
+          onInput: (e) => {
+            lineItems[index].details = e.target.value;
+            markDirty();
+          },
+        }));
+
+        // Show attribute selections (read-only) if present
+        if (item.attributeSelections && item.attributeSelections.length > 0) {
+          const attrDiv = createElement('div', {
+            style: 'margin-top: 6px; font-size: 0.75rem; color: var(--color-text-muted);',
+          });
+          const lines = item.attributeSelections
+            .filter(s => s.option_name)
+            .map(s => `<div style="margin-left: 8px;">↳ ${s.attribute_name}: <strong>${s.option_name}</strong></div>`)
+            .join('');
+          if (lines) {
+            attrDiv.innerHTML = '<div style="color: var(--color-primary);">⚙ Attributes (from quote):</div>' + lines;
+            descCell.appendChild(attrDiv);
+          }
+        }
+
+        row.appendChild(descCell);
+
+        // Quantity
+        const qtyCell = createElement('div');
+        qtyCell.appendChild(createElement('label', { className: 'form-label', textContent: 'Qty' }));
+        qtyCell.appendChild(createElement('input', {
+          type: 'number',
+          className: 'form-input',
+          value: item.quantity,
+          min: '0',
+          step: '0.01',
+          onInput: (e) => {
+            lineItems[index].quantity = parseFloat(e.target.value) || 0;
+            updateSummary();
+            markDirty();
+          },
+        }));
+        row.appendChild(qtyCell);
+
+        // Unit price
+        const priceCell = createElement('div');
+        priceCell.appendChild(createElement('label', { className: 'form-label', textContent: 'Unit Price' }));
+        priceCell.appendChild(createElement('input', {
+          type: 'number',
+          className: 'form-input',
+          value: item.unitPrice,
+          step: '0.01',
+          onInput: (e) => {
+            lineItems[index].unitPrice = parseFloat(e.target.value) || 0;
+            updateSummary();
+            markDirty();
+          },
+        }));
+        row.appendChild(priceCell);
+
+        // Taxable toggle
+        const taxCell = createElement('div');
+        const taxLabel = createElement('label', { className: 'form-check', style: 'margin-top: 28px;' });
+        const taxCheckbox = createElement('input', {
+          type: 'checkbox',
+          className: 'form-check-input',
+          checked: item.isTaxable !== false,
+        });
+        taxCheckbox.addEventListener('change', (e) => {
+          lineItems[index].isTaxable = e.target.checked;
+          updateSummary();
+          markDirty();
+        });
+        taxLabel.appendChild(taxCheckbox);
+        taxLabel.appendChild(createElement('span', { className: 'form-check-label text-sm', textContent: 'Taxable' }));
+        taxCell.appendChild(taxLabel);
+        row.appendChild(taxCell);
+
+        // Delete
+        const deleteCell = createElement('div');
+        deleteCell.appendChild(createElement('button', {
+          className: 'btn btn-ghost btn-sm',
+          title: 'Remove item',
+          innerHTML: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
+          onClick: async () => {
+            if (await confirm('Remove this item?')) {
+              lineItems.splice(index, 1);
+              renderLineItems();
+              updateSummary();
+              markDirty();
+            }
+          },
+        }));
+        row.appendChild(deleteCell);
+
+        container.appendChild(row);
+      });
+    }
+
+    function updateSummary() {
+      let subtotal = 0;
+      let taxableSubtotal = 0;
+      lineItems.forEach(item => {
+        const lineTotal = (item.unitPrice || 0) * (item.quantity || 1);
+        subtotal += lineTotal;
+        if (item.isTaxable !== false) taxableSubtotal += lineTotal;
+      });
+
+      const taxRateVal = parseFloat($('#invoice-tax-rate').value);
+      const taxRatePct = isNaN(taxRateVal) ? 0 : taxRateVal;
+      const taxAmount = taxableSubtotal * (taxRatePct / 100);
+      const total = subtotal + taxAmount;
+      const amountPaid = parseFloat(invoice?.amount_paid || 0);
+      const amountDue = Math.max(0, total - amountPaid);
+
+      $('#summary-subtotal').textContent = formatCurrency(subtotal);
+      $('#summary-tax-rate').textContent = taxRatePct.toString();
+      $('#summary-tax').textContent = formatCurrency(taxAmount);
+      $('#summary-total').textContent = formatCurrency(total);
+      $('#summary-paid').textContent = formatCurrency(amountPaid);
+      $('#summary-due').textContent = formatCurrency(amountDue);
+    }
+
+    function addCustomItem() {
+      lineItems.push({
+        id: null,
+        description: '',
+        details: '',
+        quantity: 1,
+        unit: 'each',
+        unitPrice: 0,
+        isTaxable: true,
+        attributeSelections: [],
+      });
+      renderLineItems();
+      updateSummary();
+      markDirty();
+    }
+
+    async function loadInvoice() {
+      const supabase = await app.waitForSupabase();
+
+      // Load customers
+      const { data: custs } = await supabase
+        .from('customers')
+        .select('id, name, email')
+        .order('name');
+      customers = custs || [];
+
+      const customerSelect = $('#customer-select');
+      customers.forEach(c => {
+        customerSelect.appendChild(createElement('option', {
+          value: c.id,
+          textContent: `${c.name}${c.email ? ' (' + c.email + ')' : ''}`,
+        }));
+      });
+
+      // Load quotes for linking
+      const { data: qts } = await supabase
+        .from('quotes')
+        .select('id, quote_number, title')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      quotes = qts || [];
+
+      const quoteSelect = $('#invoice-quote-link');
+      quotes.forEach(q => {
+        quoteSelect.appendChild(createElement('option', {
+          value: q.id,
+          textContent: `${q.quote_number} - ${q.title}`,
+        }));
+      });
+
+      // Load invoice
+      const { data: inv, error: invErr } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('id', invoiceId)
+        .single();
+
+      if (invErr || !inv) {
+        $('#loading-state').textContent = 'Invoice not found.';
+        return;
+      }
+
+      invoice = inv;
+
+      // Load line items
+      const { data: items } = await supabase
+        .from('invoice_line_items')
+        .select('*')
+        .eq('invoice_id', invoiceId)
+        .order('sort_order');
+
+      lineItems = (items || []).map(it => ({
+        id: it.id,
+        description: it.description,
+        details: it.details,
+        quantity: parseFloat(it.quantity) || 1,
+        unit: it.unit || 'each',
+        unitPrice: parseFloat(it.unit_price) || 0,
+        isTaxable: it.is_taxable !== false,
+        attributeSelections: it.attribute_selections || [],
+      }));
+
+      // Populate fields
+      $('#page-title').textContent = `Edit Invoice #${invoice.invoice_number}`;
+      document.title = `Edit Invoice #${invoice.invoice_number} | Admin`;
+      $('#customer-select').value = invoice.customer_id || '';
+      $('#invoice-title').value = invoice.title || '';
+      $('#invoice-status').value = invoice.status || 'draft';
+      $('#invoice-due-date').value = invoice.due_date || '';
+      $('#invoice-tax-rate').value = ((parseFloat(invoice.tax_rate) || 0) * 100).toString();
+      $('#invoice-quote-link').value = invoice.quote_id || '';
+      $('#invoice-notes').value = invoice.notes || '';
+      $('#invoice-internal-notes').value = invoice.internal_notes || '';
+
+      // Show paid warning if needed
+      if (parseFloat(invoice.amount_paid || 0) > 0) {
+        $('#paid-warning').style.display = 'block';
+      }
+
+      // Summary meta
+      $('#summary-meta').innerHTML = `
+        <div>Invoice #${invoice.invoice_number}</div>
+        <div>Created ${formatDate(invoice.created_at)}</div>
+      `;
+
+      renderLineItems();
+      updateSummary();
+
+      $('#loading-state').style.display = 'none';
+      $('#editor-content').style.display = 'block';
+
+      // Wire up dirty tracking on top-level inputs
+      ['customer-select', 'invoice-title', 'invoice-status', 'invoice-due-date',
+       'invoice-tax-rate', 'invoice-quote-link', 'invoice-notes', 'invoice-internal-notes'
+      ].forEach(id => {
+        const el = $('#' + id);
+        if (el) {
+          el.addEventListener('input', () => {
+            if (id === 'invoice-tax-rate') updateSummary();
+            markDirty();
+          });
+          el.addEventListener('change', () => {
+            if (id === 'invoice-tax-rate') updateSummary();
+            markDirty();
+          });
+        }
+      });
+
+      initialLoadComplete = true;
+    }
+
+    // Init
+    const params = new URLSearchParams(window.location.search);
+    invoiceId = params.get('id');
+
+    if (!invoiceId) {
+      $('#loading-state').textContent = 'No invoice ID provided.';
+    } else {
+      loadInvoice().catch(err => {
+        console.error('Load error:', err);
+        $('#loading-state').textContent = 'Failed to load invoice: ' + err.message;
+      });
+    }
+
+    // Warn before navigating away with unsaved changes
+    window.addEventListener('beforeunload', (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  </script>
+</body>
+</html>

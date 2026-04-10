@@ -169,6 +169,7 @@
           <td>${invoice.due_date ? formatDate(invoice.due_date) : '—'}</td>
           <td class="table-actions">
             <button class="btn btn-ghost btn-sm" onclick="viewInvoice('${invoice.id}')">View</button>
+            <a class="btn btn-ghost btn-sm" href="/admin/invoice-editor.html?id=${invoice.id}">Edit</a>
             <button class="btn btn-ghost btn-sm" onclick="printInvoiceById('${invoice.id}')" title="Print">🖨️</button>
             ${invoice.status !== 'paid' && invoice.status !== 'cancelled' && invoice.status !== 'archived' ? `<button class="btn btn-ghost btn-sm" onclick="sendInvoice('${invoice.id}')">${invoice.sent_at ? 'Resend' : 'Send'}</button>` : ''}
             ${invoice.amount_due > 0 ? `<button class="btn btn-ghost btn-sm" onclick="recordPayment('${invoice.id}')">Record Payment</button>` : ''}
@@ -393,6 +394,11 @@
       const footer = createElement('div', { style: 'display:flex;justify-content:space-between;width:100%;' });
 
       const leftBtns = createElement('div', { style: 'display:flex;gap:var(--space-sm);' });
+
+      const editBtn = createElement('a', { className: 'btn btn-secondary', href: `/admin/invoice-editor.html?id=${id}` });
+      editBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit';
+      leftBtns.appendChild(editBtn);
+
       const printBtn = createElement('button', { className: 'btn btn-secondary' });
       printBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print';
       leftBtns.appendChild(printBtn);
