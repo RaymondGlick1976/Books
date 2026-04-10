@@ -154,5 +154,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- 7. Enable RLS to mirror payments table
+-- 7. Enable RLS and add permissive policy mirroring the payments table
 ALTER TABLE payment_allocations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access to payment_allocations" ON payment_allocations;
+CREATE POLICY "Allow all access to payment_allocations" ON payment_allocations FOR ALL USING (true) WITH CHECK (true);
