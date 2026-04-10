@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="HCD Books">
   <title>Invoices | Admin | Homestead Cabinet Design</title>
-  <link rel="stylesheet" href="/css/styles.css?v=44">
+  <link rel="stylesheet" href="/css/styles.css?v=51">
 </head>
 <body>
   <script>
@@ -224,11 +224,21 @@
     hideArchivedCheckbox.addEventListener('change', applyFilters);
     
     window.viewInvoice = async (id) => {
-      const invoice = invoices.find(i => i.id === id);
-      if (!invoice) return;
-      
-      // Load line items
+      // Fetch fresh invoice data from DB to avoid stale cached totals
       const supabase = await app.waitForSupabase();
+      const { data: freshInvoice } = await supabase
+        .from('invoices')
+        .select('*, customers(name, email, phone, address, city, state, zip)')
+        .eq('id', id)
+        .single();
+      const invoice = freshInvoice || invoices.find(i => i.id === id);
+      if (!invoice) return;
+
+      // Update cached array so other actions reflect the fresh data
+      const cacheIdx = invoices.findIndex(i => i.id === id);
+      if (cacheIdx >= 0 && freshInvoice) invoices[cacheIdx] = freshInvoice;
+
+      // Load line items
       const { data: lineItems } = await supabase
         .from('invoice_line_items')
         .select('*')
@@ -456,7 +466,7 @@
         title: `Invoice ${invoice.invoice_number}`,
         content: content,
         footer: footer,
-        size: 'lg'
+        size: 'fullscreen'
       });
 
       closeBtn.addEventListener('click', () => closeModal(modal));

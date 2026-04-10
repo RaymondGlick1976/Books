@@ -290,9 +290,12 @@ function createModal(options = {}) {
   const { title, content, footer, size = 'md', onClose } = options;
   
   const overlay = createElement('div', { className: 'modal-overlay' });
-  const modal = createElement('div', { 
-    className: 'modal',
-    style: size === 'lg' ? 'max-width: 700px;' : size === 'xl' ? 'max-width: 900px;' : ''
+  const modal = createElement('div', {
+    className: 'modal' + (size === 'fullscreen' ? ' modal-fullscreen' : ''),
+    style: size === 'lg' ? 'max-width: 700px;'
+         : size === 'xl' ? 'max-width: 900px;'
+         : size === 'fullscreen' ? 'max-width: 95vw; width: 95vw; max-height: 95vh; height: 95vh; display: flex; flex-direction: column;'
+         : ''
   });
   
   const header = createElement('div', { className: 'modal-header' }, [
