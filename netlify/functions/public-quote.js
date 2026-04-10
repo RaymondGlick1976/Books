@@ -154,7 +154,24 @@ exports.handler = async (event) => {
     
     // Remove internal notes before sending
     delete quote.internal_notes;
-    
+
+    // Fetch linked invoice if quote is accepted/converted
+    let linkedInvoice = null;
+    if (quote.status === 'accepted' || quote.status === 'converted') {
+      try {
+        const { data: inv } = await supabase
+          .from('invoices')
+          .select('id, access_token')
+          .eq('quote_id', quote.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (inv) linkedInvoice = inv;
+      } catch (e) {
+        // Non-fatal
+      }
+    }
+
     return success({
       quote,
       line_items: lineItems || [],
@@ -164,6 +181,7 @@ exports.handler = async (event) => {
       packages: packages || [],
       quote_footer: quoteFooter,
       company: companySettings,
+      linked_invoice: linkedInvoice,
     });
     
   } catch (err) {

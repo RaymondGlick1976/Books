@@ -144,6 +144,7 @@ async function handleCheckoutComplete(supabase, session) {
           line_total: item.line_total,
           is_taxable: item.is_taxable,
           sort_order: item.sort_order,
+          attribute_selections: item.attribute_selections || [],
         }));
 
         await supabase.from('invoice_line_items').insert(invoiceItems);

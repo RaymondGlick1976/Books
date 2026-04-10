@@ -574,11 +574,14 @@
           <tbody>`;
 
       lineItems.forEach(item => {
+        const attrs = (item.attribute_selections || []).filter(s => s.is_public && s.option_name);
+        const attrsHtml = attrs.map(s => `<div style="color:var(--color-text-muted);font-size:0.8rem;margin-top:2px;">${escapeHtml(s.attribute_name)}: ${escapeHtml(s.option_name)}</div>`).join('');
         html += `
             <tr>
               <td>
                 <div>${escapeHtml(item.description || '')}</div>
                 ${item.details ? `<div class="text-sm text-muted" style="white-space: pre-wrap;">${escapeHtml(item.details)}</div>` : ''}
+                ${attrsHtml}
               </td>
               <td>${item.quantity}</td>
               <td>${formatCurrency(item.unit_price)}</td>
@@ -774,17 +777,21 @@
     document.getElementById('print-btn').addEventListener('click', () => {
       const companyName = company.name || 'Homestead Cabinet Design';
 
-      const itemsHtml = lineItems.length > 0 ? lineItems.map(item => `
+      const itemsHtml = lineItems.length > 0 ? lineItems.map(item => {
+        const attrs = (item.attribute_selections || []).filter(s => s.is_public && s.option_name);
+        const attrsHtml = attrs.map(s => `<div style="color:#666;font-size:11px;margin-top:2px;">${escapeHtml(s.attribute_name)}: ${escapeHtml(s.option_name)}</div>`).join('');
+        return `
         <tr>
           <td style="padding:8px 0;border-bottom:1px solid #eee;">
             ${escapeHtml(item.description || '')}
             ${item.details ? `<div style="color:#666;font-size:12px;white-space:pre-line;margin-top:2px;">${escapeHtml(item.details)}</div>` : ''}
+            ${attrsHtml}
           </td>
           <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${item.quantity}</td>
           <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${formatCurrency(item.unit_price)}</td>
           <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${formatCurrency(item.line_total)}</td>
-        </tr>
-      `).join('') : `<tr><td style="padding:8px 0;" colspan="4">${escapeHtml(invoice.title || 'Services')}</td></tr>`;
+        </tr>`;
+      }).join('') : `<tr><td style="padding:8px 0;" colspan="4">${escapeHtml(invoice.title || 'Services')}</td></tr>`;
 
       const paymentsHtml = payments.length > 0 ? `
         <div style="margin-top:25px;">

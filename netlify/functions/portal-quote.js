@@ -109,6 +109,23 @@ exports.handler = async (event) => {
       console.log('View logging error (non-fatal):', viewErr.message);
     }
     
+    // Fetch linked invoice if quote is accepted/converted
+    let linkedInvoice = null;
+    if (quote.status === 'accepted' || quote.status === 'converted') {
+      try {
+        const { data: inv } = await supabase
+          .from('invoices')
+          .select('id')
+          .eq('quote_id', quote.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (inv) linkedInvoice = inv;
+      } catch (e) {
+        // Non-fatal
+      }
+    }
+
     return success({
       quote,
       line_items: lineItems || [],
@@ -117,6 +134,7 @@ exports.handler = async (event) => {
       payments: payments || [],
       packages: packages || [],
       company: companySettings,
+      linked_invoice: linkedInvoice,
     });
     
   } catch (err) {

@@ -1485,6 +1485,7 @@
     let isPublicAccess = false;
     let quoteFooterData = null;
     let companyData = null;
+    let linkedInvoice = null;
     
     // Get quote ID or token from URL
     const params = new URLSearchParams(window.location.search);
@@ -1552,7 +1553,8 @@
         packages = response.packages || [];
         quoteFooterData = response.quote_footer || null;
         companyData = response.company || null;
-        
+        linkedInvoice = response.linked_invoice || null;
+
         renderQuote();
         
       } catch (err) {
@@ -1615,6 +1617,17 @@
           statusHtml += ` • Deposit paid: ${formatCurrency(totalPaid)}`;
         }
         statusHtml += '</div>';
+        if (linkedInvoice) {
+          let invoiceUrl;
+          if (isPublicAccess && linkedInvoice.access_token) {
+            invoiceUrl = `/portal/invoice.html?token=${linkedInvoice.access_token}`;
+          } else if (!isPublicAccess && linkedInvoice.id) {
+            invoiceUrl = `/portal/invoice.html?id=${linkedInvoice.id}`;
+          }
+          if (invoiceUrl) {
+            statusHtml += `<div style="margin-top:var(--space-sm);"><a href="${invoiceUrl}" class="btn btn-primary btn-sm">View Invoice</a></div>`;
+          }
+        }
         statusBanner.innerHTML = statusHtml;
         $('#accept-section').style.display = 'none';
       } else if (quote.status === 'declined') {
