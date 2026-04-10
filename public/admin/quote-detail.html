@@ -1166,11 +1166,17 @@
         subtotal += lineSubtotal;
         tax += lineTax;
         
+        const attrsHtml = (item.attribute_selections || [])
+          .filter(sel => sel.option_name)
+          .map(sel => `<div class="text-sm text-muted" style="margin-left: 8px;">↳ ${sel.attribute_name}: <strong>${sel.option_name}</strong></div>`)
+          .join('');
+
         return `
           <tr>
             <td>
               <div class="item-name">${item.description}</div>
               ${item.details ? `<div class="text-sm text-muted" style="white-space: pre-wrap;">${item.details}</div>` : ''}
+              ${attrsHtml}
             </td>
             <td class="text-right">${qty.toFixed(2)}</td>
             <td class="text-right">${formatCurrency(price)} / Ea</td>
@@ -1205,11 +1211,17 @@
         subtotal += lineSubtotal;
         tax += lineTax;
         
+        const attrsHtml = (item.attribute_selections || [])
+          .filter(sel => sel.option_name)
+          .map(sel => `<div class="text-sm" style="margin-left: 8px;">↳ ${sel.attribute_name}: <strong>${sel.option_name}</strong></div>`)
+          .join('');
+
         return `
           <tr style="color: var(--color-text-muted);">
             <td>
               <div class="item-name" style="color: #f59e0b;">${item.description}</div>
               ${item.details ? `<div class="text-sm" style="white-space: pre-wrap;">${item.details}</div>` : ''}
+              ${attrsHtml}
             </td>
             <td class="text-right">${qty.toFixed(2)}</td>
             <td class="text-right">${formatCurrency(price)} / Ea</td>
