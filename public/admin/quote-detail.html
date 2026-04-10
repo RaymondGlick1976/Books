@@ -133,6 +133,7 @@
           <div class="quote-actions" style="position: relative; z-index: 1000;">
             <a href="#" id="view-deal-btn" class="btn btn-secondary" style="display:none;">View Deal</a>
             <a href="#" id="edit-quote-btn" class="btn btn-secondary">Edit Quote</a>
+            <button id="unlock-quote-btn" class="btn btn-secondary" style="display:none;" onclick="unlockQuote()">🔓 Unlock to Edit</button>
             <button id="send-quote-btn" class="btn btn-secondary" onclick="showSendEmailModal()">📧 Send</button>
             <button id="convert-invoice-btn" class="btn btn-secondary" style="display:none;" onclick="convertToInvoice()">→ Invoice</button>
             <a href="#" id="view-invoice-btn" class="btn btn-secondary" style="display:none;">View Invoice</a>
@@ -499,6 +500,7 @@
       
       if (isLocked) {
         $('#edit-quote-btn').style.display = 'none';
+        $('#unlock-quote-btn').style.display = '';
       }
       $('#edit-quote-btn').href = `/admin/quote-builder.html?id=${quote.id}`;
 
@@ -888,6 +890,25 @@
       }
     }
 
+    async function unlockQuote() {
+      const previousStatus = quote.status;
+      if (!confirm(`This will temporarily set the quote back to "draft" so you can edit it. You will need to re-send it when done.\n\nCurrent status: ${previousStatus}\n\nContinue?`)) return;
+
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('quotes').update({ status: 'draft' }).eq('id', quote.id);
+
+        showToast('Quote unlocked for editing. Remember to re-send when done.', 'success');
+        quote.status = 'draft';
+
+        // Redirect to quote builder
+        window.location.href = `/admin/quote-builder.html?id=${quote.id}`;
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to unlock: ' + err.message, 'error');
+      }
+    }
+
     async function syncEstimateToQB() {
       const btn = $('#qb-estimate-btn');
       const originalText = btn.textContent;
@@ -1166,16 +1187,26 @@
         subtotal += lineSubtotal;
         tax += lineTax;
         
-        const attrsHtml = (item.attribute_selections || [])
-          .filter(sel => sel.option_name)
+        const attrs = (item.attribute_selections || []).filter(sel => sel.option_name);
+        const attrsHtml = attrs
           .map(sel => `<div class="text-sm text-muted" style="margin-left: 8px;">↳ ${sel.attribute_name}: <strong>${sel.option_name}</strong></div>`)
           .join('');
+
+        // Strip raw attribute option listings from details when we have selections
+        let cleanDetails = item.details || '';
+        if (attrs.length > 0) {
+          attrs.forEach(sel => {
+            const escaped = sel.attribute_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            cleanDetails = cleanDetails.replace(new RegExp('[,\\s]*' + escaped + ':[^,\\n]*'), '');
+          });
+          cleanDetails = cleanDetails.replace(/\s*[-–]\s*$/, '').trim();
+        }
 
         return `
           <tr>
             <td>
               <div class="item-name">${item.description}</div>
-              ${item.details ? `<div class="text-sm text-muted" style="white-space: pre-wrap;">${item.details}</div>` : ''}
+              ${cleanDetails ? `<div class="text-sm text-muted" style="white-space: pre-wrap;">${cleanDetails}</div>` : ''}
               ${attrsHtml}
             </td>
             <td class="text-right">${qty.toFixed(2)}</td>
@@ -1211,16 +1242,25 @@
         subtotal += lineSubtotal;
         tax += lineTax;
         
-        const attrsHtml = (item.attribute_selections || [])
-          .filter(sel => sel.option_name)
+        const attrs = (item.attribute_selections || []).filter(sel => sel.option_name);
+        const attrsHtml = attrs
           .map(sel => `<div class="text-sm" style="margin-left: 8px;">↳ ${sel.attribute_name}: <strong>${sel.option_name}</strong></div>`)
           .join('');
+
+        let cleanDetails = item.details || '';
+        if (attrs.length > 0) {
+          attrs.forEach(sel => {
+            const escaped = sel.attribute_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            cleanDetails = cleanDetails.replace(new RegExp('[,\\s]*' + escaped + ':[^,\\n]*'), '');
+          });
+          cleanDetails = cleanDetails.replace(/\s*[-–]\s*$/, '').trim();
+        }
 
         return `
           <tr style="color: var(--color-text-muted);">
             <td>
               <div class="item-name" style="color: #f59e0b;">${item.description}</div>
-              ${item.details ? `<div class="text-sm" style="white-space: pre-wrap;">${item.details}</div>` : ''}
+              ${cleanDetails ? `<div class="text-sm" style="white-space: pre-wrap;">${cleanDetails}</div>` : ''}
               ${attrsHtml}
             </td>
             <td class="text-right">${qty.toFixed(2)}</td>
