@@ -246,6 +246,14 @@
         // Action buttons
         const actionBtns = createElement('div', { className: 'flex gap-sm' });
 
+        // View Invoice button
+        const viewBtn = createElement('a', {
+          className: 'btn btn-secondary',
+          textContent: 'View Invoice',
+          href: `/portal/invoice.html?id=${invoice.id}`
+        });
+        actionBtns.appendChild(viewBtn);
+
         // Print button
         const printBtn = createElement('button', {
           className: 'btn btn-secondary',
@@ -514,17 +522,21 @@
       } catch (e) {}
 
       const companyName = company.name || 'Homestead Cabinet Design';
-      const itemsHtml = lineItems.length > 0 ? lineItems.map(item => `
+      const itemsHtml = lineItems.length > 0 ? lineItems.map(item => {
+        const attrs = (item.attribute_selections || []).filter(s => s.is_public && s.option_name);
+        const attrsHtml = attrs.map(s => `<div style="color:#666;font-size:11px;margin-top:2px;">${s.attribute_name}: ${s.option_name}</div>`).join('');
+        return `
         <tr>
           <td style="padding:8px 0;border-bottom:1px solid #eee;">
             ${item.description || ''}
             ${item.details ? `<div style="color:#666;font-size:12px;white-space:pre-line;margin-top:2px;">${item.details}</div>` : ''}
+            ${attrsHtml}
           </td>
           <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${item.quantity}</td>
           <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${formatCurrency(item.unit_price)}</td>
           <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;">${formatCurrency(item.line_total)}</td>
-        </tr>
-      `).join('') : `<tr><td style="padding:8px 0;" colspan="4">${invoice.title || 'Services'}</td></tr>`;
+        </tr>`;
+      }).join('') : `<tr><td style="padding:8px 0;" colspan="4">${invoice.title || 'Services'}</td></tr>`;
 
       const invPayments = payments.filter(p => p.invoice_id === invoice.id && p.status === 'succeeded');
       const paymentsHtml = invPayments.length > 0 ? `

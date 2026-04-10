@@ -66,7 +66,10 @@
             <p class="mb-sm">Balance due: <strong id="payment-balance">$0.00</strong></p>
             <p class="text-muted mb-0" id="payment-invoice-info"></p>
           </div>
-          <button class="btn btn-accent" id="make-payment-btn">Pay Now</button>
+          <div class="flex gap-sm">
+            <a href="#" class="btn btn-secondary" id="view-invoice-btn" style="display:none;">View Invoice</a>
+            <button class="btn btn-accent" id="make-payment-btn">Pay Now</button>
+          </div>
         </div>
       </div>
     </div>
@@ -161,6 +164,9 @@
           $('#payment-balance').textContent = formatCurrency(balanceDue);
           if (unpaidInvoices.length > 0) {
             $('#payment-invoice-info').textContent = `Invoice #${unpaidInvoices[0].invoice_number}`;
+            const viewBtn = $('#view-invoice-btn');
+            viewBtn.href = `/portal/invoice.html?id=${unpaidInvoices[0].id}`;
+            viewBtn.style.display = 'inline-flex';
           }
         }
         
