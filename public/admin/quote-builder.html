@@ -948,7 +948,7 @@
           });
         }
         
-        const taxRate = (parseFloat($('#tax-rate')?.value) || 6.25) / 100;
+        const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 6.25 : taxRateVal) / 100;
         const taxAmount = taxableSubtotal * taxRate;
         const validDays = parseInt($('#valid-days').value) || 30;
         const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000);
@@ -1357,7 +1357,7 @@
         $('#quote-title').value = quote.title;
         $('#quote-description').value = quote.description || '';
         $('#valid-days').value = quote.valid_days;
-        $('#tax-rate').value = (quote.tax_rate || 0.0625) * 100; // Convert from decimal to percentage
+        $('#tax-rate').value = (quote.tax_rate ?? 0.0625) * 100; // Convert from decimal to percentage
         $('#video-url').value = quote.video_url || '';
         $('#customer-notes').value = quote.notes || '';
         $('#internal-notes').value = quote.internal_notes || '';
@@ -2750,7 +2750,7 @@
       const summaryTotals = $('#summary-totals');
       
       // Get tax rate from input (stored as percentage)
-      const taxRate = (parseFloat($('#tax-rate')?.value) || 6.25) / 100;
+      const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 6.25 : taxRateVal) / 100;
       
       // Check if bundles exist (automatic - no toggle needed)
       const bundlesEnabled = packages.length > 0;
@@ -3664,7 +3664,7 @@
         }
         
         // Only tax the taxable portion
-        const taxRate = (parseFloat($('#tax-rate')?.value) || 6.25) / 100;
+        const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 6.25 : taxRateVal) / 100;
         const taxAmount = taxableSubtotal * taxRate;
         
         const validDays = parseInt($('#valid-days').value) || 30;
