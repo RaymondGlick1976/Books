@@ -226,6 +226,23 @@ CREATE INDEX idx_payments_customer ON payments(customer_id);
 CREATE INDEX idx_payments_stripe ON payments(stripe_payment_intent_id);
 
 -- =============================================
+-- PAYMENT ALLOCATIONS (split payments)
+-- =============================================
+-- A single payment can be split across multiple invoices.
+-- payments holds the master record (one customer payment); allocations
+-- map per-invoice amounts.
+CREATE TABLE payment_allocations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  payment_id UUID NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+  invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  amount DECIMAL(10, 2) NOT NULL CHECK (amount > 0),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_payment_allocations_payment ON payment_allocations(payment_id);
+CREATE INDEX idx_payment_allocations_invoice ON payment_allocations(invoice_id);
+
+-- =============================================
 -- CUSTOMER UPLOADS
 -- =============================================
 CREATE TABLE customer_uploads (
@@ -458,39 +475,118 @@ CREATE TRIGGER trigger_update_invoice_totals
 AFTER INSERT OR UPDATE OR DELETE ON invoice_line_items
 FOR EACH ROW EXECUTE FUNCTION update_invoice_totals();
 
--- Function to update invoice after payment
-CREATE OR REPLACE FUNCTION update_invoice_after_payment()
-RETURNS TRIGGER AS $$
+-- Function to recalculate an invoice's amount_paid/amount_due/status from payment_allocations
+CREATE OR REPLACE FUNCTION recalculate_invoice_payments(p_invoice_id UUID)
+RETURNS VOID AS $$
 DECLARE
   total_paid DECIMAL(10,2);
-  invoice_total DECIMAL(10,2);
+  inv_total DECIMAL(10,2);
+  current_status VARCHAR(20);
 BEGIN
-  SELECT COALESCE(SUM(amount), 0) INTO total_paid
-  FROM payments 
-  WHERE invoice_id = NEW.invoice_id AND status = 'succeeded';
-  
-  SELECT total INTO invoice_total FROM invoices WHERE id = NEW.invoice_id;
-  
+  IF p_invoice_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  SELECT total, status INTO inv_total, current_status
+  FROM invoices WHERE id = p_invoice_id;
+
+  IF inv_total IS NULL THEN
+    RETURN;
+  END IF;
+
+  SELECT COALESCE(SUM(pa.amount), 0)
+  INTO total_paid
+  FROM payment_allocations pa
+  JOIN payments p ON p.id = pa.payment_id
+  WHERE pa.invoice_id = p_invoice_id AND p.status = 'succeeded';
+
   UPDATE invoices SET
     amount_paid = total_paid,
-    amount_due = total - total_paid,
-    status = CASE 
-      WHEN total_paid >= invoice_total THEN 'paid'
+    amount_due = inv_total - total_paid,
+    status = CASE
+      WHEN total_paid >= inv_total AND inv_total > 0 THEN 'paid'
       WHEN total_paid > 0 THEN 'partial'
-      ELSE status
+      WHEN current_status IN ('paid', 'partial') THEN 'sent'
+      ELSE current_status
     END,
-    paid_at = CASE WHEN total_paid >= invoice_total THEN NOW() ELSE NULL END,
+    paid_at = CASE
+      WHEN total_paid >= inv_total AND inv_total > 0 THEN COALESCE(paid_at, NOW())
+      ELSE NULL
+    END,
     updated_at = NOW()
-  WHERE id = NEW.invoice_id;
-  
+  WHERE id = p_invoice_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger function: payment_allocations changes recalculate the affected invoice(s)
+CREATE OR REPLACE FUNCTION trigger_recalc_invoice_from_allocation()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    PERFORM recalculate_invoice_payments(OLD.invoice_id);
+    RETURN OLD;
+  END IF;
+
+  PERFORM recalculate_invoice_payments(NEW.invoice_id);
+  IF TG_OP = 'UPDATE' AND OLD.invoice_id IS DISTINCT FROM NEW.invoice_id THEN
+    PERFORM recalculate_invoice_payments(OLD.invoice_id);
+  END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for payment changes
-CREATE TRIGGER trigger_update_invoice_after_payment
+CREATE TRIGGER trigger_payment_allocations_recalc
+AFTER INSERT OR UPDATE OR DELETE ON payment_allocations
+FOR EACH ROW EXECUTE FUNCTION trigger_recalc_invoice_from_allocation();
+
+-- Trigger function: keep payments and payment_allocations in sync.
+-- INSERT: auto-create an allocation when payment.invoice_id is set.
+-- UPDATE amount: sync the single allocation (only when there's exactly one).
+-- UPDATE status: re-trigger recalc on linked invoices.
+CREATE OR REPLACE FUNCTION sync_payment_to_allocations()
+RETURNS TRIGGER AS $$
+DECLARE
+  alloc_count INTEGER;
+  inv RECORD;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status = 'succeeded' AND NEW.invoice_id IS NOT NULL THEN
+      INSERT INTO payment_allocations (payment_id, invoice_id, amount)
+      VALUES (NEW.id, NEW.invoice_id, NEW.amount);
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  -- UPDATE
+  IF NEW.status = 'succeeded' AND OLD.status IS DISTINCT FROM 'succeeded'
+     AND NEW.invoice_id IS NOT NULL THEN
+    SELECT COUNT(*) INTO alloc_count FROM payment_allocations WHERE payment_id = NEW.id;
+    IF alloc_count = 0 THEN
+      INSERT INTO payment_allocations (payment_id, invoice_id, amount)
+      VALUES (NEW.id, NEW.invoice_id, NEW.amount);
+    END IF;
+  END IF;
+
+  IF OLD.status = 'succeeded' AND NEW.status IS DISTINCT FROM 'succeeded' THEN
+    FOR inv IN SELECT DISTINCT invoice_id FROM payment_allocations WHERE payment_id = NEW.id LOOP
+      PERFORM recalculate_invoice_payments(inv.invoice_id);
+    END LOOP;
+  END IF;
+
+  IF NEW.amount IS DISTINCT FROM OLD.amount THEN
+    SELECT COUNT(*) INTO alloc_count FROM payment_allocations WHERE payment_id = NEW.id;
+    IF alloc_count = 1 THEN
+      UPDATE payment_allocations SET amount = NEW.amount WHERE payment_id = NEW.id;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_sync_payment_to_allocations
 AFTER INSERT OR UPDATE ON payments
-FOR EACH ROW EXECUTE FUNCTION update_invoice_after_payment();
+FOR EACH ROW EXECUTE FUNCTION sync_payment_to_allocations();
 
 -- =============================================
 -- ROW LEVEL SECURITY
@@ -505,6 +601,7 @@ ALTER TABLE quote_attachments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoice_line_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_allocations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customer_uploads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 

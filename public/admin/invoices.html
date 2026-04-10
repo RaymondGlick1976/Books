@@ -32,6 +32,7 @@
           <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
           <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
           <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/payments.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Payments</a></li>
           <li class="sidebar-nav-item"><a href="/admin/punch-list.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Punch List</a></li>
         </ul>
         <div class="sidebar-section">
@@ -569,10 +570,11 @@
       try {
         const supabase = await app.waitForSupabase();
         const invoice = invoices.find(i => i.id === invoiceId);
-        
+
         const amount = parseFloat(formData.get('amount'));
-        
-        // Insert payment record
+
+        // Insert payment record. The DB trigger creates a payment_allocations
+        // row for this invoice and recalculates invoice totals automatically.
         const { error: paymentError } = await supabase
           .from('payments')
           .insert({
@@ -585,25 +587,9 @@
             notes: formData.get('notes') || null,
             status: 'succeeded'
           });
-        
+
         if (paymentError) throw paymentError;
-        
-        // Update invoice amounts
-        const newAmountPaid = parseFloat(invoice.amount_paid || 0) + amount;
-        const newAmountDue = parseFloat(invoice.total) - newAmountPaid;
-        const newStatus = newAmountDue <= 0 ? 'paid' : 'partial';
-        
-        const { error: invoiceError } = await supabase
-          .from('invoices')
-          .update({
-            amount_paid: newAmountPaid,
-            amount_due: Math.max(0, newAmountDue),
-            status: newStatus
-          })
-          .eq('id', invoiceId);
-        
-        if (invoiceError) throw invoiceError;
-        
+
         showToast('Payment recorded successfully!', 'success');
         loadInvoices();
       } catch (err) {
@@ -818,28 +804,15 @@
           if (!content.checkValidity()) { content.reportValidity(); return; }
 
           try {
-            const newAmount = parseFloat(content.querySelector('[name="amount"]').value);
-            const oldAmount = parseFloat(payment.amount);
-            const diff = newAmount - oldAmount;
-
+            // Updating the payment row triggers DB recalculation of the invoice
+            // (via payment_allocations sync trigger).
             await supabase.from('payments').update({
-              amount: newAmount,
+              amount: parseFloat(content.querySelector('[name="amount"]').value),
               payment_method: content.querySelector('[name="payment_method"]').value,
               reference_number: content.querySelector('[name="reference"]').value || null,
               payment_date: content.querySelector('[name="payment_date"]').value,
               notes: content.querySelector('[name="notes"]').value || null
             }).eq('id', paymentId);
-
-            // Recalculate invoice totals
-            const invoice = invoices.find(i => i.id === invoiceId);
-            const newPaid = parseFloat(invoice.amount_paid || 0) + diff;
-            const newDue = parseFloat(invoice.total) - newPaid;
-            const newStatus = newDue <= 0 ? 'paid' : newPaid > 0 ? 'partial' : 'draft';
-            await supabase.from('invoices').update({
-              amount_paid: newPaid,
-              amount_due: Math.max(0, newDue),
-              status: newStatus
-            }).eq('id', invoiceId);
 
             showToast('Payment updated', 'success');
             closeModal(modal);
@@ -856,24 +829,12 @@
     };
 
     window.deletePayment = async (paymentId, invoiceId) => {
-      if (!confirm('Delete this payment? The invoice balance will be updated.')) return;
+      if (!await confirm('Delete this payment? The invoice balance will be updated.')) return;
       try {
         const supabase = await app.waitForSupabase();
-        const { data: payment } = await supabase.from('payments').select('amount').eq('id', paymentId).single();
-        if (!payment) { showToast('Payment not found', 'error'); return; }
-
-        await supabase.from('payments').delete().eq('id', paymentId);
-
-        // Recalculate invoice totals
-        const invoice = invoices.find(i => i.id === invoiceId);
-        const newPaid = Math.max(0, parseFloat(invoice.amount_paid || 0) - parseFloat(payment.amount));
-        const newDue = parseFloat(invoice.total) - newPaid;
-        const newStatus = newDue <= 0 ? 'paid' : newPaid > 0 ? 'partial' : 'draft';
-        await supabase.from('invoices').update({
-          amount_paid: newPaid,
-          amount_due: Math.max(0, newDue),
-          status: newStatus
-        }).eq('id', invoiceId);
+        // CASCADE deletes payment_allocations; the trigger recalculates linked invoices.
+        const { error } = await supabase.from('payments').delete().eq('id', paymentId);
+        if (error) throw error;
 
         showToast('Payment deleted', 'success');
         // Close view modal and refresh

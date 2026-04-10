@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HCD Books">
+  <title>Payments | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css?v=51">
+</head>
+<body>
+  <script>
+    // Permission check before page loads
+    const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+    if (!user) {
+      window.location.href = '/admin/login.html';
+    } else if (!user.permissions?.can_view_invoices) {
+      window.location.href = user.permissions?.can_view_pipeline ? '/admin/pipeline.html' : '/admin/index.html';
+    }
+  </script>
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <img src="/images/logo.gif" alt="Homestead Cabinet Design" style="height: 40px; filter: brightness(0) invert(1);">
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Deals Pipeline</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html?view=calendar" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/payments.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Payments</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/punch-list.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Punch List</a></li>
+        </ul>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Lead Capture</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/booking-forms.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Booking Forms</a></li>
+            <li class="sidebar-nav-item"><a href="/schedule" target="_blank" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Online Scheduling</a></li>
+            <li class="sidebar-nav-item"><a href="/admin/bulk-email.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/><line x1="2" y1="20" x2="8" y2="14"/><line x1="22" y1="20" x2="16" y2="14"/></svg>Bulk Email</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Catalog</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/catalog.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Items Catalog</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Settings</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/email-templates.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Templates</a></li>
+          </ul>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/settings.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="app-main">
+      <header class="app-header">
+        <h2>Payments</h2>
+        <button class="btn btn-primary" id="new-payment-btn">+ Record Payment</button>
+      </header>
+
+      <div class="app-content">
+        <!-- Filters -->
+        <div class="card mb-xl">
+          <div class="card-body">
+            <div class="flex gap-md items-center">
+              <input type="text" id="search-input" class="form-input" placeholder="Search by customer, invoice, reference..." style="max-width: 320px;">
+              <select id="method-filter" class="form-select" style="max-width: 160px;">
+                <option value="">All Methods</option>
+                <option value="cash">Cash</option>
+                <option value="check">Check</option>
+                <option value="card">Card</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="other">Other</option>
+              </select>
+              <select id="status-filter" class="form-select" style="max-width: 160px;">
+                <option value="">All Status</option>
+                <option value="succeeded" selected>Succeeded</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+                <option value="refunded">Refunded</option>
+              </select>
+              <div style="margin-left:auto; font-weight:600;">
+                Total: <span id="total-amount">$0.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payments Table -->
+        <div class="card">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Allocations</th>
+                  <th>Method</th>
+                  <th>Reference</th>
+                  <th style="text-align:right;">Amount</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="payments-tbody">
+                <tr>
+                  <td colspan="8" style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner" style="margin: 0 auto;"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    let payments = [];
+    let customers = [];
+    let invoicesByCustomer = {}; // customerId -> array of invoices
+    let allInvoices = [];
+
+    const newLocalId = () => 'a' + Math.random().toString(36).slice(2, 9);
+
+    const PAYMENT_METHODS = [
+      { value: 'cash', label: 'Cash' },
+      { value: 'check', label: 'Check' },
+      { value: 'card', label: 'Card' },
+      { value: 'bank_transfer', label: 'Bank Transfer' },
+      { value: 'other', label: 'Other' }
+    ];
+    const methodLabel = m => PAYMENT_METHODS.find(p => p.value === m)?.label || m || '—';
+    const methodOptionsHtml = selected => PAYMENT_METHODS
+      .map(m => `<option value="${m.value}"${m.value === selected ? ' selected' : ''}>${m.label}</option>`)
+      .join('');
+
+    async function loadData() {
+      try {
+        const supabase = await app.waitForSupabase();
+
+        const [paymentsRes, customersRes, invoicesRes] = await Promise.all([
+          supabase
+            .from('payments')
+            .select('*, customers(name, email), payment_allocations(id, invoice_id, amount, invoices(id, invoice_number, total, amount_paid, amount_due, status))')
+            .order('payment_date', { ascending: false }),
+          supabase
+            .from('customers')
+            .select('id, name, email')
+            .order('name'),
+          supabase
+            .from('invoices')
+            .select('id, invoice_number, customer_id, total, amount_paid, amount_due, status, title')
+            .neq('status', 'archived')
+            .order('created_at', { ascending: false })
+        ]);
+
+        if (paymentsRes.error) throw paymentsRes.error;
+        if (customersRes.error) throw customersRes.error;
+        if (invoicesRes.error) throw invoicesRes.error;
+
+        payments = paymentsRes.data || [];
+        customers = customersRes.data || [];
+        allInvoices = invoicesRes.data || [];
+
+        invoicesByCustomer = {};
+        allInvoices.forEach(inv => {
+          if (!invoicesByCustomer[inv.customer_id]) invoicesByCustomer[inv.customer_id] = [];
+          invoicesByCustomer[inv.customer_id].push(inv);
+        });
+
+        applyFilters();
+      } catch (err) {
+        console.error('Load error:', err);
+        showToast('Failed to load payments: ' + err.message, 'error');
+      }
+    }
+
+    function renderPayments(data) {
+      const tbody = $('#payments-tbody');
+      clearElement(tbody);
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted p-xl">No payments found</td></tr>';
+        $('#total-amount').textContent = formatCurrency(0);
+        return;
+      }
+
+      let totalSucceeded = 0;
+      data.forEach(payment => {
+        if (payment.status === 'succeeded') totalSucceeded += parseFloat(payment.amount || 0);
+
+        const allocs = payment.payment_allocations || [];
+        const invoiceLink = inv => `<a href="/admin/invoices.html?id=${inv.id}" target="_blank">${escapeHtml(inv.invoice_number)}</a>`;
+        let allocsHtml;
+        if (allocs.length === 0) {
+          allocsHtml = '<span class="text-muted">Unallocated</span>';
+        } else if (allocs.length === 1) {
+          const inv = allocs[0].invoices;
+          allocsHtml = inv ? invoiceLink(inv) : '<span class="text-muted">—</span>';
+        } else {
+          const rows = allocs.map(a => {
+            const link = a.invoices ? invoiceLink(a.invoices) : '—';
+            return `<div class="text-sm">${link}: ${formatCurrency(a.amount)}</div>`;
+          }).join('');
+          allocsHtml = `<div><span class="badge" style="background:#fef3c7;color:#92400e;">SPLIT (${allocs.length})</span></div>${rows}`;
+        }
+
+        const status = payment.status || '';
+        const row = createElement('tr');
+        row.innerHTML = `
+          <td>${formatDate(payment.payment_date || payment.created_at)}</td>
+          <td>
+            <div>${escapeHtml(payment.customers?.name || '—')}</div>
+            <div class="text-sm text-muted">${escapeHtml(payment.customers?.email || '')}</div>
+          </td>
+          <td>${allocsHtml}</td>
+          <td>${methodLabel(payment.payment_method || payment.payment_type)}</td>
+          <td>${escapeHtml(payment.reference_number || '—')}</td>
+          <td style="text-align:right;font-weight:600;">${formatCurrency(payment.amount)}</td>
+          <td><span class="badge badge-${status === 'succeeded' ? 'paid' : escapeHtml(status)}">${escapeHtml(status)}</span></td>
+          <td class="table-actions">
+            <button class="btn btn-ghost btn-sm" onclick="editPayment('${payment.id}')">Edit</button>
+            <button class="btn btn-ghost btn-sm text-danger" onclick="deletePayment('${payment.id}')" title="Delete">🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      $('#total-amount').textContent = formatCurrency(totalSucceeded);
+    }
+
+    function applyFilters() {
+      const query = $('#search-input').value.toLowerCase();
+      const method = $('#method-filter').value;
+      const status = $('#status-filter').value;
+
+      let filtered = payments;
+      if (status) filtered = filtered.filter(p => p.status === status);
+      if (method) filtered = filtered.filter(p => (p.payment_method || p.payment_type) === method);
+      if (query) {
+        filtered = filtered.filter(p => {
+          if (p.customers?.name?.toLowerCase().includes(query)) return true;
+          if (p.customers?.email?.toLowerCase().includes(query)) return true;
+          if (p.reference_number?.toLowerCase().includes(query)) return true;
+          if (p.notes?.toLowerCase().includes(query)) return true;
+          if ((p.payment_allocations || []).some(a => a.invoices?.invoice_number?.toLowerCase().includes(query))) return true;
+          return false;
+        });
+      }
+
+      renderPayments(filtered);
+    }
+
+    $('#search-input').addEventListener('input', debounce(applyFilters, 200));
+    $('#method-filter').addEventListener('change', applyFilters);
+    $('#status-filter').addEventListener('change', applyFilters);
+
+    // ============================================================
+    // EDIT PAYMENT MODAL (with allocation editing)
+    // ============================================================
+    window.editPayment = async (paymentId) => {
+      const payment = payments.find(p => p.id === paymentId);
+      if (!payment) { showToast('Payment not found', 'error'); return; }
+
+      // Working copy of allocations (each with localId for tracking)
+      let workingAllocs = (payment.payment_allocations || []).map(a => ({
+        localId: newLocalId(),
+        id: a.id,
+        invoice_id: a.invoice_id,
+        amount: parseFloat(a.amount) || 0
+      }));
+      if (workingAllocs.length === 0) {
+        workingAllocs.push({
+          localId: newLocalId(),
+          id: null,
+          invoice_id: payment.invoice_id || '',
+          amount: parseFloat(payment.amount) || 0
+        });
+      }
+
+      const customerInvoices = (invoicesByCustomer[payment.customer_id] || []).slice();
+
+      const content = createElement('div');
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Customer</label>
+          <input type="text" class="form-input" value="${escapeHtml(payment.customers?.name || '—')}" disabled>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);">
+          <div class="form-group">
+            <label class="form-label">Payment Amount *</label>
+            <input type="number" id="ep-amount" class="form-input" value="${payment.amount}" step="0.01" min="0.01" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Method</label>
+            <select id="ep-method" class="form-select">${methodOptionsHtml(payment.payment_method)}</select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);">
+          <div class="form-group">
+            <label class="form-label">Reference #</label>
+            <input type="text" id="ep-reference" class="form-input" value="${escapeHtml(payment.reference_number || '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Date</label>
+            <input type="date" id="ep-date" class="form-input" value="${(payment.payment_date || '').slice(0, 10)}">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="ep-notes" class="form-textarea" rows="2">${escapeHtml(payment.notes || '')}</textarea>
+        </div>
+
+        <div style="margin-top:var(--space-lg);padding-top:var(--space-md);border-top:1px solid var(--color-border);">
+          <div class="flex justify-between items-center mb-sm">
+            <strong>Allocate to invoices</strong>
+            <button type="button" class="btn btn-ghost btn-sm" id="ep-add-alloc">+ Add invoice</button>
+          </div>
+          <div class="text-sm text-muted mb-md">Split this payment across one or more invoices. The allocation total should equal the payment amount.</div>
+          <div id="ep-alloc-list"></div>
+          <div id="ep-alloc-summary" style="margin-top:var(--space-sm);padding:var(--space-sm);border-radius:var(--radius-sm);background:var(--color-bg-soft);font-size:0.9rem;"></div>
+        </div>
+      `;
+
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: 'Save Changes' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+
+      const modal = createModal({
+        title: 'Edit Payment - ' + (payment.customers?.name || ''),
+        content,
+        footer,
+        size: 'lg'
+      });
+
+      function renderAllocs() {
+        const list = content.querySelector('#ep-alloc-list');
+        list.innerHTML = '';
+        workingAllocs.forEach((a, idx) => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:grid;grid-template-columns:1fr 160px auto;gap:var(--space-sm);align-items:end;margin-bottom:var(--space-sm);';
+
+          // Customer's invoices first, then a divider, then all other invoices.
+          // Always include the currently selected invoice even if archived.
+          const optionsHtml = renderInvoiceOptions(a.invoice_id, payment.customer_id);
+
+          row.innerHTML = `
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Invoice</label>
+              <select class="form-select ep-alloc-invoice" data-local="${a.localId}">${optionsHtml}</select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Amount</label>
+              <input type="number" class="form-input ep-alloc-amount" data-local="${a.localId}" value="${a.amount}" step="0.01" min="0.01">
+            </div>
+            <div>
+              <button type="button" class="btn btn-ghost btn-sm ep-alloc-remove" data-local="${a.localId}" title="Remove">✕</button>
+            </div>
+          `;
+          list.appendChild(row);
+        });
+
+        list.querySelectorAll('.ep-alloc-invoice').forEach(sel => {
+          sel.addEventListener('change', e => {
+            const a = workingAllocs.find(x => x.localId === e.target.dataset.local);
+            if (a) a.invoice_id = e.target.value;
+            updateSummary();
+          });
+        });
+        list.querySelectorAll('.ep-alloc-amount').forEach(input => {
+          input.addEventListener('input', e => {
+            const a = workingAllocs.find(x => x.localId === e.target.dataset.local);
+            if (a) a.amount = parseFloat(e.target.value) || 0;
+            updateSummary();
+          });
+        });
+        list.querySelectorAll('.ep-alloc-remove').forEach(btn => {
+          btn.addEventListener('click', e => {
+            const localId = e.currentTarget.dataset.local;
+            workingAllocs = workingAllocs.filter(x => x.localId !== localId);
+            renderAllocs();
+            updateSummary();
+          });
+        });
+
+        updateSummary();
+      }
+
+      function updateSummary() {
+        const summary = content.querySelector('#ep-alloc-summary');
+        const paymentAmount = parseFloat(content.querySelector('#ep-amount').value) || 0;
+        const allocTotal = workingAllocs.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+        const diff = +(paymentAmount - allocTotal).toFixed(2);
+        let html = `Payment: <strong>${formatCurrency(paymentAmount)}</strong> &nbsp;·&nbsp; Allocated: <strong>${formatCurrency(allocTotal)}</strong>`;
+        if (Math.abs(diff) < 0.005) {
+          html += ` &nbsp;·&nbsp; <span style="color:var(--color-success);">✓ Matches</span>`;
+        } else if (diff > 0) {
+          html += ` &nbsp;·&nbsp; <span style="color:var(--color-danger);">${formatCurrency(diff)} unallocated</span>`;
+        } else {
+          html += ` &nbsp;·&nbsp; <span style="color:var(--color-danger);">Over-allocated by ${formatCurrency(-diff)}</span>`;
+        }
+        summary.innerHTML = html;
+      }
+
+      content.querySelector('#ep-amount').addEventListener('input', updateSummary);
+
+      content.querySelector('#ep-add-alloc').addEventListener('click', () => {
+        workingAllocs.push({
+          localId: newLocalId(),
+          id: null,
+          invoice_id: customerInvoices[0]?.id || '',
+          amount: 0
+        });
+        renderAllocs();
+      });
+
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+
+      saveBtn.addEventListener('click', async () => {
+        const newAmount = parseFloat(content.querySelector('#ep-amount').value);
+        if (!newAmount || newAmount <= 0) {
+          showToast('Amount must be greater than 0', 'error');
+          return;
+        }
+
+        // Validate allocations
+        const validAllocs = workingAllocs.filter(a => a.invoice_id && a.amount > 0);
+        if (validAllocs.length === 0) {
+          showToast('Please add at least one invoice allocation', 'error');
+          return;
+        }
+        const allocTotal = validAllocs.reduce((s, a) => s + a.amount, 0);
+        if (Math.abs(allocTotal - newAmount) > 0.01) {
+          if (!await confirm(`Allocations (${formatCurrency(allocTotal)}) don't match the payment amount (${formatCurrency(newAmount)}). Save anyway?`)) {
+            return;
+          }
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        try {
+          const supabase = await app.waitForSupabase();
+
+          // 1. Update the payment row. Set invoice_id only if there's a single allocation
+          // (for split payments, the legacy column has no meaningful value).
+          const { error: payErr } = await supabase
+            .from('payments')
+            .update({
+              amount: newAmount,
+              payment_method: content.querySelector('#ep-method').value,
+              reference_number: content.querySelector('#ep-reference').value || null,
+              payment_date: content.querySelector('#ep-date').value || null,
+              notes: content.querySelector('#ep-notes').value || null,
+              invoice_id: validAllocs.length === 1 ? validAllocs[0].invoice_id : null
+            })
+            .eq('id', paymentId);
+          if (payErr) throw payErr;
+
+          // 2. Replace allocations atomically: delete all existing, insert the new set.
+          // The page reloads after save so the new allocation IDs are picked up via loadData().
+          const { error: delErr } = await supabase
+            .from('payment_allocations')
+            .delete()
+            .eq('payment_id', paymentId);
+          if (delErr) throw delErr;
+
+          const { error: insErr } = await supabase
+            .from('payment_allocations')
+            .insert(validAllocs.map(a => ({
+              payment_id: paymentId,
+              invoice_id: a.invoice_id,
+              amount: a.amount
+            })));
+          if (insErr) throw insErr;
+
+          showToast('Payment updated', 'success');
+          closeModal(modal);
+          loadData();
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to save payment: ' + (err.message || err), 'error');
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Changes';
+        }
+      });
+
+      renderAllocs();
+    };
+
+    function renderInvoiceOptions(selectedId, customerId) {
+      const customerInvs = invoicesByCustomer[customerId] || [];
+      const otherInvs = allInvoices.filter(i => i.customer_id !== customerId);
+
+      const optionFor = (inv, forceSelected = false) => {
+        const sel = forceSelected || inv.id === selectedId ? ' selected' : '';
+        const dueLabel = parseFloat(inv.amount_due) > 0 ? ` (due ${formatCurrency(inv.amount_due)})` : ' (paid)';
+        return `<option value="${inv.id}"${sel}>${escapeHtml(inv.invoice_number)}${dueLabel}</option>`;
+      };
+
+      const opts = ['<option value="">— Select invoice —</option>'];
+
+      if (customerInvs.length > 0) {
+        opts.push(`<optgroup label="This customer's invoices">`);
+        customerInvs.forEach(inv => opts.push(optionFor(inv)));
+        opts.push('</optgroup>');
+      }
+
+      // Selected invoice may belong to a different customer (reassignment scenario)
+      const selInv = allInvoices.find(i => i.id === selectedId);
+      if (selInv && selInv.customer_id !== customerId) {
+        opts.push(`<optgroup label="Other customer">`);
+        opts.push(optionFor(selInv, true));
+        opts.push('</optgroup>');
+      }
+
+      if (otherInvs.length > 0) {
+        opts.push(`<optgroup label="All other invoices">`);
+        otherInvs.forEach(inv => {
+          if (inv.id === selectedId) return; // already shown
+          opts.push(optionFor(inv));
+        });
+        opts.push('</optgroup>');
+      }
+
+      return opts.join('');
+    }
+
+    // ============================================================
+    // DELETE PAYMENT
+    // ============================================================
+    window.deletePayment = async (paymentId) => {
+      const payment = payments.find(p => p.id === paymentId);
+      if (!payment) return;
+      const msg = `Delete this ${formatCurrency(payment.amount)} payment? Linked invoices will be updated automatically.`;
+      if (!await confirm(msg)) return;
+
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('payments').delete().eq('id', paymentId);
+        if (error) throw error;
+        showToast('Payment deleted', 'success');
+        loadData();
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to delete payment: ' + err.message, 'error');
+      }
+    };
+
+    // ============================================================
+    // NEW PAYMENT MODAL
+    // ============================================================
+    $('#new-payment-btn').addEventListener('click', () => recordNewPayment());
+
+    function recordNewPayment(prefilledCustomerId = null) {
+      let selectedCustomerId = prefilledCustomerId || '';
+      let workingAllocs = [];
+
+      const content = createElement('div');
+      content.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Customer *</label>
+          <select id="np-customer" class="form-select" required>
+            <option value="">— Select customer —</option>
+            ${customers.map(c => `<option value="${c.id}"${c.id === prefilledCustomerId ? ' selected' : ''}>${escapeHtml(c.name)}${c.email ? ' (' + escapeHtml(c.email) + ')' : ''}</option>`).join('')}
+          </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);">
+          <div class="form-group">
+            <label class="form-label">Payment Amount *</label>
+            <input type="number" id="np-amount" class="form-input" value="0" step="0.01" min="0.01" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Method *</label>
+            <select id="np-method" class="form-select" required>${methodOptionsHtml()}</select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);">
+          <div class="form-group">
+            <label class="form-label">Reference #</label>
+            <input type="text" id="np-reference" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Date</label>
+            <input type="date" id="np-date" class="form-input" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="np-notes" class="form-textarea" rows="2"></textarea>
+        </div>
+
+        <div style="margin-top:var(--space-lg);padding-top:var(--space-md);border-top:1px solid var(--color-border);">
+          <div class="flex justify-between items-center mb-sm">
+            <strong>Allocate to invoices</strong>
+            <button type="button" class="btn btn-ghost btn-sm" id="np-add-alloc">+ Add invoice</button>
+          </div>
+          <div id="np-alloc-list">
+            <div class="text-sm text-muted">Select a customer first.</div>
+          </div>
+          <div id="np-alloc-summary" style="margin-top:var(--space-sm);padding:var(--space-sm);border-radius:var(--radius-sm);background:var(--color-bg-soft);font-size:0.9rem;"></div>
+        </div>
+      `;
+
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: 'Record Payment' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+
+      const modal = createModal({
+        title: 'Record New Payment',
+        content,
+        footer,
+        size: 'lg'
+      });
+
+      function renderAllocs() {
+        const list = content.querySelector('#np-alloc-list');
+        list.innerHTML = '';
+
+        if (!selectedCustomerId) {
+          list.innerHTML = '<div class="text-sm text-muted">Select a customer first.</div>';
+          updateSummary();
+          return;
+        }
+
+        if (workingAllocs.length === 0) {
+          list.innerHTML = '<div class="text-sm text-muted">Click "+ Add invoice" to allocate this payment.</div>';
+          updateSummary();
+          return;
+        }
+
+        workingAllocs.forEach(a => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:grid;grid-template-columns:1fr 160px auto;gap:var(--space-sm);align-items:end;margin-bottom:var(--space-sm);';
+          row.innerHTML = `
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Invoice</label>
+              <select class="form-select np-alloc-invoice" data-local="${a.localId}">${renderInvoiceOptions(a.invoice_id, selectedCustomerId)}</select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Amount</label>
+              <input type="number" class="form-input np-alloc-amount" data-local="${a.localId}" value="${a.amount}" step="0.01" min="0.01">
+            </div>
+            <div>
+              <button type="button" class="btn btn-ghost btn-sm np-alloc-remove" data-local="${a.localId}" title="Remove">✕</button>
+            </div>
+          `;
+          list.appendChild(row);
+        });
+
+        list.querySelectorAll('.np-alloc-invoice').forEach(sel => {
+          sel.addEventListener('change', e => {
+            const a = workingAllocs.find(x => x.localId === e.target.dataset.local);
+            if (a) a.invoice_id = e.target.value;
+          });
+        });
+        list.querySelectorAll('.np-alloc-amount').forEach(input => {
+          input.addEventListener('input', e => {
+            const a = workingAllocs.find(x => x.localId === e.target.dataset.local);
+            if (a) a.amount = parseFloat(e.target.value) || 0;
+            updateSummary();
+          });
+        });
+        list.querySelectorAll('.np-alloc-remove').forEach(btn => {
+          btn.addEventListener('click', e => {
+            const localId = e.currentTarget.dataset.local;
+            workingAllocs = workingAllocs.filter(x => x.localId !== localId);
+            renderAllocs();
+          });
+        });
+
+        updateSummary();
+      }
+
+      function updateSummary() {
+        const summary = content.querySelector('#np-alloc-summary');
+        const paymentAmount = parseFloat(content.querySelector('#np-amount').value) || 0;
+        const allocTotal = workingAllocs.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+        const diff = +(paymentAmount - allocTotal).toFixed(2);
+        let html = `Payment: <strong>${formatCurrency(paymentAmount)}</strong> &nbsp;·&nbsp; Allocated: <strong>${formatCurrency(allocTotal)}</strong>`;
+        if (Math.abs(diff) < 0.005 && paymentAmount > 0) {
+          html += ` &nbsp;·&nbsp; <span style="color:var(--color-success);">✓ Matches</span>`;
+        } else if (diff > 0) {
+          html += ` &nbsp;·&nbsp; <span style="color:var(--color-warning);">${formatCurrency(diff)} unallocated</span>`;
+        } else if (diff < 0) {
+          html += ` &nbsp;·&nbsp; <span style="color:var(--color-danger);">Over-allocated by ${formatCurrency(-diff)}</span>`;
+        }
+        summary.innerHTML = html;
+      }
+
+      content.querySelector('#np-customer').addEventListener('change', e => {
+        selectedCustomerId = e.target.value;
+        // Auto-add the first open invoice as a starting allocation
+        const openInvs = (invoicesByCustomer[selectedCustomerId] || []).filter(i => parseFloat(i.amount_due) > 0);
+        const firstOpen = openInvs[0];
+        if (firstOpen && workingAllocs.length === 0) {
+          const due = parseFloat(firstOpen.amount_due) || 0;
+          workingAllocs = [{
+            localId: newLocalId(),
+            id: null,
+            invoice_id: firstOpen.id,
+            amount: due
+          }];
+          // Also prefill the payment amount
+          const amtInput = content.querySelector('#np-amount');
+          if (parseFloat(amtInput.value) === 0) amtInput.value = due;
+        }
+        renderAllocs();
+      });
+
+      content.querySelector('#np-add-alloc').addEventListener('click', () => {
+        if (!selectedCustomerId) {
+          showToast('Select a customer first', 'error');
+          return;
+        }
+        const customerInvs = invoicesByCustomer[selectedCustomerId] || [];
+        workingAllocs.push({
+          localId: newLocalId(),
+          id: null,
+          invoice_id: customerInvs[0]?.id || '',
+          amount: 0
+        });
+        renderAllocs();
+      });
+
+      content.querySelector('#np-amount').addEventListener('input', updateSummary);
+
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+
+      saveBtn.addEventListener('click', async () => {
+        if (!selectedCustomerId) {
+          showToast('Please select a customer', 'error');
+          return;
+        }
+        const amount = parseFloat(content.querySelector('#np-amount').value);
+        if (!amount || amount <= 0) {
+          showToast('Amount must be greater than 0', 'error');
+          return;
+        }
+        const validAllocs = workingAllocs.filter(a => a.invoice_id && a.amount > 0);
+        if (validAllocs.length === 0) {
+          showToast('Please add at least one invoice allocation', 'error');
+          return;
+        }
+        const allocTotal = validAllocs.reduce((s, a) => s + a.amount, 0);
+        if (Math.abs(allocTotal - amount) > 0.01) {
+          if (!await confirm(`Allocations (${formatCurrency(allocTotal)}) don't match the payment amount (${formatCurrency(amount)}). Save anyway?`)) {
+            return;
+          }
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        try {
+          const supabase = await app.waitForSupabase();
+
+          // Insert payment with invoice_id=null so the sync trigger does NOT auto-create
+          // an allocation. We then insert the real allocations explicitly. This avoids a
+          // wasted INSERT/DELETE round-trip and the extra trigger fires that come with it.
+          const { data: paymentRow, error: payErr } = await supabase
+            .from('payments')
+            .insert({
+              customer_id: selectedCustomerId,
+              invoice_id: null,
+              amount,
+              payment_method: content.querySelector('#np-method').value,
+              reference_number: content.querySelector('#np-reference').value || null,
+              payment_date: content.querySelector('#np-date').value || null,
+              notes: content.querySelector('#np-notes').value || null,
+              status: 'succeeded'
+            })
+            .select()
+            .single();
+          if (payErr) throw payErr;
+
+          const { error: allocErr } = await supabase
+            .from('payment_allocations')
+            .insert(validAllocs.map(a => ({
+              payment_id: paymentRow.id,
+              invoice_id: a.invoice_id,
+              amount: a.amount
+            })));
+          if (allocErr) throw allocErr;
+
+          showToast('Payment recorded', 'success');
+          closeModal(modal);
+          loadData();
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to record payment: ' + (err.message || err), 'error');
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Record Payment';
+        }
+      });
+
+      // If a customer was prefilled, render initial allocations
+      if (prefilledCustomerId) {
+        content.querySelector('#np-customer').dispatchEvent(new Event('change'));
+      }
+    }
+
+    // Initialize
+    loadData();
+  </script>
+</body>
+</html>

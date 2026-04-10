@@ -188,6 +188,17 @@ function phoneLink(phone) {
   return `<a href="tel:+1${cleaned}">${display}</a>`;
 }
 
+// Escape user-controlled text for safe insertion into HTML.
+function escapeHtml(value) {
+  if (value == null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // =============================================
 // DOM HELPERS
 // =============================================
