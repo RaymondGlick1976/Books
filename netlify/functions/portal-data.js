@@ -68,12 +68,12 @@ exports.handler = async (event) => {
       return quote;
     });
     
-    // Get all invoices
+    // Get all invoices (exclude draft and archived)
     const { data: invoices } = await supabase
       .from('invoices')
       .select('*')
       .eq('customer_id', customer.id)
-      .neq('status', 'draft')
+      .not('status', 'in', '(draft,archived)')
       .order('created_at', { ascending: false });
     
     // Get all payments

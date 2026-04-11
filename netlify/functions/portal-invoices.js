@@ -16,12 +16,12 @@ exports.handler = async (event) => {
   const supabase = getSupabase();
   
   try {
-    // Get invoices
+    // Get invoices (exclude draft and archived)
     const { data: invoices } = await supabase
       .from('invoices')
       .select('*')
       .eq('customer_id', customer.id)
-      .neq('status', 'draft')
+      .not('status', 'in', '(draft,archived)')
       .order('created_at', { ascending: false });
     
     // Get payments with invoice info
