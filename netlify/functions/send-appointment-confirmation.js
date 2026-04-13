@@ -122,7 +122,7 @@ exports.handler = async (event) => {
                     <div style="color: #666; font-size: 13px; margin-bottom: 4px;">Business Location</div>
                     <div style="color: #333; font-size: 15px;">
                       ${fullCompanyAddress}
-                      <br><a href="${mapsUrl}" style="color: #667eea; text-decoration: none; font-size: 13px;">View on Google Maps &rarr;</a>
+                      <br><a href="${mapsUrl}" style="color: #38571a; text-decoration: none; font-size: 13px;">View on Google Maps &rarr;</a>
                     </div>
                   </td>
                 </tr>` : '';
@@ -137,7 +137,7 @@ exports.handler = async (event) => {
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px;">
           <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+            <td style="background: linear-gradient(135deg, #4a7223 0%, #38571a 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
               <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">${companyName}</h1>
             </td>
           </tr>
@@ -165,7 +165,7 @@ exports.handler = async (event) => {
                   </td>
                 </tr>${locationSection}
               </table>
-              <p style="color: #999; font-size: 13px; margin: 24px 0 0 0; text-align: center;">Need to make changes? <a href="${baseUrl}/schedule-manage.html?id=${appt.id}" style="color: #667eea; text-decoration: none;">Reschedule or Cancel</a></p>
+              <p style="color: #999; font-size: 13px; margin: 24px 0 0 0; text-align: center;">Need to make changes? <a href="${baseUrl}/schedule-manage.html?id=${appt.id}" style="color: #38571a; text-decoration: none;">Reschedule or Cancel</a></p>
             </td>
           </tr>
           <tr>
