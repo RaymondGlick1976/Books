@@ -249,6 +249,7 @@ CREATE TABLE customer_uploads (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
   quote_id UUID REFERENCES quotes(id) ON DELETE SET NULL,
+  job_id UUID,
   file_url TEXT NOT NULL,
   file_name VARCHAR(255) NOT NULL,
   file_type VARCHAR(100),
@@ -259,6 +260,7 @@ CREATE TABLE customer_uploads (
 
 CREATE INDEX idx_customer_uploads_customer ON customer_uploads(customer_id);
 CREATE INDEX idx_customer_uploads_quote ON customer_uploads(quote_id);
+CREATE INDEX idx_customer_uploads_job ON customer_uploads(job_id);
 
 -- =============================================
 -- NOTIFICATION QUEUE
