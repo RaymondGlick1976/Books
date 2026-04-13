@@ -223,29 +223,17 @@ async function handlePaymentSuccess(supabase, paymentIntent) {
     .single();
   
   if (invoice) {
-    // Calculate new amounts
     const paymentAmount = paymentIntent.amount / 100;
-    const newAmountPaid = parseFloat(invoice.amount_paid || 0) + paymentAmount;
-    const newAmountDue = parseFloat(invoice.total) - newAmountPaid;
-    const newStatus = newAmountDue <= 0.01 ? 'paid' : 'partial';
-    
-    // Update invoice
-    await supabase
-      .from('invoices')
-      .update({
-        amount_paid: newAmountPaid,
-        amount_due: Math.max(0, newAmountDue),
-        status: newStatus,
-      })
-      .eq('id', invoice_id);
-    
-    // Refresh invoice for email
+
+    // DB triggers (sync_payment_to_allocations → recalculate_invoice_payments)
+    // already updated amount_paid/amount_due/status when we set payment status above.
+    // Just re-read the invoice for the email.
     const { data: updatedInvoice } = await supabase
       .from('invoices')
       .select('*')
       .eq('id', invoice_id)
       .single();
-    
+
     // Send confirmation
     try {
       await sendPaymentConfirmation(supabase, invoice.customer_id, paymentAmount, updatedInvoice || invoice);
