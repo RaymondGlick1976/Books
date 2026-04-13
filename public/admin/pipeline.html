@@ -396,7 +396,7 @@
           <div class="deal-view-section-title">Punch List</div>
           <div id="deal-view-punch-list"></div>
         </div>
-        <div id="deal-view-photos" class="deal-view-section" style="display:none;">
+        <div id="deal-view-photos" class="deal-view-section">
           <div class="deal-view-section-title">Files</div>
           <div id="deal-view-photos-list" style="display:flex;flex-wrap:wrap;gap:var(--space-sm);"></div>
         </div>
@@ -1102,8 +1102,8 @@
       $('#deal-view-punch').style.display = 'none';
       loadPunchItemsForView(deal.id);
 
-      // Photos
-      $('#deal-view-photos').style.display = 'none';
+      // Files
+      $('#deal-view-photos-list').innerHTML = '';
       loadDealPhotosForView(deal.id);
 
       // Notes
@@ -1804,7 +1804,7 @@
               const { error: uploadError } = await supabase.storage.from('Uploads').upload(filePath, file, { contentType: file.type, upsert: false });
               if (uploadError) throw uploadError;
               const { data: urlData } = supabase.storage.from('Uploads').getPublicUrl(filePath);
-              await supabase.from('customer_uploads').insert({
+              const { error: insertError } = await supabase.from('customer_uploads').insert({
                 customer_id: customerId,
                 job_id: jobId,
                 file_url: urlData.publicUrl,
@@ -1812,6 +1812,7 @@
                 file_type: file.type,
                 file_size: file.size
               });
+              if (insertError) throw insertError;
               uploaded++;
             } catch (err) { console.error('Upload error:', err); showToast(`Failed to upload ${file.name}`, 'error'); }
           }
@@ -1880,16 +1881,17 @@
     async function loadDealPhotosForView(jobId) {
       try {
         const supabase = await app.waitForSupabase();
-        const { data: photos } = await supabase
+        const { data: photos, error } = await supabase
           .from('customer_uploads')
           .select('*')
           .eq('job_id', jobId)
           .order('uploaded_at', { ascending: false });
 
-        if (photos && photos.length > 0) {
-          currentDealPhotos = photos;
-          $('#deal-view-photos').style.display = '';
-          $('#deal-view-photos-list').innerHTML = photos.map(p => {
+        if (error) { console.error('Failed to load files for view:', error); }
+        currentDealPhotos = photos || [];
+        $('#deal-view-photos').style.display = '';
+        if (currentDealPhotos.length > 0) {
+          $('#deal-view-photos-list').innerHTML = currentDealPhotos.map(p => {
             const isImage = p.file_type && p.file_type.startsWith('image/');
             const fileName = p.file_name || 'File';
             const ext = fileName.split('.').pop().toUpperCase();
@@ -1904,13 +1906,12 @@
                 </a>`;
           }).join('');
         } else {
-          currentDealPhotos = [];
-          $('#deal-view-photos').style.display = 'none';
+          $('#deal-view-photos-list').innerHTML = '<p class="text-muted text-sm">No files yet.</p>';
         }
       } catch (err) {
-        console.error('Failed to load photos for view:', err);
+        console.error('Failed to load files for view:', err);
         currentDealPhotos = [];
-        $('#deal-view-photos').style.display = 'none';
+        $('#deal-view-photos').style.display = '';
       }
     }
 
