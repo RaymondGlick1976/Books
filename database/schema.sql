@@ -47,6 +47,32 @@ CREATE INDEX idx_auth_tokens_token ON auth_tokens(token);
 CREATE INDEX idx_auth_tokens_customer ON auth_tokens(customer_id);
 
 -- =============================================
+-- LIBRARIES — top-level containers for catalog items
+-- =============================================
+CREATE TABLE libraries (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  is_default BOOLEAN DEFAULT false,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =============================================
+-- LIBRARY FOLDERS — nested folders within a library
+-- =============================================
+CREATE TABLE library_folders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
+  parent_id UUID REFERENCES library_folders(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_library_folders_library ON library_folders(library_id);
+CREATE INDEX idx_library_folders_parent ON library_folders(parent_id);
+
+-- =============================================
 -- ITEMS CATALOG
 -- =============================================
 CREATE TABLE items_catalog (
@@ -54,6 +80,10 @@ CREATE TABLE items_catalog (
   name VARCHAR(255) NOT NULL,
   description TEXT,
   category VARCHAR(100),
+  library_id UUID REFERENCES libraries(id) ON DELETE SET NULL,
+  folder_id UUID REFERENCES library_folders(id) ON DELETE SET NULL,
+  item_number VARCHAR(50),
+  notes TEXT,
   default_price DECIMAL(10, 2),
   price_range_low DECIMAL(10, 2),
   price_range_high DECIMAL(10, 2),
@@ -67,6 +97,38 @@ CREATE TABLE items_catalog (
 
 CREATE INDEX idx_items_catalog_category ON items_catalog(category);
 CREATE INDEX idx_items_catalog_active ON items_catalog(is_active);
+CREATE INDEX idx_items_catalog_library ON items_catalog(library_id);
+CREATE INDEX idx_items_catalog_folder ON items_catalog(folder_id);
+
+-- =============================================
+-- ASSEMBLIES — named groups of items priced together
+-- =============================================
+CREATE TABLE assemblies (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  is_active BOOLEAN DEFAULT true,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_assemblies_library ON assemblies(library_id);
+
+-- =============================================
+-- ASSEMBLY ITEMS — junction: assembly + catalog item + qty
+-- =============================================
+CREATE TABLE assembly_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  assembly_id UUID NOT NULL REFERENCES assemblies(id) ON DELETE CASCADE,
+  catalog_item_id UUID NOT NULL REFERENCES items_catalog(id) ON DELETE CASCADE,
+  quantity DECIMAL(10,2) DEFAULT 1,
+  sort_order INTEGER DEFAULT 0,
+  UNIQUE(assembly_id, catalog_item_id)
+);
+
+CREATE INDEX idx_assembly_items_assembly ON assembly_items(assembly_id);
+CREATE INDEX idx_assembly_items_catalog ON assembly_items(catalog_item_id);
 
 -- =============================================
 -- QUOTES
@@ -606,6 +668,10 @@ ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_allocations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customer_uploads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE libraries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE library_folders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assemblies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assembly_items ENABLE ROW LEVEL SECURITY;
 
 -- For service role (admin), allow all operations
 -- These policies use the service_role key which bypasses RLS

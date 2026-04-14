@@ -8,10 +8,439 @@
   <meta name="apple-mobile-web-app-title" content="HCD Books">
   <title>Custom Library | Admin | Homestead Cabinet Design</title>
   <link rel="stylesheet" href="/css/styles.css?v=44">
+  <style>
+    /* Two-panel layout */
+    .library-layout {
+      display: flex;
+      height: calc(100vh - var(--header-height));
+      overflow: hidden;
+    }
+
+    /* Left sidebar panel */
+    .library-sidebar {
+      width: 300px;
+      min-width: 300px;
+      border-right: 1px solid var(--color-border);
+      background: var(--color-bg-alt);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .library-sidebar-header {
+      padding: var(--space-md);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .library-select-row {
+      display: flex;
+      gap: var(--space-sm);
+      align-items: center;
+    }
+
+    .library-select-row select {
+      flex: 1;
+    }
+
+    .library-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .library-tab {
+      flex: 1;
+      padding: var(--space-sm) var(--space-md);
+      text-align: center;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      border-bottom: 2px solid transparent;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      transition: all var(--transition-fast);
+    }
+
+    .library-tab:hover {
+      color: var(--color-text);
+    }
+
+    .library-tab.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+
+    .library-search {
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .library-search input {
+      width: 100%;
+      font-size: 0.85rem;
+    }
+
+    .library-tree-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-sm) 0;
+    }
+
+    /* Tree nodes */
+    .tree-folder {
+      user-select: none;
+    }
+
+    .tree-folder-header {
+      display: flex;
+      align-items: center;
+      padding: 6px var(--space-md);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--color-text);
+      gap: 6px;
+      transition: background var(--transition-fast);
+    }
+
+    .tree-folder-header:hover {
+      background: var(--color-border-light);
+    }
+
+    .tree-folder-header .chevron {
+      width: 16px;
+      height: 16px;
+      transition: transform var(--transition-fast);
+      flex-shrink: 0;
+      color: var(--color-text-muted);
+    }
+
+    .tree-folder-header .chevron.open {
+      transform: rotate(90deg);
+    }
+
+    .tree-folder-header .folder-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tree-folder-header .folder-count {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      font-weight: 400;
+    }
+
+    .tree-folder-header .folder-actions {
+      opacity: 0;
+      display: flex;
+      gap: 2px;
+    }
+
+    .tree-folder-header:hover .folder-actions {
+      opacity: 1;
+    }
+
+    .tree-folder-children {
+      display: none;
+    }
+
+    .tree-folder.open > .tree-folder-children {
+      display: block;
+    }
+
+    .tree-item {
+      display: flex;
+      align-items: center;
+      padding: 5px var(--space-md) 5px 40px;
+      cursor: pointer;
+      font-size: 0.83rem;
+      color: var(--color-text-light);
+      gap: 6px;
+      transition: background var(--transition-fast);
+      overflow: hidden;
+    }
+
+    .tree-item:hover {
+      background: var(--color-border-light);
+    }
+
+    .tree-item.active {
+      background: rgba(56, 87, 26, 0.08);
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    .tree-item .item-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tree-item .item-price {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      flex-shrink: 0;
+    }
+
+    /* Unfiled items (no folder) */
+    .tree-unfiled-label {
+      padding: 8px var(--space-md) 4px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      font-weight: 600;
+    }
+
+    /* Assembly list items */
+    .tree-assembly {
+      display: flex;
+      align-items: center;
+      padding: 7px var(--space-md);
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--color-text);
+      gap: 6px;
+      transition: background var(--transition-fast);
+    }
+
+    .tree-assembly:hover {
+      background: var(--color-border-light);
+    }
+
+    .tree-assembly.active {
+      background: rgba(56, 87, 26, 0.08);
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    .tree-assembly .assembly-count {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+
+    /* Action icon buttons in tree */
+    .tree-icon-btn {
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--color-text-muted);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tree-icon-btn:hover {
+      background: var(--color-border);
+      color: var(--color-text);
+    }
+
+    .tree-icon-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Sidebar add buttons row */
+    .sidebar-add-row {
+      padding: var(--space-sm) var(--space-md);
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      gap: var(--space-sm);
+    }
+
+    .sidebar-add-row .btn {
+      flex: 1;
+      font-size: 0.8rem;
+      padding: 6px 10px;
+    }
+
+    /* Right detail panel */
+    .library-detail {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-xl);
+      background: var(--color-bg);
+    }
+
+    .detail-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+    }
+
+    .detail-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+
+    .detail-title-input {
+      font-size: 1.4rem;
+      font-weight: 700;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: none;
+      padding: 4px 0;
+      width: 100%;
+      color: var(--color-text);
+      outline: none;
+    }
+
+    .detail-title-input:focus {
+      border-bottom-color: var(--color-primary);
+    }
+
+    .detail-section {
+      margin-bottom: var(--space-lg);
+    }
+
+    .detail-section-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      margin-bottom: var(--space-sm);
+    }
+
+    .detail-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+    }
+
+    .detail-toggles {
+      display: flex;
+      gap: var(--space-lg);
+      padding: var(--space-md) 0;
+    }
+
+    .detail-actions {
+      display: flex;
+      gap: var(--space-sm);
+      padding-top: var(--space-lg);
+      border-top: 1px solid var(--color-border);
+    }
+
+    /* Assembly member list */
+    .assembly-member {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .assembly-member .member-name {
+      flex: 1;
+    }
+
+    .assembly-member .member-qty {
+      width: 70px;
+    }
+
+    .assembly-member .member-price {
+      width: 90px;
+      text-align: right;
+      color: var(--color-text-light);
+      font-size: 0.85rem;
+    }
+
+    .assembly-total {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-md);
+      padding: var(--space-md) 0;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    /* Used-in assemblies read-only */
+    .used-in-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-xs);
+    }
+
+    .used-in-badge {
+      background: var(--color-bg-soft);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 2px 8px;
+      font-size: 0.78rem;
+      color: var(--color-text-light);
+    }
+
+    /* Context menu */
+    .ctx-menu {
+      position: fixed;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      z-index: 1000;
+      min-width: 160px;
+      padding: var(--space-xs) 0;
+    }
+
+    .ctx-menu-item {
+      padding: 8px var(--space-md);
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: block;
+      width: 100%;
+      border: none;
+      background: none;
+      text-align: left;
+      color: var(--color-text);
+    }
+
+    .ctx-menu-item:hover {
+      background: var(--color-bg-soft);
+    }
+
+    .ctx-menu-item.danger {
+      color: var(--color-danger);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .library-layout {
+        flex-direction: column;
+        height: auto;
+      }
+      .library-sidebar {
+        width: 100%;
+        min-width: 100%;
+        max-height: 50vh;
+        border-right: none;
+        border-bottom: 1px solid var(--color-border);
+      }
+      .library-detail {
+        padding: var(--space-md);
+      }
+      .detail-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
   <script>
-    // Permission check before page loads
     const user = JSON.parse(localStorage.getItem('app_user') || 'null');
     if (!user) {
       window.location.href = '/admin/login.html';
@@ -61,472 +490,934 @@
         </div>
       </nav>
     </aside>
-    
-    <main class="app-main">
+
+    <main class="app-main" style="padding: 0;">
       <header class="app-header">
         <h2>Custom Library</h2>
-        <button class="btn btn-primary" id="add-item-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Add Item
-        </button>
       </header>
-      
-      <div class="app-content">
-        <!-- Filters -->
-        <div class="card mb-xl">
-          <div class="card-body">
-            <div class="flex gap-md items-center">
-              <input type="text" id="search-input" class="form-input" placeholder="Search items..." style="max-width: 300px;">
-              <select id="category-filter" class="form-select" style="max-width: 200px;">
-                <option value="">All Categories</option>
-              </select>
+
+      <div class="library-layout">
+        <!-- Left Sidebar -->
+        <div class="library-sidebar">
+          <div class="library-sidebar-header">
+            <div class="library-select-row">
+              <select id="library-select" class="form-select"></select>
+              <button class="tree-icon-btn" id="add-library-btn" title="New Library">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
             </div>
           </div>
-        </div>
-        
-        <!-- Items Table -->
-        <div class="card">
-          <div class="table-container">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Category</th>
-                  <th>Price</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="items-tbody">
-                <tr>
-                  <td colspan="5" style="text-align: center; padding: 40px;">
-                    <div class="loading-spinner" style="margin: 0 auto;"></div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="library-tabs">
+            <button class="library-tab active" data-tab="items">Items</button>
+            <button class="library-tab" data-tab="assemblies">Assemblies</button>
           </div>
+          <div class="library-search">
+            <input type="text" id="tree-search" class="form-input" placeholder="Search...">
+          </div>
+          <div class="library-tree-container" id="tree-container"></div>
+          <div class="sidebar-add-row" id="sidebar-actions">
+            <button class="btn btn-secondary" id="add-folder-btn">+ Folder</button>
+            <button class="btn btn-primary" id="add-item-btn">+ Item</button>
+          </div>
+        </div>
+
+        <!-- Right Detail Panel -->
+        <div class="library-detail" id="detail-panel">
+          <div class="detail-empty">Select an item or assembly to view details</div>
         </div>
       </div>
     </main>
   </div>
-  
+
+  <!-- Context menu (hidden) -->
+  <div class="ctx-menu" id="ctx-menu" style="display:none;"></div>
+
   <script src="/js/utils.js"></script>
   <script>
-    
+    // ── State ──
+    let libraries = [];
+    let folders = [];
     let items = [];
-    let categories = new Set();
+    let assemblies = [];
+    let assemblyItems = [];
     let pricingAttributes = [];
-    let itemAttributeMap = {}; // Map of item_id -> [attribute_ids]
-    
-    async function loadItems() {
+    let itemAttributeMap = {};
+
+    let currentLibraryId = null;
+    let activeTab = 'items';
+    let selectedItemId = null;
+    let selectedAssemblyId = null;
+    let searchQuery = '';
+
+    // ── SVG helpers ──
+    const CHEVRON_SVG = '<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
+    const PLUS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    const DOTS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>';
+
+    // ── Data Loading ──
+    async function loadAll() {
+      const supabase = await app.waitForSupabase();
+
       try {
-        const supabase = await app.waitForSupabase();
-        
-        const { data, error } = await supabase
-          .from('items_catalog')
-          .select('*')
-          .order('category', { ascending: true })
-          .order('name', { ascending: true });
-        
-        if (error) throw error;
-        items = data || [];
-        
-        // Build category filter
-        categories = new Set(items.map(i => i.category).filter(Boolean));
-        const categorySelect = $('#category-filter');
-        categorySelect.innerHTML = '<option value="">All Categories</option>';
-        categories.forEach(cat => {
-          const option = document.createElement('option');
-          option.value = cat;
-          option.textContent = cat;
-          categorySelect.appendChild(option);
-        });
-        
-        renderItems(items);
-      } catch (err) {
-        console.error('Load error:', err);
-        showToast('Failed to load catalog', 'error');
-      }
-    }
-    
-    async function loadPricingAttributes() {
-      try {
-        const supabase = await app.waitForSupabase();
-        
-        // Load pricing attributes
-        const { data: attrs, error: attrError } = await supabase
-          .from('pricing_attributes')
-          .select('*, options:pricing_attribute_options(*)')
-          .eq('is_active', true)
-          .order('sort_order, name');
-        
-        if (attrError) throw attrError;
-        pricingAttributes = attrs || [];
-        
-        // Load item-attribute mappings
-        const { data: mappings, error: mapError } = await supabase
-          .from('catalog_item_attributes')
-          .select('item_id, attribute_id');
-        
-        if (mapError) throw mapError;
+        const [libRes, folderRes, itemRes, asmRes, asmItemRes, attrRes, mapRes] = await Promise.all([
+          supabase.from('libraries').select('*').order('sort_order, name'),
+          supabase.from('library_folders').select('*').order('sort_order, name'),
+          supabase.from('items_catalog').select('*').order('name'),
+          supabase.from('assemblies').select('*').order('sort_order, name'),
+          supabase.from('assembly_items').select('*').order('sort_order'),
+          supabase.from('pricing_attributes').select('*, options:pricing_attribute_options(*)').eq('is_active', true).order('sort_order, name'),
+          supabase.from('catalog_item_attributes').select('item_id, attribute_id')
+        ]);
+
+        libraries = libRes.data || [];
+        folders = folderRes.data || [];
+        items = itemRes.data || [];
+        assemblies = asmRes.data || [];
+        assemblyItems = asmItemRes.data || [];
+        pricingAttributes = attrRes.data || [];
+
         itemAttributeMap = {};
-        (mappings || []).forEach(m => {
-          if (!itemAttributeMap[m.item_id]) {
-            itemAttributeMap[m.item_id] = [];
-          }
+        (mapRes.data || []).forEach(m => {
+          if (!itemAttributeMap[m.item_id]) itemAttributeMap[m.item_id] = [];
           itemAttributeMap[m.item_id].push(m.attribute_id);
         });
       } catch (err) {
-        console.log('Pricing attributes not available (migration may not be run yet):', err.message);
-        pricingAttributes = [];
-        itemAttributeMap = {};
-      }
-    }
-    
-    function renderItems(data) {
-      const tbody = $('#items-tbody');
-      clearElement(tbody);
-      
-      if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted p-xl">No items in catalog. Add your first item!</td></tr>';
+        console.error('Load error:', err);
+        showToast('Failed to load library data', 'error');
         return;
       }
-      
-      data.forEach(item => {
-        const row = createElement('tr');
-        const itemAttrs = itemAttributeMap[item.id] || [];
-        const attrNames = itemAttrs.map(attrId => {
-          const attr = pricingAttributes.find(a => a.id === attrId);
-          return attr?.name || '';
-        }).filter(Boolean);
-        
-        let priceDisplay;
-        if (item.default_price) {
-          priceDisplay = formatCurrency(item.default_price);
-          if (itemAttrs.length > 0) {
-            priceDisplay += ' <span class="text-muted text-sm">(base)</span>';
-          }
-        } else if (item.price_range_low && item.price_range_high) {
-          priceDisplay = `${formatCurrency(item.price_range_low)} - ${formatCurrency(item.price_range_high)}`;
-        } else {
-          priceDisplay = '—';
-        }
-        
-        row.innerHTML = `
-          <td>
-            <strong>${item.name}</strong>
-            ${item.description ? `<div class="text-sm text-muted">${item.description}</div>` : ''}
-            ${attrNames.length > 0 ? `<div class="text-sm" style="color: var(--color-primary); margin-top: 4px;">⚙ ${attrNames.join(', ')}</div>` : ''}
-          </td>
-          <td>${item.category || '—'}</td>
-          <td>${priceDisplay}</td>
-          <td><span class="badge badge-${item.is_active ? 'success' : 'draft'}">${item.is_active ? 'Active' : 'Inactive'}</span></td>
-          <td class="table-actions">
-            <button class="btn btn-ghost btn-sm" onclick="editItem('${item.id}')">Edit</button>
-            <button class="btn btn-ghost btn-sm" onclick="copyItem('${item.id}')" title="Duplicate this item">Copy</button>
-            <button class="btn btn-ghost btn-sm" onclick="deleteItem('${item.id}')">Delete</button>
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
+
+      // Set current library
+      if (!currentLibraryId && libraries.length > 0) {
+        const def = libraries.find(l => l.is_default);
+        currentLibraryId = def ? def.id : libraries[0].id;
+      }
+
+      renderLibrarySelect();
+      renderTree();
+      // Re-render detail if something is selected
+      if (activeTab === 'items' && selectedItemId) {
+        const item = items.find(i => i.id === selectedItemId);
+        if (item) renderItemDetail(item); else renderEmptyDetail();
+      } else if (activeTab === 'assemblies' && selectedAssemblyId) {
+        const asm = assemblies.find(a => a.id === selectedAssemblyId);
+        if (asm) renderAssemblyDetail(asm); else renderEmptyDetail();
+      }
     }
-    
-    // Search & Filter
-    const searchInput = $('#search-input');
-    const categoryFilter = $('#category-filter');
-    
-    function applyFilters() {
-      const query = searchInput.value.toLowerCase();
-      const category = categoryFilter.value;
-      
-      let filtered = items;
-      
-      if (query) {
-        filtered = filtered.filter(item => 
-          item.name.toLowerCase().includes(query) ||
-          (item.description && item.description.toLowerCase().includes(query))
+
+    // ── Library Select ──
+    function renderLibrarySelect() {
+      const sel = $('#library-select');
+      sel.innerHTML = libraries.map(l =>
+        `<option value="${l.id}" ${l.id === currentLibraryId ? 'selected' : ''}>${l.name}</option>`
+      ).join('');
+    }
+
+    $('#library-select').addEventListener('change', (e) => {
+      currentLibraryId = e.target.value;
+      selectedItemId = null;
+      selectedAssemblyId = null;
+      renderTree();
+      renderEmptyDetail();
+    });
+
+    // ── Tabs ──
+    document.querySelectorAll('.library-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.library-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeTab = tab.dataset.tab;
+        selectedItemId = null;
+        selectedAssemblyId = null;
+        updateSidebarActions();
+        renderTree();
+        renderEmptyDetail();
+      });
+    });
+
+    function updateSidebarActions() {
+      const row = $('#sidebar-actions');
+      if (activeTab === 'items') {
+        row.innerHTML = '<button class="btn btn-secondary" id="add-folder-btn">+ Folder</button><button class="btn btn-primary" id="add-item-btn">+ Item</button>';
+        $('#add-folder-btn').addEventListener('click', () => promptAddFolder());
+        $('#add-item-btn').addEventListener('click', () => createNewItem());
+      } else {
+        row.innerHTML = '<button class="btn btn-primary" id="add-assembly-btn" style="flex:1;">+ Assembly</button>';
+        $('#add-assembly-btn').addEventListener('click', () => createNewAssembly());
+      }
+    }
+
+    // ── Search ──
+    $('#tree-search').addEventListener('input', debounce((e) => {
+      searchQuery = e.target.value.toLowerCase();
+      renderTree();
+    }, 200));
+
+    // ── Tree Rendering ──
+    function renderTree() {
+      const container = $('#tree-container');
+      clearElement(container);
+
+      if (activeTab === 'items') {
+        renderItemsTree(container);
+      } else {
+        renderAssembliesTree(container);
+      }
+    }
+
+    function renderItemsTree(container) {
+      const libFolders = folders.filter(f => f.library_id === currentLibraryId && !f.parent_id);
+      const libItems = items.filter(i => i.library_id === currentLibraryId);
+
+      // Filter by search
+      let visibleItems = libItems;
+      if (searchQuery) {
+        visibleItems = libItems.filter(i =>
+          i.name.toLowerCase().includes(searchQuery) ||
+          (i.description && i.description.toLowerCase().includes(searchQuery)) ||
+          (i.item_number && i.item_number.toLowerCase().includes(searchQuery))
         );
       }
-      
-      if (category) {
-        filtered = filtered.filter(item => item.category === category);
+
+      const visibleItemIds = new Set(visibleItems.map(i => i.id));
+
+      // Render folders
+      libFolders.sort((a, b) => (a.sort_order - b.sort_order) || a.name.localeCompare(b.name));
+      libFolders.forEach(folder => {
+        const folderEl = renderFolder(folder, visibleItemIds);
+        if (folderEl) container.appendChild(folderEl);
+      });
+
+      // Render unfiled items (items with no folder in this library)
+      const unfiled = visibleItems.filter(i => !i.folder_id);
+      if (unfiled.length > 0) {
+        if (libFolders.length > 0) {
+          const label = createElement('div', { className: 'tree-unfiled-label', textContent: 'Unfiled' });
+          container.appendChild(label);
+        }
+        unfiled.forEach(item => container.appendChild(renderTreeItem(item)));
       }
-      
-      renderItems(filtered);
+
+      if (visibleItems.length === 0) {
+        container.appendChild(createElement('div', {
+          className: 'text-muted text-sm',
+          style: 'padding: var(--space-lg) var(--space-md); text-align: center;',
+          textContent: searchQuery ? 'No items match your search' : 'No items yet. Click + Item to add one.'
+        }));
+      }
     }
-    
-    searchInput.addEventListener('input', debounce(applyFilters, 300));
-    categoryFilter.addEventListener('change', applyFilters);
-    
-    // Add/Edit item
-    $('#add-item-btn').addEventListener('click', () => showItemModal());
-    
-    function showItemModal(item = null) {
-      const isEdit = !!item;
-      const itemAttrs = item ? (itemAttributeMap[item.id] || []) : [];
-      
-      const content = createElement('form', { id: 'item-form' });
-      content.innerHTML = `
-        <div class="form-group">
-          <label class="form-label">Item Name *</label>
-          <input type="text" name="name" class="form-input" value="${item?.name || ''}" required>
+
+    function renderFolder(folder, visibleItemIds) {
+      const folderItems = items.filter(i => i.folder_id === folder.id);
+      const visibleFolderItems = folderItems.filter(i => visibleItemIds.has(i.id));
+
+      // Get subfolders
+      const subfolders = folders.filter(f => f.parent_id === folder.id);
+
+      // If searching and no visible items in this folder or subfolders, skip
+      if (searchQuery && visibleFolderItems.length === 0 && subfolders.length === 0) return null;
+
+      const el = createElement('div', { className: 'tree-folder open' });
+
+      const header = createElement('div', { className: 'tree-folder-header' });
+      header.innerHTML = CHEVRON_SVG;
+      header.appendChild(createElement('span', { className: 'folder-name', textContent: folder.name }));
+      header.appendChild(createElement('span', { className: 'folder-count', textContent: `(${folderItems.length})` }));
+
+      // Folder actions
+      const actions = createElement('div', { className: 'folder-actions' });
+      const addBtn = createElement('button', { className: 'tree-icon-btn', title: 'Add item to folder', innerHTML: PLUS_SVG });
+      addBtn.addEventListener('click', (e) => { e.stopPropagation(); createNewItem(folder.id); });
+      const menuBtn = createElement('button', { className: 'tree-icon-btn', title: 'More', innerHTML: DOTS_SVG });
+      menuBtn.addEventListener('click', (e) => { e.stopPropagation(); showFolderMenu(e, folder); });
+      actions.appendChild(addBtn);
+      actions.appendChild(menuBtn);
+      header.appendChild(actions);
+
+      header.addEventListener('click', (e) => {
+        if (e.target.closest('.folder-actions')) return;
+        el.classList.toggle('open');
+        const chev = header.querySelector('.chevron');
+        chev.classList.toggle('open', el.classList.contains('open'));
+      });
+
+      // Right-click context menu
+      header.addEventListener('contextmenu', (e) => { e.preventDefault(); showFolderMenu(e, folder); });
+
+      el.appendChild(header);
+
+      const children = createElement('div', { className: 'tree-folder-children' });
+      // Sub-folders
+      subfolders.forEach(sf => {
+        const sfEl = renderFolder(sf, visibleItemIds);
+        if (sfEl) children.appendChild(sfEl);
+      });
+      // Items
+      visibleFolderItems.forEach(item => children.appendChild(renderTreeItem(item)));
+      el.appendChild(children);
+
+      return el;
+    }
+
+    function renderTreeItem(item) {
+      const el = createElement('div', {
+        className: 'tree-item' + (item.id === selectedItemId ? ' active' : ''),
+        dataset: { id: item.id }
+      });
+      el.appendChild(createElement('span', { className: 'item-name', textContent: item.name }));
+      if (item.default_price) {
+        el.appendChild(createElement('span', { className: 'item-price', textContent: formatCurrency(item.default_price) }));
+      }
+
+      el.addEventListener('click', () => selectItem(item.id));
+      el.addEventListener('contextmenu', (e) => { e.preventDefault(); showItemMenu(e, item); });
+      return el;
+    }
+
+    function renderAssembliesTree(container) {
+      const libAssemblies = assemblies.filter(a => a.library_id === currentLibraryId);
+      let visible = libAssemblies;
+      if (searchQuery) {
+        visible = libAssemblies.filter(a => a.name.toLowerCase().includes(searchQuery));
+      }
+
+      if (visible.length === 0) {
+        container.appendChild(createElement('div', {
+          className: 'text-muted text-sm',
+          style: 'padding: var(--space-lg) var(--space-md); text-align: center;',
+          textContent: searchQuery ? 'No assemblies match your search' : 'No assemblies yet. Click + Assembly to add one.'
+        }));
+        return;
+      }
+
+      visible.forEach(asm => {
+        const memberCount = assemblyItems.filter(ai => ai.assembly_id === asm.id).length;
+        const el = createElement('div', {
+          className: 'tree-assembly' + (asm.id === selectedAssemblyId ? ' active' : '')
+        });
+        el.appendChild(createElement('span', { style: 'flex:1;', textContent: asm.name }));
+        el.appendChild(createElement('span', { className: 'assembly-count', textContent: `${memberCount} items` }));
+
+        el.addEventListener('click', () => selectAssembly(asm.id));
+        el.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          showCtxMenu(e.clientX, e.clientY, [
+            { label: 'Rename', action: () => promptRenameAssembly(asm) },
+            { label: 'Delete', action: () => deleteAssembly(asm.id), danger: true }
+          ]);
+        });
+        container.appendChild(el);
+      });
+    }
+
+    // ── Selection ──
+    function selectItem(id) {
+      selectedItemId = id;
+      selectedAssemblyId = null;
+      // Highlight in tree
+      document.querySelectorAll('.tree-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+      const item = items.find(i => i.id === id);
+      if (item) renderItemDetail(item);
+    }
+
+    function selectAssembly(id) {
+      selectedAssemblyId = id;
+      selectedItemId = null;
+      document.querySelectorAll('.tree-assembly').forEach(el => el.classList.remove('active'));
+      // Find and mark active
+      const asm = assemblies.find(a => a.id === id);
+      if (asm) renderAssemblyDetail(asm);
+      // Re-render to update active state
+      renderTree();
+    }
+
+    // ── Detail Panel: Empty ──
+    function renderEmptyDetail() {
+      $('#detail-panel').innerHTML = '<div class="detail-empty">Select an item or assembly to view details</div>';
+    }
+
+    // ── Detail Panel: Item ──
+    function renderItemDetail(item) {
+      const panel = $('#detail-panel');
+      const itemAttrs = itemAttributeMap[item.id] || [];
+      // Find assemblies this item is in
+      const usedIn = assemblyItems
+        .filter(ai => ai.catalog_item_id === item.id)
+        .map(ai => assemblies.find(a => a.id === ai.assembly_id))
+        .filter(Boolean);
+
+      panel.innerHTML = `
+        <div class="detail-header">
+          <input type="text" class="detail-title-input" id="detail-name" value="${escapeHtml(item.name)}" placeholder="Item name">
         </div>
-        <div class="form-group">
+
+        <div class="detail-section">
+          <div class="detail-row">
+            <div class="form-group">
+              <label class="form-label">Item Number</label>
+              <input type="text" class="form-input" id="detail-item-number" value="${escapeHtml(item.item_number || '')}" placeholder="e.g., CAB-001">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <input type="text" class="form-input" id="detail-category" value="${escapeHtml(item.category || '')}" placeholder="Category label">
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
           <label class="form-label">Description</label>
-          <textarea name="description" class="form-textarea" rows="2">${item?.description || ''}</textarea>
+          <textarea class="form-textarea" id="detail-description" rows="3" placeholder="Item description...">${escapeHtml(item.description || '')}</textarea>
         </div>
-        <div class="form-group">
-          <label class="form-label">Category</label>
-          <select name="category" class="form-select">
-            <option value="">No category</option>
-            ${Array.from(categories).sort().map(c => `<option value="${c}" ${item?.category === c ? 'selected' : ''}>${c}</option>`).join('')}
-            <option value="__new__">+ New Category...</option>
-          </select>
-          <input type="text" name="category_new" class="form-input mt-sm" placeholder="Enter new category name" style="display:none;">
+
+        <div class="detail-section">
+          <div class="detail-row">
+            <div class="form-group">
+              <label class="form-label">Default Price</label>
+              <input type="number" class="form-input" id="detail-price" value="${item.default_price || ''}" step="0.01" min="0" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Folder</label>
+              <select class="form-select" id="detail-folder">
+                <option value="">No folder</option>
+                ${folders.filter(f => f.library_id === currentLibraryId).map(f =>
+                  `<option value="${f.id}" ${item.folder_id === f.id ? 'selected' : ''}>${f.name}</option>`
+                ).join('')}
+              </select>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Base Price</label>
-          <input type="number" name="default_price" class="form-input" value="${item?.default_price || ''}" step="0.01" min="0" placeholder="Base price before attribute adjustments">
-          <small class="text-muted">This is the starting price. Pricing attributes will adjust from this base.</small>
-        </div>
+
         ${pricingAttributes.length > 0 ? `
-        <div class="form-group">
-          <label class="form-label">Pricing Attributes</label>
-          <p class="text-muted text-sm mb-sm">Select which pricing attributes apply to this item. When added to quotes, users can select options that adjust the price.</p>
-          <div class="attributes-checklist" style="display: grid; gap: var(--space-sm); max-height: 200px; overflow-y: auto; padding: var(--space-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+        <div class="detail-section">
+          <div class="detail-section-title">Pricing Attributes</div>
+          <div style="display: grid; gap: var(--space-xs); max-height: 180px; overflow-y: auto; padding: var(--space-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md);">
             ${pricingAttributes.map(attr => `
               <label class="form-check" style="margin: 0;">
-                <input type="checkbox" name="attributes" value="${attr.id}" ${itemAttrs.includes(attr.id) ? 'checked' : ''}>
-                <span>
-                  <strong>${attr.name}</strong>
-                  <span class="text-muted text-sm"> - ${attr.options?.length || 0} options</span>
-                </span>
+                <input type="checkbox" name="detail-attr" value="${attr.id}" ${itemAttrs.includes(attr.id) ? 'checked' : ''}>
+                <span><strong>${escapeHtml(attr.name)}</strong> <span class="text-muted text-sm">- ${attr.options?.length || 0} options</span></span>
               </label>
             `).join('')}
           </div>
-          <a href="/admin/pricing-attributes.html" class="text-sm" style="color: var(--color-primary);">Manage pricing attributes →</a>
+          <a href="/admin/pricing-attributes.html" class="text-sm" style="color: var(--color-primary);">Manage pricing attributes</a>
+        </div>` : ''}
+
+        <div class="detail-section">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="detail-notes" rows="2" placeholder="Internal notes...">${escapeHtml(item.notes || '')}</textarea>
         </div>
-        ` : `
-        <div class="form-group">
-          <label class="form-label">Pricing Attributes</label>
-          <p class="text-muted text-sm">No pricing attributes created yet. <a href="/admin/pricing-attributes.html" style="color: var(--color-primary);">Create some</a> to enable dynamic pricing.</p>
-        </div>
-        `}
-        <div class="form-group">
+
+        <div class="detail-toggles">
           <label class="form-check">
-            <input type="checkbox" name="is_taxable" class="form-check-input" ${item?.is_taxable !== false ? 'checked' : ''}>
+            <input type="checkbox" id="detail-taxable" ${item.is_taxable !== false ? 'checked' : ''}>
             <span class="form-check-label">Taxable</span>
           </label>
-        </div>
-        <div class="form-group">
           <label class="form-check">
-            <input type="checkbox" name="is_active" class="form-check-input" ${item?.is_active !== false ? 'checked' : ''}>
-            <span class="form-check-label">Active (available for use in quotes)</span>
+            <input type="checkbox" id="detail-active" ${item.is_active !== false ? 'checked' : ''}>
+            <span class="form-check-label">Active</span>
           </label>
         </div>
+
+        ${usedIn.length > 0 ? `
+        <div class="detail-section">
+          <div class="detail-section-title">Used in Assemblies</div>
+          <div class="used-in-list">
+            ${usedIn.map(a => `<span class="used-in-badge">${escapeHtml(a.name)}</span>`).join('')}
+          </div>
+        </div>` : ''}
+
+        <div class="detail-actions">
+          <button class="btn btn-primary" id="detail-save-btn">Save</button>
+          <button class="btn btn-secondary" id="detail-copy-btn">Duplicate</button>
+          <button class="btn btn-ghost" id="detail-delete-btn" style="margin-left: auto; color: var(--color-danger);">Delete</button>
+        </div>
       `;
-      
-      const footer = createElement('div', { className: 'btn-group' });
-      const cancelBtn = createElement('button', {
-        type: 'button',
-        className: 'btn btn-secondary',
-        textContent: 'Cancel'
-      });
-      
-      // Add duplicate button for existing items
-      let duplicateBtn = null;
-      if (isEdit) {
-        duplicateBtn = createElement('button', {
-          type: 'button',
-          className: 'btn btn-ghost',
-          innerHTML: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Duplicate`
-        });
-      }
-      
-      const submitBtn = createElement('button', {
-        type: 'button',
-        className: 'btn btn-primary',
-        textContent: isEdit ? 'Save Changes' : 'Add Item'
-      });
-      footer.appendChild(cancelBtn);
-      if (duplicateBtn) footer.appendChild(duplicateBtn);
-      footer.appendChild(submitBtn);
-      
-      const modal = createModal({
-        title: isEdit ? 'Edit Catalog Item' : 'Add Catalog Item',
-        content,
-        footer,
-        size: 'lg'
-      });
-      
-      // Show/hide new category input
-      const catSelect = content.querySelector('[name="category"]');
-      const catNewInput = content.querySelector('[name="category_new"]');
-      catSelect.addEventListener('change', () => {
-        catNewInput.style.display = catSelect.value === '__new__' ? '' : 'none';
-        if (catSelect.value === '__new__') catNewInput.focus();
-      });
 
-      // Add event listeners AFTER modal is created
-      cancelBtn.addEventListener('click', () => closeModal(modal));
-
-      if (duplicateBtn) {
-        duplicateBtn.addEventListener('click', async () => {
-          closeModal(modal);
-          await copyItem(item.id);
-        });
-      }
-      
-      submitBtn.addEventListener('click', async () => {
-        // Manual validation check
-        const nameInput = content.querySelector('[name="name"]');
-        if (!nameInput.value.trim()) {
-          showToast('Item name is required', 'error');
-          nameInput.focus();
-          return;
-        }
-        await saveItem(content, item?.id);
-        closeModal(modal);
-      });
+      // Wire save
+      $('#detail-save-btn').addEventListener('click', () => saveItemDetail(item.id));
+      $('#detail-copy-btn').addEventListener('click', () => copyItem(item.id));
+      $('#detail-delete-btn').addEventListener('click', () => deleteItem(item.id));
     }
-    
-    async function saveItem(form, id = null) {
+
+    async function saveItemDetail(id) {
       try {
         const supabase = await app.waitForSupabase();
-        
         const data = {
-          name: form.querySelector('[name="name"]').value,
-          description: form.querySelector('[name="description"]').value || null,
-          category: (form.querySelector('[name="category"]').value === '__new__'
-            ? form.querySelector('[name="category_new"]').value.trim()
-            : form.querySelector('[name="category"]').value) || null,
-          default_price: parseFloat(form.querySelector('[name="default_price"]').value) || null,
-          is_taxable: form.querySelector('[name="is_taxable"]').checked,
-          is_active: form.querySelector('[name="is_active"]').checked
+          name: $('#detail-name').value.trim(),
+          item_number: $('#detail-item-number').value.trim() || null,
+          category: $('#detail-category').value.trim() || null,
+          description: $('#detail-description').value.trim() || null,
+          default_price: parseFloat($('#detail-price').value) || null,
+          folder_id: $('#detail-folder').value || null,
+          notes: $('#detail-notes').value.trim() || null,
+          is_taxable: $('#detail-taxable').checked,
+          is_active: $('#detail-active').checked,
+          updated_at: new Date().toISOString()
         };
-        
-        // Get selected attributes
-        const selectedAttrs = Array.from(form.querySelectorAll('[name="attributes"]:checked'))
-          .map(cb => cb.value);
-        
-        let itemId = id;
-        
-        if (id) {
-          await supabase.from('items_catalog').update(data).eq('id', id);
-          showToast('Item updated', 'success');
-        } else {
-          const { data: newItem, error } = await supabase.from('items_catalog').insert(data).select().single();
-          if (error) throw error;
-          itemId = newItem.id;
-          showToast('Item added', 'success');
+
+        if (!data.name) { showToast('Name is required', 'error'); return; }
+
+        const { error } = await supabase.from('items_catalog').update(data).eq('id', id);
+        if (error) throw error;
+
+        // Save attribute mappings
+        const selectedAttrs = Array.from(document.querySelectorAll('[name="detail-attr"]:checked')).map(cb => cb.value);
+        await supabase.from('catalog_item_attributes').delete().eq('item_id', id);
+        if (selectedAttrs.length > 0) {
+          await supabase.from('catalog_item_attributes').insert(
+            selectedAttrs.map((attrId, i) => ({ item_id: id, attribute_id: attrId, sort_order: i }))
+          );
         }
-        
-        // Update attribute mappings (if table exists)
-        try {
-          await supabase.from('catalog_item_attributes').delete().eq('item_id', itemId);
-          
-          if (selectedAttrs.length > 0) {
-            const mappings = selectedAttrs.map((attrId, index) => ({
-              item_id: itemId,
-              attribute_id: attrId,
-              sort_order: index
-            }));
-            await supabase.from('catalog_item_attributes').insert(mappings);
-          }
-        } catch (attrErr) {
-          console.log('Could not save attribute mappings (migration may not be run yet)');
-        }
-        
-        // Refresh data
-        await loadPricingAttributes();
-        loadItems();
+
+        showToast('Item saved', 'success');
+        await loadAll();
       } catch (err) {
         showToast('Failed to save: ' + err.message, 'error');
       }
     }
-    
-    window.editItem = (id) => {
+
+    async function createNewItem(folderId = null) {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: newItem, error } = await supabase.from('items_catalog').insert({
+          name: 'New Item',
+          library_id: currentLibraryId,
+          folder_id: folderId || null,
+          is_active: true,
+          is_taxable: true
+        }).select().single();
+        if (error) throw error;
+
+        showToast('Item created', 'success');
+        await loadAll();
+        selectItem(newItem.id);
+      } catch (err) {
+        showToast('Failed to create item: ' + err.message, 'error');
+      }
+    }
+
+    async function copyItem(id) {
       const item = items.find(i => i.id === id);
-      if (item) showItemModal(item);
-    };
-    
-    window.deleteItem = async (id) => {
-      if (!await confirm('Delete this catalog item?', { danger: true })) return;
-      
+      if (!item) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: newItem, error } = await supabase.from('items_catalog').insert({
+          name: item.name + ' (Copy)',
+          description: item.description,
+          category: item.category,
+          library_id: item.library_id,
+          folder_id: item.folder_id,
+          item_number: null,
+          default_price: item.default_price,
+          price_range_low: item.price_range_low,
+          price_range_high: item.price_range_high,
+          notes: item.notes,
+          is_taxable: item.is_taxable,
+          is_active: item.is_active
+        }).select().single();
+        if (error) throw error;
+
+        // Copy attributes
+        const attrs = itemAttributeMap[id] || [];
+        if (attrs.length > 0) {
+          await supabase.from('catalog_item_attributes').insert(
+            attrs.map((attrId, i) => ({ item_id: newItem.id, attribute_id: attrId, sort_order: i }))
+          );
+        }
+
+        showToast('Item duplicated', 'success');
+        await loadAll();
+        selectItem(newItem.id);
+      } catch (err) {
+        showToast('Failed to duplicate: ' + err.message, 'error');
+      }
+    }
+
+    async function deleteItem(id) {
+      if (!await confirm('Delete this item? This cannot be undone.', { danger: true })) return;
       try {
         const supabase = await app.waitForSupabase();
         await supabase.from('items_catalog').delete().eq('id', id);
         showToast('Item deleted', 'success');
-        loadItems();
+        selectedItemId = null;
+        renderEmptyDetail();
+        await loadAll();
       } catch (err) {
         showToast('Failed to delete: ' + err.message, 'error');
       }
-    };
-    
-    window.copyItem = async (id) => {
-      const item = items.find(i => i.id === id);
-      if (!item) return;
-      
+    }
+
+    // ── Detail Panel: Assembly ──
+    function renderAssemblyDetail(asm) {
+      const panel = $('#detail-panel');
+      const members = assemblyItems.filter(ai => ai.assembly_id === asm.id);
+      const totalPrice = members.reduce((sum, m) => {
+        const item = items.find(i => i.id === m.catalog_item_id);
+        return sum + (item?.default_price || 0) * (m.quantity || 1);
+      }, 0);
+
+      panel.innerHTML = `
+        <div class="detail-header">
+          <input type="text" class="detail-title-input" id="asm-name" value="${escapeHtml(asm.name)}" placeholder="Assembly name">
+        </div>
+
+        <div class="detail-section">
+          <label class="form-label">Description</label>
+          <textarea class="form-textarea" id="asm-description" rows="2" placeholder="Assembly description...">${escapeHtml(asm.description || '')}</textarea>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">Member Items</div>
+          <div id="asm-members"></div>
+          <button class="btn btn-secondary btn-sm mt-md" id="asm-add-item-btn">+ Add Item</button>
+        </div>
+
+        <div class="assembly-total">
+          <span>Total:</span>
+          <span id="asm-total">${formatCurrency(totalPrice)}</span>
+        </div>
+
+        <div class="detail-toggles">
+          <label class="form-check">
+            <input type="checkbox" id="asm-active" ${asm.is_active !== false ? 'checked' : ''}>
+            <span class="form-check-label">Active</span>
+          </label>
+        </div>
+
+        <div class="detail-actions">
+          <button class="btn btn-primary" id="asm-save-btn">Save</button>
+          <button class="btn btn-ghost" id="asm-delete-btn" style="margin-left: auto; color: var(--color-danger);">Delete</button>
+        </div>
+      `;
+
+      renderAssemblyMembers(members);
+      $('#asm-add-item-btn').addEventListener('click', () => showAssemblyItemPicker(asm.id));
+      $('#asm-save-btn').addEventListener('click', () => saveAssemblyDetail(asm.id));
+      $('#asm-delete-btn').addEventListener('click', () => deleteAssembly(asm.id));
+    }
+
+    function renderAssemblyMembers(members) {
+      const container = $('#asm-members');
+      clearElement(container);
+
+      if (members.length === 0) {
+        container.innerHTML = '<div class="text-muted text-sm p-md">No items in this assembly. Click + Add Item.</div>';
+        return;
+      }
+
+      members.forEach(m => {
+        const item = items.find(i => i.id === m.catalog_item_id);
+        if (!item) return;
+        const row = createElement('div', { className: 'assembly-member' });
+        row.innerHTML = `
+          <span class="member-name">${escapeHtml(item.name)}</span>
+          <input type="number" class="form-input member-qty" value="${m.quantity}" min="0.01" step="0.01" data-id="${m.id}">
+          <span class="member-price">${formatCurrency((item.default_price || 0) * (m.quantity || 1))}</span>
+          <button class="tree-icon-btn" title="Remove" data-remove="${m.id}">&times;</button>
+        `;
+
+        // Quantity change handler
+        const qtyInput = row.querySelector('.member-qty');
+        qtyInput.addEventListener('change', async () => {
+          const newQty = parseFloat(qtyInput.value) || 1;
+          try {
+            const supabase = await app.waitForSupabase();
+            await supabase.from('assembly_items').update({ quantity: newQty }).eq('id', m.id);
+            await loadAll();
+            const asm = assemblies.find(a => a.id === m.assembly_id);
+            if (asm) renderAssemblyDetail(asm);
+          } catch (err) {
+            showToast('Failed to update quantity', 'error');
+          }
+        });
+
+        // Remove handler
+        row.querySelector('[data-remove]').addEventListener('click', async () => {
+          try {
+            const supabase = await app.waitForSupabase();
+            await supabase.from('assembly_items').delete().eq('id', m.id);
+            await loadAll();
+            const asm = assemblies.find(a => a.id === m.assembly_id);
+            if (asm) renderAssemblyDetail(asm);
+          } catch (err) {
+            showToast('Failed to remove item', 'error');
+          }
+        });
+
+        container.appendChild(row);
+      });
+    }
+
+    function showAssemblyItemPicker(assemblyId) {
+      const existingIds = new Set(assemblyItems.filter(ai => ai.assembly_id === assemblyId).map(ai => ai.catalog_item_id));
+      const available = items.filter(i => i.is_active && !existingIds.has(i.id));
+
+      const content = createElement('div');
+      const search = createElement('input', { type: 'text', className: 'form-input mb-md', placeholder: 'Search items...' });
+      content.appendChild(search);
+      const list = createElement('div', { style: 'max-height: 350px; overflow-y: auto;' });
+      content.appendChild(list);
+
+      function renderList(q = '') {
+        clearElement(list);
+        const filtered = q ? available.filter(i => i.name.toLowerCase().includes(q.toLowerCase())) : available;
+        if (filtered.length === 0) {
+          list.innerHTML = '<div class="text-muted text-sm p-md">No items available</div>';
+          return;
+        }
+        filtered.forEach(item => {
+          const row = createElement('div', {
+            style: 'padding: 8px var(--space-md); cursor: pointer; display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border-light);',
+            onClick: async () => {
+              try {
+                const supabase = await app.waitForSupabase();
+                await supabase.from('assembly_items').insert({
+                  assembly_id: assemblyId,
+                  catalog_item_id: item.id,
+                  quantity: 1
+                });
+                closeModal(modal);
+                await loadAll();
+                const asm = assemblies.find(a => a.id === assemblyId);
+                if (asm) renderAssemblyDetail(asm);
+              } catch (err) {
+                showToast('Failed to add item', 'error');
+              }
+            }
+          });
+          row.appendChild(createElement('span', { textContent: item.name }));
+          row.appendChild(createElement('span', { className: 'text-muted text-sm', textContent: formatCurrency(item.default_price || 0) }));
+          list.appendChild(row);
+        });
+      }
+
+      renderList();
+      search.addEventListener('input', debounce(() => renderList(search.value), 200));
+
+      const modal = createModal({ title: 'Add Item to Assembly', content, size: 'sm' });
+    }
+
+    async function saveAssemblyDetail(id) {
       try {
         const supabase = await app.waitForSupabase();
-        
-        // Create new item with copied data
-        const newItemData = {
-          name: `${item.name} (Copy)`,
-          description: item.description,
-          category: item.category,
-          default_price: item.default_price,
-          price_range_low: item.price_range_low,
-          price_range_high: item.price_range_high,
-          is_taxable: item.is_taxable,
-          is_active: item.is_active
-        };
-        
-        const { data: newItem, error } = await supabase
-          .from('items_catalog')
-          .insert(newItemData)
-          .select()
-          .single();
-        
+        const name = $('#asm-name').value.trim();
+        if (!name) { showToast('Name is required', 'error'); return; }
+
+        const { error } = await supabase.from('assemblies').update({
+          name,
+          description: $('#asm-description').value.trim() || null,
+          is_active: $('#asm-active').checked
+        }).eq('id', id);
         if (error) throw error;
-        
-        // Copy attribute mappings
-        const itemAttrs = itemAttributeMap[id] || [];
-        if (itemAttrs.length > 0) {
-          const mappings = itemAttrs.map((attrId, index) => ({
-            item_id: newItem.id,
-            attribute_id: attrId,
-            sort_order: index
-          }));
-          await supabase.from('catalog_item_attributes').insert(mappings);
-        }
-        
-        showToast('Item duplicated successfully', 'success');
-        
-        // Refresh data and open the new item for editing
-        await loadPricingAttributes();
-        await loadItems();
-        
-        // Open the duplicated item in edit mode
-        const copiedItem = items.find(i => i.id === newItem.id);
-        if (copiedItem) {
-          showItemModal(copiedItem);
-        }
+
+        showToast('Assembly saved', 'success');
+        await loadAll();
       } catch (err) {
-        console.error('Copy error:', err);
-        showToast('Failed to copy item: ' + err.message, 'error');
+        showToast('Failed to save: ' + err.message, 'error');
       }
-    };
-    
-    // Initialize
-    async function init() {
-      await loadPricingAttributes();
-      await loadItems();
     }
-    init();
+
+    async function createNewAssembly() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: newAsm, error } = await supabase.from('assemblies').insert({
+          name: 'New Assembly',
+          library_id: currentLibraryId,
+          is_active: true
+        }).select().single();
+        if (error) throw error;
+
+        showToast('Assembly created', 'success');
+        await loadAll();
+        selectAssembly(newAsm.id);
+      } catch (err) {
+        showToast('Failed to create assembly: ' + err.message, 'error');
+      }
+    }
+
+    async function deleteAssembly(id) {
+      if (!await confirm('Delete this assembly?', { danger: true })) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        await supabase.from('assemblies').delete().eq('id', id);
+        showToast('Assembly deleted', 'success');
+        selectedAssemblyId = null;
+        renderEmptyDetail();
+        await loadAll();
+      } catch (err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+      }
+    }
+
+    function promptRenameAssembly(asm) {
+      const content = createElement('div');
+      content.innerHTML = `<div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="rename-asm-input" value="${escapeHtml(asm.name)}"></div>`;
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { className: 'btn btn-primary', textContent: 'Rename' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+      const modal = createModal({ title: 'Rename Assembly', content, footer, size: 'sm' });
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      saveBtn.addEventListener('click', async () => {
+        const name = $('#rename-asm-input').value.trim();
+        if (!name) return;
+        try {
+          const supabase = await app.waitForSupabase();
+          await supabase.from('assemblies').update({ name }).eq('id', asm.id);
+          closeModal(modal);
+          await loadAll();
+          if (selectedAssemblyId === asm.id) {
+            const updated = assemblies.find(a => a.id === asm.id);
+            if (updated) renderAssemblyDetail(updated);
+          }
+        } catch (err) {
+          showToast('Failed to rename', 'error');
+        }
+      });
+    }
+
+    // ── Folder CRUD ──
+    async function promptAddFolder() {
+      const content = createElement('div');
+      content.innerHTML = `<div class="form-group"><label class="form-label">Folder Name</label><input type="text" class="form-input" id="new-folder-input" placeholder="e.g., Cabinets"></div>`;
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { className: 'btn btn-primary', textContent: 'Create' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+      const modal = createModal({ title: 'New Folder', content, footer, size: 'sm' });
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      saveBtn.addEventListener('click', async () => {
+        const name = $('#new-folder-input').value.trim();
+        if (!name) return;
+        try {
+          const supabase = await app.waitForSupabase();
+          await supabase.from('library_folders').insert({ library_id: currentLibraryId, name });
+          closeModal(modal);
+          showToast('Folder created', 'success');
+          await loadAll();
+        } catch (err) {
+          showToast('Failed to create folder: ' + err.message, 'error');
+        }
+      });
+      setTimeout(() => $('#new-folder-input').focus(), 100);
+    }
+
+    async function promptRenameFolder(folder) {
+      const content = createElement('div');
+      content.innerHTML = `<div class="form-group"><label class="form-label">Folder Name</label><input type="text" class="form-input" id="rename-folder-input" value="${escapeHtml(folder.name)}"></div>`;
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { className: 'btn btn-primary', textContent: 'Rename' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+      const modal = createModal({ title: 'Rename Folder', content, footer, size: 'sm' });
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      saveBtn.addEventListener('click', async () => {
+        const name = $('#rename-folder-input').value.trim();
+        if (!name) return;
+        try {
+          const supabase = await app.waitForSupabase();
+          await supabase.from('library_folders').update({ name }).eq('id', folder.id);
+          closeModal(modal);
+          await loadAll();
+        } catch (err) {
+          showToast('Failed to rename folder', 'error');
+        }
+      });
+      setTimeout(() => $('#rename-folder-input').focus(), 100);
+    }
+
+    async function deleteFolder(id) {
+      const folderItems = items.filter(i => i.folder_id === id);
+      const msg = folderItems.length > 0
+        ? `Delete this folder? The ${folderItems.length} item(s) inside will become unfiled.`
+        : 'Delete this empty folder?';
+      if (!await confirm(msg, { danger: true })) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        // Unfile items first
+        if (folderItems.length > 0) {
+          await supabase.from('items_catalog').update({ folder_id: null }).eq('folder_id', id);
+        }
+        await supabase.from('library_folders').delete().eq('id', id);
+        showToast('Folder deleted', 'success');
+        await loadAll();
+      } catch (err) {
+        showToast('Failed to delete folder: ' + err.message, 'error');
+      }
+    }
+
+    // ── Library CRUD ──
+    $('#add-library-btn').addEventListener('click', () => {
+      const content = createElement('div');
+      content.innerHTML = `<div class="form-group"><label class="form-label">Library Name</label><input type="text" class="form-input" id="new-lib-input" placeholder="e.g., Kitchen Catalog"></div>`;
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { className: 'btn btn-secondary', textContent: 'Cancel' });
+      const saveBtn = createElement('button', { className: 'btn btn-primary', textContent: 'Create' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(saveBtn);
+      const modal = createModal({ title: 'New Library', content, footer, size: 'sm' });
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      saveBtn.addEventListener('click', async () => {
+        const name = $('#new-lib-input').value.trim();
+        if (!name) return;
+        try {
+          const supabase = await app.waitForSupabase();
+          const { data: newLib, error } = await supabase.from('libraries').insert({ name }).select().single();
+          if (error) throw error;
+          closeModal(modal);
+          currentLibraryId = newLib.id;
+          showToast('Library created', 'success');
+          await loadAll();
+        } catch (err) {
+          showToast('Failed to create library: ' + err.message, 'error');
+        }
+      });
+      setTimeout(() => $('#new-lib-input').focus(), 100);
+    });
+
+    // ── Context Menus ──
+    function showCtxMenu(x, y, menuItems) {
+      const menu = $('#ctx-menu');
+      clearElement(menu);
+      menuItems.forEach(mi => {
+        const btn = createElement('button', {
+          className: 'ctx-menu-item' + (mi.danger ? ' danger' : ''),
+          textContent: mi.label
+        });
+        btn.addEventListener('click', () => { hideCtxMenu(); mi.action(); });
+        menu.appendChild(btn);
+      });
+      menu.style.display = 'block';
+      menu.style.left = Math.min(x, window.innerWidth - 180) + 'px';
+      menu.style.top = Math.min(y, window.innerHeight - (menuItems.length * 40 + 10)) + 'px';
+    }
+
+    function hideCtxMenu() {
+      $('#ctx-menu').style.display = 'none';
+    }
+
+    document.addEventListener('click', hideCtxMenu);
+
+    function showFolderMenu(e, folder) {
+      showCtxMenu(e.clientX, e.clientY, [
+        { label: 'Add Item', action: () => createNewItem(folder.id) },
+        { label: 'Rename', action: () => promptRenameFolder(folder) },
+        { label: 'Delete Folder', action: () => deleteFolder(folder.id), danger: true }
+      ]);
+    }
+
+    function showItemMenu(e, item) {
+      showCtxMenu(e.clientX, e.clientY, [
+        { label: 'Duplicate', action: () => copyItem(item.id) },
+        { label: 'Delete', action: () => deleteItem(item.id), danger: true }
+      ]);
+    }
+
+    // ── Initialize ──
+    updateSidebarActions();
+    loadAll();
   </script>
 </body>
 </html>
