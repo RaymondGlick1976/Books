@@ -475,27 +475,191 @@
     };
     
     window.sendInvoice = async (id) => {
-      if (!await confirm('Send this invoice to the customer?')) return;
-      
-      try {
-        // Call email function
-        const response = await fetch('/.netlify/functions/send-invoice-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ invoiceId: id })
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Failed to send email');
-        }
-        
-        showToast('Invoice sent to customer!', 'success');
-        loadInvoices();
-      } catch (err) {
-        console.error('Send error:', err);
-        showToast('Failed to send: ' + err.message, 'error');
+      const invoice = invoices.find(i => i.id === id);
+      if (!invoice) return;
+      const customer = invoice.customers;
+      if (!customer || !customer.email) {
+        showToast('Customer email not found', 'error');
+        return;
       }
+
+      const firstName = customer.name?.split(' ')[0] || 'Customer';
+
+      // Fetch email template
+      let templateSubject = `Invoice #${invoice.invoice_number}: ${invoice.title}`;
+      let templateBody = `Hi ${firstName},\n\nHere is your invoice for recent services.`;
+
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: template } = await supabase
+          .from('email_templates')
+          .select('*')
+          .eq('template_type', 'invoice')
+          .eq('is_active', true)
+          .limit(1)
+          .single();
+
+        if (template) {
+          const replaceVars = (text) => text
+            .replace(/\{\{first_name\}\}/g, firstName)
+            .replace(/\{\{customer_name\}\}/g, customer.name || '')
+            .replace(/\{\{company_name\}\}/g, 'Homestead Cabinet Design')
+            .replace(/\{\{invoice_number\}\}/g, invoice.invoice_number || '')
+            .replace(/\{\{invoice_title\}\}/g, invoice.title || '')
+            .replace(/\{\{total\}\}/g, formatCurrency(invoice.total))
+            .replace(/\{\{amount_due\}\}/g, formatCurrency(invoice.amount_due))
+            .replace(/\{\{due_date\}\}/g, invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '');
+
+          templateSubject = replaceVars(template.subject);
+          templateBody = replaceVars(template.body);
+        }
+      } catch (e) {
+        console.log('Could not load email template, using defaults');
+      }
+
+      // Convert body to preview HTML
+      const bodyPreviewHtml = templateBody
+        .split('\n\n')
+        .map(p => p.trim())
+        .filter(Boolean)
+        .map(p => `<p style="color: #475569; font-size: 13px; margin: 0 0 10px; white-space: pre-wrap;">${p}</p>`)
+        .join('');
+
+      const content = createElement('div');
+      content.innerHTML = `
+        <div style="margin-bottom: var(--space-lg);">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
+            <div>
+              <label class="form-label">To:</label>
+              <div style="padding: 8px 12px; background: var(--color-bg-soft); border-radius: var(--radius-md);">${customer.email}</div>
+            </div>
+            <div>
+              <label class="form-label">Subject:</label>
+              <input type="text" id="email-subject" class="form-input" value="${templateSubject.replace(/"/g, '&quot;')}">
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+            <div>
+              <label class="form-label">CC: <span style="color: var(--color-text-muted); font-weight: normal;">(optional)</span></label>
+              <input type="text" id="email-cc" class="form-input" placeholder="email@example.com" value="raymond@homesteadcabinetdesign.com">
+            </div>
+            <div>
+              <label class="form-label">BCC: <span style="color: var(--color-text-muted); font-weight: normal;">(optional)</span></label>
+              <input type="text" id="email-bcc" class="form-input" placeholder="email@example.com">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Personal Message <span style="color: var(--color-text-muted); font-weight: normal;">(optional - replaces template body)</span></label>
+          <textarea id="email-custom-message" class="form-textarea" rows="3" placeholder="Add a personal note to the customer..."></textarea>
+        </div>
+
+        <div style="border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; margin-top: var(--space-lg);">
+          <div style="background: var(--color-bg-soft); padding: 8px 12px; border-bottom: 1px solid var(--color-border); font-weight: 600; font-size: 0.9rem;">
+            Email Preview <span style="font-weight: normal; color: var(--color-text-muted); font-size: 0.8rem;">(from Invoice Email template)</span>
+          </div>
+          <div style="padding: var(--space-md); background: white; max-height: 300px; overflow-y: auto;">
+            <div style="font-family: Arial, sans-serif; max-width: 500px;">
+              <div style="background: var(--color-primary); padding: 15px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h2 style="color: white; margin: 0; font-size: 16px;">Homestead Cabinet Design</h2>
+                <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0; font-size: 11px;">Love your kitchen again</p>
+              </div>
+
+              <div style="padding: 15px; background: #f8fafc;">
+                <div id="custom-message-preview" style="color: #475569; font-size: 13px; line-height: 1.6; margin-bottom: 10px; display: none; white-space: pre-wrap; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;"></div>
+
+                <div id="template-body-preview">${bodyPreviewHtml}</div>
+
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin: 10px 0;">
+                  <h4 style="color: var(--color-primary); margin: 0 0 5px; font-size: 14px;">${invoice.title}</h4>
+                  <p style="color: #475569; margin: 3px 0; font-size: 12px;"><strong>Invoice #:</strong> ${invoice.invoice_number}</p>
+                  <p style="color: #475569; margin: 3px 0; font-size: 12px;"><strong>Total:</strong> ${formatCurrency(invoice.total)}</p>
+                  <p style="color: #475569; margin: 3px 0; font-size: 12px;"><strong>Amount Due:</strong> <span style="color: #ef4444; font-weight: bold;">${formatCurrency(invoice.amount_due)}</span></p>
+                  ${invoice.due_date ? `<p style="color: #94a3b8; margin: 3px 0; font-size: 11px;">Due: ${new Date(invoice.due_date).toLocaleDateString()}</p>` : ''}
+                </div>
+
+                <div style="text-align: center; margin: 15px 0;">
+                  <span style="background: var(--color-primary); color: white; padding: 8px 20px; border-radius: 6px; font-size: 12px; font-weight: 600;">View Invoice & Pay</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+      const sendBtn = createElement('button', { type: 'button', className: 'btn btn-primary', innerHTML: 'Send Email' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(sendBtn);
+
+      const modal = createModal({
+        title: 'Send Invoice to Customer',
+        content,
+        footer,
+        size: 'lg'
+      });
+
+      // Live preview of custom message
+      const customMessageInput = content.querySelector('#email-custom-message');
+      const customMessagePreview = content.querySelector('#custom-message-preview');
+      const templateBodyPreview = content.querySelector('#template-body-preview');
+
+      customMessageInput.addEventListener('input', () => {
+        const msg = customMessageInput.value.trim();
+        if (msg) {
+          customMessagePreview.textContent = msg;
+          customMessagePreview.style.display = 'block';
+          templateBodyPreview.style.display = 'none';
+        } else {
+          customMessagePreview.style.display = 'none';
+          templateBodyPreview.style.display = 'block';
+        }
+      });
+
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+
+      sendBtn.addEventListener('click', async () => {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = 'Sending...';
+
+        try {
+          const customMessage = customMessageInput.value.trim();
+          const customSubject = content.querySelector('#email-subject').value.trim();
+          const cc = content.querySelector('#email-cc').value.trim();
+          const bcc = content.querySelector('#email-bcc').value.trim();
+
+          const response = await fetch('/.netlify/functions/send-invoice-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              invoiceId: id,
+              customMessage: customMessage || undefined,
+              customSubject: customSubject || undefined,
+              cc: cc || undefined,
+              bcc: bcc || undefined
+            })
+          });
+
+          if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Server error (${response.status})`);
+          }
+
+          const result = await response.json();
+          if (result.error) throw new Error(result.error);
+
+          showToast('Invoice sent to ' + customer.email, 'success');
+          closeModal(modal);
+          loadInvoices();
+        } catch (err) {
+          console.error('Send error:', err);
+          showToast('Failed to send: ' + err.message, 'error');
+          sendBtn.disabled = false;
+          sendBtn.innerHTML = 'Send Email';
+        }
+      });
     };
     
     window.recordPayment = (id) => {

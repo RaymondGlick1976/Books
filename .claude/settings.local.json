@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(npx netlify-cli:*)",
+      "Bash(cat:*)",
+      "Bash(git:*)",
+      "Bash(sed:*)"
+    ]
+  }
+}
