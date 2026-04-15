@@ -566,7 +566,7 @@
           supabase.from('assemblies').select('*').order('sort_order, name'),
           supabase.from('assembly_items').select('*').order('sort_order'),
           supabase.from('pricing_attributes').select('*, options:pricing_attribute_options(*)').eq('is_active', true).order('sort_order, name'),
-          supabase.from('catalog_item_attributes').select('item_id, attribute_id')
+          supabase.from('catalog_item_attributes').select('item_id, attribute_id, pricing_type')
         ]);
 
         libraries = libRes.data || [];
@@ -579,7 +579,7 @@
         itemAttributeMap = {};
         (mapRes.data || []).forEach(m => {
           if (!itemAttributeMap[m.item_id]) itemAttributeMap[m.item_id] = [];
-          itemAttributeMap[m.item_id].push(m.attribute_id);
+          itemAttributeMap[m.item_id].push({ attribute_id: m.attribute_id, pricing_type: m.pricing_type || 'each' });
         });
       } catch (err) {
         console.error('Load error:', err);
@@ -890,13 +890,23 @@
         ${pricingAttributes.length > 0 ? `
         <div class="detail-section">
           <div class="detail-section-title">Pricing Attributes</div>
-          <div style="display: grid; gap: var(--space-xs); max-height: 180px; overflow-y: auto; padding: var(--space-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md);">
-            ${pricingAttributes.map(attr => `
-              <label class="form-check" style="margin: 0;">
-                <input type="checkbox" name="detail-attr" value="${attr.id}" ${itemAttrs.includes(attr.id) ? 'checked' : ''}>
-                <span><strong>${escapeHtml(attr.name)}</strong> <span class="text-muted text-sm">- ${attr.options?.length || 0} options</span></span>
-              </label>
-            `).join('')}
+          <div style="display: grid; gap: var(--space-xs); max-height: 220px; overflow-y: auto; padding: var(--space-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+            ${pricingAttributes.map(attr => {
+              const mapping = itemAttrs.find(a => a.attribute_id === attr.id);
+              const isChecked = !!mapping;
+              const pType = mapping?.pricing_type || 'each';
+              return `
+              <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                <label class="form-check" style="margin: 0; flex: 1;">
+                  <input type="checkbox" name="detail-attr" value="${attr.id}" ${isChecked ? 'checked' : ''}>
+                  <span><strong>${escapeHtml(attr.name)}</strong> <span class="text-muted text-sm">- ${attr.options?.length || 0} options</span></span>
+                </label>
+                <select name="detail-attr-pricing-${attr.id}" class="form-select" style="width: auto; font-size: 0.75rem; padding: 2px 4px; height: auto;">
+                  <option value="each" ${pType === 'each' ? 'selected' : ''}>Each</option>
+                  <option value="sqft" ${pType === 'sqft' ? 'selected' : ''}>Square Feet (per Sq. Ft.)</option>
+                </select>
+              </div>`;
+            }).join('')}
           </div>
           <a href="/admin/pricing-attributes.html" class="text-sm" style="color: var(--color-primary);">Manage pricing attributes</a>
         </div>` : ''}
@@ -964,7 +974,10 @@
         await supabase.from('catalog_item_attributes').delete().eq('item_id', id);
         if (selectedAttrs.length > 0) {
           await supabase.from('catalog_item_attributes').insert(
-            selectedAttrs.map((attrId, i) => ({ item_id: id, attribute_id: attrId, sort_order: i }))
+            selectedAttrs.map((attrId, i) => {
+              const pricingType = document.querySelector(`[name="detail-attr-pricing-${attrId}"]`)?.value || 'each';
+              return { item_id: id, attribute_id: attrId, sort_order: i, pricing_type: pricingType };
+            })
           );
         }
 
@@ -1020,7 +1033,7 @@
         const attrs = itemAttributeMap[id] || [];
         if (attrs.length > 0) {
           await supabase.from('catalog_item_attributes').insert(
-            attrs.map((attrId, i) => ({ item_id: newItem.id, attribute_id: attrId, sort_order: i }))
+            attrs.map((a, i) => ({ item_id: newItem.id, attribute_id: a.attribute_id, sort_order: i, pricing_type: a.pricing_type || 'each' }))
           );
         }
 

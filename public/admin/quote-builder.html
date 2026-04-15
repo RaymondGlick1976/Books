@@ -1207,10 +1207,10 @@
           // Load catalog item -> attribute mappings
           const { data: mappingsData } = await supabase
             .from('catalog_item_attributes')
-            .select('item_id, attribute_id, sort_order')
+            .select('item_id, attribute_id, sort_order, pricing_type')
             .order('sort_order');
-          
-          // Build catalogItemAttributes map
+
+          // Build catalogItemAttributes map (attach catalog pricing_type to each attr copy)
           catalogItemAttributes = {};
           (mappingsData || []).forEach(m => {
             if (!catalogItemAttributes[m.item_id]) {
@@ -1218,7 +1218,7 @@
             }
             const attr = pricingAttributes.find(a => a.id === m.attribute_id);
             if (attr) {
-              catalogItemAttributes[m.item_id].push(attr);
+              catalogItemAttributes[m.item_id].push({ ...attr, catalog_pricing_type: m.pricing_type || 'each' });
             }
           });
         } catch (attrErr) {
@@ -1932,20 +1932,26 @@
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           const pricingType = selectedOpt?.pricing_type || 'each';
+          const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
+          const isSqft = catPricingType === 'sqft';
           const defaultUnitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
           const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
-          const showQty = selectedOpt && pricingType !== 'percentage';
-          const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice) : 0;
-          
+          const showQty = selectedOpt && pricingType !== 'percentage' && !isSqft;
+          const showDims = selectedOpt && isSqft && pricingType !== 'percentage';
+          const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity, currentBasePrice) : 0;
+
+          // Grid columns: select + price + (qty OR W+H) + total
+          const dimCols = showDims ? '70px 70px' : showQty ? '80px' : '';
+
           return `
             <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
-                <label class="form-label" style="margin: 0;">${attr.name}</label>
+                <label class="form-label" style="margin: 0;">${attr.name}${isSqft ? ' <span class="text-muted text-sm">(sq ft)</span>' : ''}</label>
                 <button type="button" class="btn btn-ghost btn-sm remove-instance" data-idx="${idx}" title="Remove">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${showQty ? '80px' : ''} 90px; gap: var(--space-sm); align-items: end;">
+              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${dimCols} 90px; gap: var(--space-sm); align-items: end;">
                 <div>
                   <select class="form-select attr-select" data-idx="${idx}">
                     <option value="">-- Select --</option>
@@ -1959,7 +1965,7 @@
                         priceLabel = ` ($${optPrice.toFixed(2)})`;
                       }
                       return `
-                        <option value="${opt.id}" 
+                        <option value="${opt.id}"
                           data-unit-price="${optPrice}"
                           data-pricing-type="${optType}"
                           data-name="${opt.name}"
@@ -1976,6 +1982,16 @@
                     <input type="number" class="form-input attr-unit-price" data-idx="${idx}" value="${effectiveUnitPrice}" min="0" step="0.01" style="font-size: 0.875rem;">
                   </div>
                 ` : ''}
+                ${showDims ? `
+                  <div>
+                    <label class="form-label text-sm">W (in)</label>
+                    <input type="number" class="form-input attr-width" data-idx="${idx}" value="${inst.width || ''}" min="0" step="0.01" placeholder="0" style="font-size: 0.875rem;">
+                  </div>
+                  <div>
+                    <label class="form-label text-sm">H (in)</label>
+                    <input type="number" class="form-input attr-height" data-idx="${idx}" value="${inst.height || ''}" min="0" step="0.01" placeholder="0" style="font-size: 0.875rem;">
+                  </div>
+                ` : ''}
                 ${showQty ? `
                   <div>
                     <label class="form-label text-sm">${PRICING_LABELS[pricingType] || 'Qty'}</label>
@@ -1987,6 +2003,7 @@
                   <div class="attr-line-total" style="font-weight: 600; color: var(--color-primary);">${formatCurrency(lineTotal)}</div>
                 </div>
               </div>
+              ${showDims && inst.width && inst.height ? `<div class="text-muted text-xs" style="margin-top: 4px; text-align: right;">${inst.width}\u2033 × ${inst.height}\u2033 = ${((inst.width * inst.height) / 144).toFixed(2)} sq ft</div>` : ''}
             </div>
           `;
         }).join('') : '<p class="text-muted text-center" style="padding: var(--space-lg);">No attributes added yet. Click a button below to add pricing attributes.</p>';
@@ -2024,26 +2041,29 @@
             currentBasePrice = parseFloat(basePriceInput.value) || 0;
           }
         }
-        
+
         let attributeTotal = 0;
-        
+
         attributeInstances.forEach(inst => {
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           if (selectedOpt) {
             const pricingType = selectedOpt.pricing_type || 'each';
+            const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
+            const isSqft = catPricingType === 'sqft';
             const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
-            attributeTotal += calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice);
+            const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+            attributeTotal += calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, qty, currentBasePrice);
           }
         });
-        
+
         const total = currentBasePrice + attributeTotal;
-        
+
         const previewEl = content.querySelector('#preview-price');
         const attrTotalEl = content.querySelector('#attr-total');
         const basePriceDisplay = content.querySelector('#base-price-display');
-        
+
         if (basePriceDisplay) basePriceDisplay.textContent = formatCurrency(currentBasePrice);
         if (previewEl) previewEl.textContent = formatCurrency(total);
         if (attrTotalEl) attrTotalEl.textContent = formatCurrency(attributeTotal);
@@ -2062,48 +2082,71 @@
             renderAttributeSelectors();
           });
         });
-        
+
+        // Helper to get effective qty for an instance (sqft = w*h, else quantity)
+        function getEffectiveQty(inst) {
+          const catPricingType = inst.catalogPricingType || inst.attr?.catalog_pricing_type || 'each';
+          return catPricingType === 'sqft' ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+        }
+
         // Unit price changes
         content.querySelectorAll('.attr-unit-price').forEach(inp => {
           inp.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.idx);
             const newPrice = parseFloat(e.target.value) || 0;
             attributeInstances[idx].unitPriceOverride = newPrice;
-            
-            // Update line total display
+
             const inst = attributeInstances[idx];
-            const attr = inst.attr;
-            const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+            const selectedOpt = inst.attr.options?.find(o => o.id === inst.optionId);
             if (selectedOpt) {
               const pricingType = selectedOpt.pricing_type || 'each';
-              const lineTotal = calculateAttributeLineTotalWithPrice(newPrice, pricingType, inst.quantity, basePrice);
+              const lineTotal = calculateAttributeLineTotalWithPrice(newPrice, pricingType, getEffectiveQty(inst), currentBasePrice);
               e.target.closest('.attr-instance').querySelector('.attr-line-total').textContent = formatCurrency(lineTotal);
             }
             updateTotalPreview();
           });
         });
-        
+
         // Quantity changes
         content.querySelectorAll('.attr-qty').forEach(inp => {
           inp.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.idx);
             attributeInstances[idx].quantity = parseFloat(e.target.value) || 0;
-            
-            // Update line total display
+
             const inst = attributeInstances[idx];
-            const attr = inst.attr;
-            const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+            const selectedOpt = inst.attr.options?.find(o => o.id === inst.optionId);
             if (selectedOpt) {
               const pricingType = selectedOpt.pricing_type || 'each';
               const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
               const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
-              const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, basePrice);
+              const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice);
               e.target.closest('.attr-instance').querySelector('.attr-line-total').textContent = formatCurrency(lineTotal);
             }
             updateTotalPreview();
           });
         });
-        
+
+        // Width/Height changes (sqft attributes)
+        content.querySelectorAll('.attr-width, .attr-height').forEach(inp => {
+          inp.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            const field = e.target.classList.contains('attr-width') ? 'width' : 'height';
+            attributeInstances[idx][field] = parseFloat(e.target.value) || 0;
+
+            const inst = attributeInstances[idx];
+            const selectedOpt = inst.attr.options?.find(o => o.id === inst.optionId);
+            if (selectedOpt) {
+              const pricingType = selectedOpt.pricing_type || 'each';
+              const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
+              const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
+              const sqft = ((inst.width || 0) * (inst.height || 0)) / 144;
+              const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, sqft, currentBasePrice);
+              e.target.closest('.attr-instance').querySelector('.attr-line-total').textContent = formatCurrency(lineTotal);
+            }
+            updateTotalPreview();
+          });
+        });
+
         // Remove instance buttons
         content.querySelectorAll('.remove-instance').forEach(btn => {
           btn.addEventListener('click', (e) => {
@@ -2112,7 +2155,7 @@
             renderAttributeSelectors();
           });
         });
-        
+
         // Add attribute buttons
         content.querySelectorAll('.add-attr-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
@@ -2123,9 +2166,12 @@
                 attrId: attr.id,
                 attrName: attr.name,
                 attr: attr,
+                catalogPricingType: attr.catalog_pricing_type || 'each',
                 optionId: '',
                 quantity: 1,
-                unitPriceOverride: null // Will hold custom price if user changes it
+                width: null,
+                height: null,
+                unitPriceOverride: null
               });
               renderAttributeSelectors();
             }
@@ -2226,14 +2272,16 @@
         
         // Gather all attribute selections with quantities
         const selections = [];
-        
+
         attributeInstances.forEach(inst => {
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           if (selectedOpt) {
-            // Use override price if set, otherwise use option's default price
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
-            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, finalBasePrice);
+            const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
+            const isSqft = catPricingType === 'sqft';
+            const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', qty, finalBasePrice);
             const selEntry = {
               attribute_id: inst.attrId,
               attribute_name: inst.attrName,
@@ -2241,9 +2289,14 @@
               option_name: selectedOpt.name,
               unit_price: effectiveUnitPrice,
               pricing_type: selectedOpt.pricing_type || 'each',
-              quantity: inst.quantity,
+              catalog_pricing_type: catPricingType,
+              quantity: qty,
               line_total: lineTotal
             };
+            if (isSqft) {
+              selEntry.width = inst.width || 0;
+              selEntry.height = inst.height || 0;
+            }
             // If attribute is public, embed available options for customer selection
             const attrObj = pricingAttributes.find(a => a.id === inst.attrId);
             if (attrObj?.is_public) {
@@ -2304,14 +2357,17 @@
             attrId: sel.attribute_id,
             attrName: sel.attribute_name,
             attr: attr,
+            catalogPricingType: sel.catalog_pricing_type || attr?.catalog_pricing_type || 'each',
             optionId: sel.option_id,
             quantity: sel.quantity || 1,
-            unitPriceOverride: sel.unit_price, // Keep the saved price as override
+            width: sel.width || null,
+            height: sel.height || null,
+            unitPriceOverride: sel.unit_price,
             hidden: sel.hidden || false
           };
-        }).filter(inst => inst.attr); // Filter out any with missing attributes
+        }).filter(inst => inst.attr);
       }
-      
+
       const PRICING_LABELS = {
         sqft: 'Sq. Ft.',
         linft: 'Lin. Ft.',
@@ -2326,15 +2382,20 @@
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           const pricingType = selectedOpt?.pricing_type || 'each';
+          const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
+          const isSqft = catPricingType === 'sqft';
           const defaultUnitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
           const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
-          const showQty = selectedOpt && pricingType !== 'percentage';
-          const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice) : 0;
+          const showQty = selectedOpt && pricingType !== 'percentage' && !isSqft;
+          const showDims = selectedOpt && isSqft && pricingType !== 'percentage';
+          const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity, currentBasePrice) : 0;
+
+          const dimCols = showDims ? '70px 70px' : showQty ? '80px' : '';
 
           return `
             <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
-                <label class="form-label" style="margin: 0;">${attr.name}</label>
+                <label class="form-label" style="margin: 0;">${attr.name}${isSqft ? ' <span class="text-muted text-sm">(sq ft)</span>' : ''}</label>
                 <div style="display: flex; align-items: center; gap: var(--space-sm);">
                   ${attr.is_public ? `<label class="form-check" style="margin: 0; font-size: 0.75rem; white-space: nowrap;" title="Hide this attribute from the customer portal">
                     <input type="checkbox" class="attr-hidden-check" data-idx="${idx}" ${inst.hidden ? 'checked' : ''}>
@@ -2345,7 +2406,7 @@
                   </button>
                 </div>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${showQty ? '80px' : ''} 90px; gap: var(--space-sm); align-items: end;">
+              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${dimCols} 90px; gap: var(--space-sm); align-items: end;">
                 <div>
                   <select class="form-select attr-select" data-idx="${idx}">
                     <option value="">-- Select --</option>
@@ -2376,6 +2437,16 @@
                     <input type="number" class="form-input attr-unit-price" data-idx="${idx}" value="${effectiveUnitPrice}" min="0" step="0.01" style="font-size: 0.875rem;">
                   </div>
                 ` : ''}
+                ${showDims ? `
+                  <div>
+                    <label class="form-label text-sm">W (in)</label>
+                    <input type="number" class="form-input attr-width" data-idx="${idx}" value="${inst.width || ''}" min="0" step="0.01" placeholder="0" style="font-size: 0.875rem;">
+                  </div>
+                  <div>
+                    <label class="form-label text-sm">H (in)</label>
+                    <input type="number" class="form-input attr-height" data-idx="${idx}" value="${inst.height || ''}" min="0" step="0.01" placeholder="0" style="font-size: 0.875rem;">
+                  </div>
+                ` : ''}
                 ${showQty ? `
                   <div>
                     <label class="form-label text-sm">${PRICING_LABELS[pricingType] || 'Qty'}</label>
@@ -2387,6 +2458,7 @@
                   <div class="attr-line-total" style="font-weight: 600; color: var(--color-primary);">${formatCurrency(lineTotal)}</div>
                 </div>
               </div>
+              ${showDims && inst.width && inst.height ? `<div class="text-muted text-xs" style="margin-top: 4px; text-align: right;">${inst.width}\u2033 × ${inst.height}\u2033 = ${((inst.width * inst.height) / 144).toFixed(2)} sq ft</div>` : ''}
             </div>
           `;
         }).join('') : '<p class="text-muted text-center" style="padding: var(--space-lg);">No attributes. Click a button below to add pricing attributes.</p>';
@@ -2405,23 +2477,26 @@
         updateTotalPreview();
         attachInstanceListeners();
       }
-      
+
       function updateTotalPreview() {
         let attributeTotal = 0;
-        
+
         attributeInstances.forEach(inst => {
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           if (selectedOpt) {
             const pricingType = selectedOpt.pricing_type || 'each';
+            const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
+            const isSqft = catPricingType === 'sqft';
             const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
-            attributeTotal += calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice);
+            const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+            attributeTotal += calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, qty, currentBasePrice);
           }
         });
-        
+
         const total = currentBasePrice + attributeTotal;
-        
+
         const previewEl = content.querySelector('#preview-price');
         const attrTotalEl = content.querySelector('#attr-total');
         const basePriceDisplay = content.querySelector('#base-price-display');
@@ -2444,35 +2519,39 @@
             renderAttributeSelectors();
           });
         });
-        
+
+        // Helper to get effective qty for an instance (sqft = w*h, else quantity)
+        function getEffectiveQty(inst) {
+          const catPricingType = inst.catalogPricingType || inst.attr?.catalog_pricing_type || 'each';
+          return catPricingType === 'sqft' ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+        }
+
         // Unit price changes
         content.querySelectorAll('.attr-unit-price').forEach(inp => {
           inp.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.idx);
             const newPrice = parseFloat(e.target.value) || 0;
             attributeInstances[idx].unitPriceOverride = newPrice;
-            
+
             const inst = attributeInstances[idx];
-            const attr = inst.attr;
-            const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+            const selectedOpt = inst.attr.options?.find(o => o.id === inst.optionId);
             if (selectedOpt) {
               const pricingType = selectedOpt.pricing_type || 'each';
-              const lineTotal = calculateAttributeLineTotalWithPrice(newPrice, pricingType, inst.quantity, currentBasePrice);
+              const lineTotal = calculateAttributeLineTotalWithPrice(newPrice, pricingType, getEffectiveQty(inst), currentBasePrice);
               e.target.closest('.attr-instance').querySelector('.attr-line-total').textContent = formatCurrency(lineTotal);
             }
             updateTotalPreview();
           });
         });
-        
+
         // Quantity changes
         content.querySelectorAll('.attr-qty').forEach(inp => {
           inp.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.idx);
             attributeInstances[idx].quantity = parseFloat(e.target.value) || 0;
-            
+
             const inst = attributeInstances[idx];
-            const attr = inst.attr;
-            const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+            const selectedOpt = inst.attr.options?.find(o => o.id === inst.optionId);
             if (selectedOpt) {
               const pricingType = selectedOpt.pricing_type || 'each';
               const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
@@ -2483,7 +2562,28 @@
             updateTotalPreview();
           });
         });
-        
+
+        // Width/Height changes (sqft attributes)
+        content.querySelectorAll('.attr-width, .attr-height').forEach(inp => {
+          inp.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            const field = e.target.classList.contains('attr-width') ? 'width' : 'height';
+            attributeInstances[idx][field] = parseFloat(e.target.value) || 0;
+
+            const inst = attributeInstances[idx];
+            const selectedOpt = inst.attr.options?.find(o => o.id === inst.optionId);
+            if (selectedOpt) {
+              const pricingType = selectedOpt.pricing_type || 'each';
+              const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
+              const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
+              const sqft = ((inst.width || 0) * (inst.height || 0)) / 144;
+              const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, sqft, currentBasePrice);
+              e.target.closest('.attr-instance').querySelector('.attr-line-total').textContent = formatCurrency(lineTotal);
+            }
+            updateTotalPreview();
+          });
+        });
+
         // Hide from customer checkboxes
         content.querySelectorAll('.attr-hidden-check').forEach(cb => {
           cb.addEventListener('change', (e) => {
@@ -2511,8 +2611,11 @@
                 attrId: attr.id,
                 attrName: attr.name,
                 attr: attr,
+                catalogPricingType: attr.catalog_pricing_type || 'each',
                 optionId: '',
                 quantity: 1,
+                width: null,
+                height: null,
                 unitPriceOverride: null
               });
               renderAttributeSelectors();
@@ -2520,7 +2623,7 @@
           });
         });
       }
-      
+
       content.innerHTML = `
         <div class="mb-lg">
           <div class="form-group">
@@ -2601,7 +2704,10 @@
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           if (selectedOpt) {
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
-            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, currentBasePrice);
+            const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
+            const isSqft = catPricingType === 'sqft';
+            const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', qty, currentBasePrice);
             attributeTotal += lineTotal;
             const selEntry = {
               attribute_id: inst.attrId,
@@ -2610,9 +2716,14 @@
               option_name: selectedOpt.name,
               unit_price: effectiveUnitPrice,
               pricing_type: selectedOpt.pricing_type || 'each',
-              quantity: inst.quantity,
+              catalog_pricing_type: catPricingType,
+              quantity: qty,
               line_total: lineTotal
             };
+            if (isSqft) {
+              selEntry.width = inst.width || 0;
+              selEntry.height = inst.height || 0;
+            }
             const attrObj = pricingAttributes.find(a => a.id === inst.attrId);
             if (attrObj?.is_public && !inst.hidden) {
               selEntry.is_public = true;
@@ -2755,15 +2866,18 @@
           });
           
           const PRICING_LABELS = { sqft: 'sq.ft.', linft: 'lin.ft.', each: '', percentage: '%' };
-          
+
           const attrLines = item.attributeSelections.map(sel => {
             const pricingType = sel.pricing_type || 'each';
+            const catPricingType = sel.catalog_pricing_type || 'each';
             const qty = sel.quantity || 1;
             const lineTotal = sel.line_total || 0;
-            
+
             const publicTag = sel.hidden ? ' <span style="color: var(--color-warning);">(hidden from customer)</span>' : sel.is_public ? ' <span style="color: var(--color-success);">(customer selectable)</span>' : '';
             if (pricingType === 'percentage') {
               return `${sel.attribute_name}: ${sel.option_name}${publicTag} (${sel.unit_price}%) = ${formatCurrency(lineTotal)}`;
+            } else if (catPricingType === 'sqft' && sel.width && sel.height) {
+              return `${sel.attribute_name}: ${sel.option_name}${publicTag} (${sel.width}\u2033 × ${sel.height}\u2033 = ${((sel.width * sel.height) / 144).toFixed(2)} sq.ft. × ${formatCurrency(sel.unit_price)}) = ${formatCurrency(lineTotal)}`;
             } else if (qty !== 1 || pricingType !== 'each') {
               const unitLabel = PRICING_LABELS[pricingType] ? ` ${PRICING_LABELS[pricingType]}` : '';
               return `${sel.attribute_name}: ${sel.option_name}${publicTag} (${qty}${unitLabel} × ${formatCurrency(sel.unit_price)}) = ${formatCurrency(lineTotal)}`;
@@ -4521,8 +4635,11 @@
             attrId: sel.attribute_id,
             attrName: sel.attribute_name,
             attr: attr,
+            catalogPricingType: sel.catalog_pricing_type || attr?.catalog_pricing_type || 'each',
             optionId: sel.option_id,
             quantity: sel.quantity || 1,
+            width: sel.width || null,
+            height: sel.height || null,
             unitPriceOverride: sel.unit_price
           };
         }).filter(inst => inst.attr);
@@ -4540,15 +4657,18 @@
       function calculateAttributeTotal() {
         let total = 0;
         const currentBasePrice = parseFloat(content.querySelector('#item-price')?.value) || 0;
-        
+
         attributeInstances.forEach(inst => {
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           if (selectedOpt) {
             const pricingType = selectedOpt.pricing_type || 'each';
+            const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
+            const isSqft = catPricingType === 'sqft';
             const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
-            total += calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice);
+            const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+            total += calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, qty, currentBasePrice);
           }
         });
         return total;
@@ -4570,25 +4690,30 @@
       
       function renderPkgAttributeSelectors() {
         const currentBasePrice = parseFloat(content.querySelector('#item-price')?.value) || 0;
-        
+
         const instancesHtml = attributeInstances.length > 0 ? attributeInstances.map((inst, idx) => {
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           const pricingType = selectedOpt?.pricing_type || 'each';
+          const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
+          const isSqft = catPricingType === 'sqft';
           const defaultUnitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
           const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
-          const showQty = selectedOpt && pricingType !== 'percentage';
-          const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, inst.quantity, currentBasePrice) : 0;
-          
+          const showQty = selectedOpt && pricingType !== 'percentage' && !isSqft;
+          const showDims = selectedOpt && isSqft && pricingType !== 'percentage';
+          const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity, currentBasePrice) : 0;
+
+          const dimCols = showDims ? '70px 70px' : showQty ? '80px' : '';
+
           return `
             <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
-                <label class="form-label" style="margin: 0;">${attr.name}</label>
+                <label class="form-label" style="margin: 0;">${attr.name}${isSqft ? ' <span class="text-muted text-sm">(sq ft)</span>' : ''}</label>
                 <button type="button" class="btn btn-ghost btn-sm pkg-remove-instance" data-idx="${idx}" title="Remove">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${showQty ? '80px' : ''} 90px; gap: var(--space-sm); align-items: end;">
+              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${dimCols} 90px; gap: var(--space-sm); align-items: end;">
                 <div>
                   <select class="form-select pkg-attr-select" data-idx="${idx}">
                     <option value="">-- Select --</option>
@@ -4602,7 +4727,7 @@
                         priceLabel = ` ($${optPrice.toFixed(2)})`;
                       }
                       return `
-                        <option value="${opt.id}" 
+                        <option value="${opt.id}"
                           data-unit-price="${optPrice}"
                           data-pricing-type="${optType}"
                           data-name="${opt.name}"
@@ -4619,6 +4744,16 @@
                     <input type="number" class="form-input pkg-attr-unit-price" data-idx="${idx}" value="${effectiveUnitPrice}" min="0" step="0.01" style="font-size: 0.875rem;">
                   </div>
                 ` : ''}
+                ${showDims ? `
+                  <div>
+                    <label class="form-label text-sm">W (in)</label>
+                    <input type="number" class="form-input pkg-attr-width" data-idx="${idx}" value="${inst.width || ''}" min="0" step="0.01" placeholder="0" style="font-size: 0.875rem;">
+                  </div>
+                  <div>
+                    <label class="form-label text-sm">H (in)</label>
+                    <input type="number" class="form-input pkg-attr-height" data-idx="${idx}" value="${inst.height || ''}" min="0" step="0.01" placeholder="0" style="font-size: 0.875rem;">
+                  </div>
+                ` : ''}
                 ${showQty ? `
                   <div>
                     <label class="form-label text-sm">${PRICING_LABELS[pricingType] || 'Qty'}</label>
@@ -4630,6 +4765,7 @@
                   <div class="pkg-attr-line-total" style="font-weight: 600; color: var(--color-primary);">${formatCurrency(lineTotal)}</div>
                 </div>
               </div>
+              ${showDims && inst.width && inst.height ? `<div class="text-muted text-xs" style="margin-top: 4px; text-align: right;">${inst.width}\u2033 × ${inst.height}\u2033 = ${((inst.width * inst.height) / 144).toFixed(2)} sq ft</div>` : ''}
             </div>
           `;
         }).join('') : '<p class="text-muted text-center" style="padding: var(--space-md);">No attributes. Click a button below to add pricing attributes.</p>';
@@ -4661,36 +4797,40 @@
             renderPkgAttributeSelectors();
           });
         });
-        
+
+        // Helper to get effective qty for an instance (sqft = w*h, else quantity)
+        function getEffectiveQty(inst) {
+          const catPricingType = inst.catalogPricingType || inst.attr?.catalog_pricing_type || 'each';
+          return catPricingType === 'sqft' ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+        }
+
         // Unit price changes
         content.querySelectorAll('.pkg-attr-unit-price').forEach(inp => {
           inp.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.idx);
             const newPrice = parseFloat(e.target.value) || 0;
             attributeInstances[idx].unitPriceOverride = newPrice;
-            
+
             const inst = attributeInstances[idx];
-            const attr = inst.attr;
-            const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+            const selectedOpt = inst.attr.options?.find(o => o.id === inst.optionId);
             const currentBasePrice = parseFloat(content.querySelector('#item-price')?.value) || 0;
             if (selectedOpt) {
               const pricingType = selectedOpt.pricing_type || 'each';
-              const lineTotal = calculateAttributeLineTotalWithPrice(newPrice, pricingType, inst.quantity, currentBasePrice);
+              const lineTotal = calculateAttributeLineTotalWithPrice(newPrice, pricingType, getEffectiveQty(inst), currentBasePrice);
               e.target.closest('.attr-instance').querySelector('.pkg-attr-line-total').textContent = formatCurrency(lineTotal);
             }
             updatePkgTotalPreview();
           });
         });
-        
+
         // Quantity changes
         content.querySelectorAll('.pkg-attr-qty').forEach(inp => {
           inp.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.idx);
             attributeInstances[idx].quantity = parseFloat(e.target.value) || 0;
-            
+
             const inst = attributeInstances[idx];
-            const attr = inst.attr;
-            const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
+            const selectedOpt = inst.attr.options?.find(o => o.id === inst.optionId);
             const currentBasePrice = parseFloat(content.querySelector('#item-price')?.value) || 0;
             if (selectedOpt) {
               const pricingType = selectedOpt.pricing_type || 'each';
@@ -4702,7 +4842,29 @@
             updatePkgTotalPreview();
           });
         });
-        
+
+        // Width/Height changes (sqft attributes)
+        content.querySelectorAll('.pkg-attr-width, .pkg-attr-height').forEach(inp => {
+          inp.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.dataset.idx);
+            const field = e.target.classList.contains('pkg-attr-width') ? 'width' : 'height';
+            attributeInstances[idx][field] = parseFloat(e.target.value) || 0;
+
+            const inst = attributeInstances[idx];
+            const selectedOpt = inst.attr.options?.find(o => o.id === inst.optionId);
+            const currentBasePrice = parseFloat(content.querySelector('#item-price')?.value) || 0;
+            if (selectedOpt) {
+              const pricingType = selectedOpt.pricing_type || 'each';
+              const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
+              const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
+              const sqft = ((inst.width || 0) * (inst.height || 0)) / 144;
+              const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, sqft, currentBasePrice);
+              e.target.closest('.attr-instance').querySelector('.pkg-attr-line-total').textContent = formatCurrency(lineTotal);
+            }
+            updatePkgTotalPreview();
+          });
+        });
+
         // Remove instance buttons
         content.querySelectorAll('.pkg-remove-instance').forEach(btn => {
           btn.addEventListener('click', (e) => {
@@ -4711,7 +4873,7 @@
             renderPkgAttributeSelectors();
           });
         });
-        
+
         // Add attribute buttons
         content.querySelectorAll('.pkg-add-attr-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
@@ -4722,8 +4884,11 @@
                 attrId: attr.id,
                 attrName: attr.name,
                 attr: attr,
+                catalogPricingType: attr.catalog_pricing_type || 'each',
                 optionId: '',
                 quantity: 1,
+                width: null,
+                height: null,
                 unitPriceOverride: null
               });
               renderPkgAttributeSelectors();
@@ -4858,7 +5023,10 @@
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           if (selectedOpt) {
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
-            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', inst.quantity, basePriceVal);
+            const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
+            const isSqft = catPricingType === 'sqft';
+            const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', qty, basePriceVal);
             attributeTotal += lineTotal;
             const selEntry = {
               attribute_id: inst.attrId,
@@ -4867,9 +5035,14 @@
               option_name: selectedOpt.name,
               unit_price: effectiveUnitPrice,
               pricing_type: selectedOpt.pricing_type || 'each',
-              quantity: inst.quantity,
+              catalog_pricing_type: catPricingType,
+              quantity: qty,
               line_total: lineTotal
             };
+            if (isSqft) {
+              selEntry.width = inst.width || 0;
+              selEntry.height = inst.height || 0;
+            }
             const attrObj = pricingAttributes.find(a => a.id === inst.attrId);
             if (attrObj?.is_public) {
               selEntry.is_public = true;

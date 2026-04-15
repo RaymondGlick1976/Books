@@ -2337,8 +2337,12 @@
       }
     }
     
-    function calculateAttributeLineTotal(unitPrice, pricingType, quantity, basePrice) {
+    function calculateAttributeLineTotal(unitPrice, pricingType, quantity, basePrice, sel) {
       if (pricingType === 'percentage') return basePrice * (unitPrice / 100);
+      // For sqft attributes, use (width * height) / 144 instead of quantity
+      if (sel && sel.catalog_pricing_type === 'sqft' && sel.width && sel.height) {
+        return unitPrice * ((sel.width * sel.height) / 144);
+      }
       return unitPrice * quantity;
     }
 
@@ -2368,7 +2372,7 @@
         sel.unit_price = newOption.unit_price;
       }
       sel.pricing_type = newOption.pricing_type;
-      sel.line_total = calculateAttributeLineTotal(sel.unit_price, sel.pricing_type, sel.quantity || 1, basePrice);
+      sel.line_total = calculateAttributeLineTotal(sel.unit_price, sel.pricing_type, sel.quantity || 1, basePrice, sel);
 
       // Recalculate item price
       const newAttrTotal = attrSelections.reduce((sum, s) => sum + (parseFloat(s.line_total) || 0), 0);

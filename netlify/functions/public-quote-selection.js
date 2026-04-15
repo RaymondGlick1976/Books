@@ -274,6 +274,8 @@ exports.handler = async (event) => {
       // Recalculate line_total for this attribute
       if (sel.pricing_type === 'percentage') {
         sel.line_total = basePrice * (sel.unit_price / 100);
+      } else if (sel.catalog_pricing_type === 'sqft' && sel.width && sel.height) {
+        sel.line_total = sel.unit_price * ((sel.width * sel.height) / 144);
       } else {
         sel.line_total = sel.unit_price * (sel.quantity || 1);
       }
