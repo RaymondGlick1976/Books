@@ -144,7 +144,7 @@ exports.handler = async (event) => {
 
     const emailHtml = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #6366f1; padding: 30px; text-align: center;">
+        <div style="background: #38571a; padding: 30px; text-align: center;">
           <h1 style="color: white; margin: 0; font-weight: 600;">${companyName}</h1>
           <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0; font-size: 14px;">${companyTagline}</p>
         </div>
@@ -153,18 +153,18 @@ exports.handler = async (event) => {
           ${bodyHtml}
           
           <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
-            <h3 style="color: #6366f1; margin-top: 0;">${quote.title}</h3>
+            <h3 style="color: #38571a; margin-top: 0;">${quote.title}</h3>
             <p style="color: #475569; margin: 5px 0;"><strong>Quote #:</strong> ${quote.quote_number}</p>
-            <p style="color: #475569; margin: 5px 0;"><strong>Total:</strong> <span style="color: #6366f1; font-size: 18px; font-weight: bold;">${totalDisplay}</span></p>
+            <p style="color: #475569; margin: 5px 0;"><strong>Total:</strong> <span style="color: #38571a; font-size: 18px; font-weight: bold;">${totalDisplay}</span></p>
             ${quote.expires_at ? `<p style="color: #94a3b8; margin: 5px 0; font-size: 14px;">Valid until: ${new Date(quote.expires_at).toLocaleDateString()}</p>` : ''}
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${directLink}" style="background: #6366f1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">View Quote</a>
+            <a href="${directLink}" style="background: #38571a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">View Quote</a>
           </div>
           
-          <div style="background: #e0e7ff; border-radius: 8px; padding: 15px; margin: 20px 0;">
-            <p style="color: #4338ca; font-size: 14px; margin: 0 0 10px 0; font-weight: 600;">
+          <div style="background: #eaf2dc; border-radius: 8px; padding: 15px; margin: 20px 0;">
+            <p style="color: #2a4213; font-size: 14px; margin: 0 0 10px 0; font-weight: 600;">
               📋 If the button doesn't work, copy and paste this link into your browser:
             </p>
             <p style="color: #1e293b; font-size: 13px; margin: 0; word-break: break-all; background: white; padding: 10px; border-radius: 4px; font-family: monospace;">
@@ -179,7 +179,7 @@ exports.handler = async (event) => {
           <div style="border-top: 1px solid #e2e8f0; margin-top: 20px; padding-top: 20px;">
             <p style="color: #64748b; font-size: 14px; margin: 0;">
               Want to view all your quotes, invoices, and upload files? 
-              <a href="${siteUrl}/portal/login.html" style="color: #6366f1; text-decoration: underline;">Access your Customer Portal</a>
+              <a href="${siteUrl}/portal/login.html" style="color: #38571a; text-decoration: underline;">Access your Customer Portal</a>
             </p>
           </div>
         </div>
