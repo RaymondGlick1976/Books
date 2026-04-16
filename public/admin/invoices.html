@@ -229,7 +229,7 @@
       const supabase = await app.waitForSupabase();
       const { data: freshInvoice } = await supabase
         .from('invoices')
-        .select('*, customers(name, email, phone, address, city, state, zip)')
+        .select('*, customers(name, email, phone, address, city, state, zip, company)')
         .eq('id', id)
         .single();
       const invoice = freshInvoice || invoices.find(i => i.id === id);
@@ -767,6 +767,13 @@
       const companyPhone = company.phone || '';
       const companyEmail = company.email || '';
       const companyAddress = company.address || '';
+      const companyCity = company.city || '';
+      const companyState = company.state || '';
+      const companyZip = company.zip || '';
+      const companyCityStateZip = [
+        companyCity,
+        [companyState, companyZip].filter(Boolean).join(' ')
+      ].filter(Boolean).join(', ');
 
       let itemsHtml = '';
       if (lineItems && lineItems.length > 0) {
@@ -824,6 +831,7 @@
         ${companyPhone ? `<div style="color:#666;font-size:13px;">${companyPhone}</div>` : ''}
         ${companyEmail ? `<div style="color:#666;font-size:13px;">${companyEmail}</div>` : ''}
         ${companyAddress ? `<div style="color:#666;font-size:13px;">${companyAddress}</div>` : ''}
+        ${companyCityStateZip ? `<div style="color:#666;font-size:13px;">${companyCityStateZip}</div>` : ''}
       </div>
     </div>
     <div style="text-align:right;">
@@ -836,6 +844,7 @@
     <div>
       <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#999;">Bill To</div>
       <div style="font-weight:600;font-size:15px;margin-top:4px;">${invoice.customers?.name || '—'}</div>
+      ${invoice.customers?.company ? `<div style="font-size:13px;">${invoice.customers.company}</div>` : ''}
       ${invoice.customers?.email ? `<div style="color:#666;font-size:13px;">${invoice.customers.email}</div>` : ''}
     </div>
     <div style="text-align:right;">
@@ -1042,7 +1051,11 @@
     window.printInvoiceById = async (id) => {
       try {
         const supabase = await app.waitForSupabase();
-        const invoice = invoices.find(i => i.id === id);
+        const { data: invoice } = await supabase
+          .from('invoices')
+          .select('*, customers(name, email, phone, address, city, state, zip, company)')
+          .eq('id', id)
+          .single();
         if (!invoice) return;
         const { data: lineItems } = await supabase.from('invoice_line_items').select('*').eq('invoice_id', id).order('sort_order');
         const { data: payments } = await supabase.from('payments').select('*').eq('invoice_id', id).eq('status', 'succeeded').order('payment_date');
