@@ -664,6 +664,17 @@
       try {
         const supabase = await app.waitForSupabase();
 
+        // Guard: if an invoice already exists for this quote, don't create another
+        const { data: existingInvoices } = await supabase
+          .from('invoices')
+          .select('id, invoice_number')
+          .eq('quote_id', quote.id)
+          .limit(1);
+        if (existingInvoices && existingInvoices.length > 0) {
+          showToast(`Invoice ${existingInvoices[0].invoice_number} already exists for this quote`, 'error');
+          return;
+        }
+
         // Get accepted change orders with items
         const { data: cos } = await supabase
           .from('change_orders')

@@ -361,11 +361,22 @@
 
     window.createInvoice = async (quoteId) => {
       if (!confirm('Create an invoice from this quote?')) return;
-      
+
       try {
         const supabase = await app.waitForSupabase();
         const quote = quotes.find(q => q.id === quoteId);
-        
+
+        // Guard: if an invoice already exists for this quote, don't create another
+        const { data: existingInvoices } = await supabase
+          .from('invoices')
+          .select('id, invoice_number')
+          .eq('quote_id', quoteId)
+          .limit(1);
+        if (existingInvoices && existingInvoices.length > 0) {
+          showToast(`Invoice ${existingInvoices[0].invoice_number} already exists for this quote`, 'error');
+          return;
+        }
+
         // Get line items
         const { data: lineItems } = await supabase
           .from('quote_line_items')

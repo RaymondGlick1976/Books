@@ -84,6 +84,21 @@ exports.handler = async (event) => {
 
       // Create invoice from quote
       try {
+        // Guard: if an invoice already exists for this quote, don't create another
+        const { data: existingInvoices } = await supabase
+          .from('invoices')
+          .select('id, invoice_number')
+          .eq('quote_id', quote_id)
+          .limit(1);
+        if (existingInvoices && existingInvoices.length > 0) {
+          console.log('Invoice already exists for quote, skipping creation:', existingInvoices[0].invoice_number);
+          return success({
+            accepted: true,
+            message: 'Quote accepted. Payment instructions will be provided.',
+            payment_method: 'check'
+          });
+        }
+
         // Check for packages
         const { data: packages } = await supabase
           .from('quote_packages')
@@ -102,7 +117,8 @@ exports.handler = async (event) => {
           if (selectedPkg) {
             invoiceSubtotal = parseFloat(selectedPkg.price) || 0;
             const taxRate = parseFloat(quote.tax_rate ?? 0);
-            invoiceTaxAmount = invoiceSubtotal * taxRate;
+            const pkgTaxable = selectedPkg.apply_tax === true ? invoiceSubtotal : 0;
+            invoiceTaxAmount = pkgTaxable * taxRate;
             invoiceTotal = invoiceSubtotal + invoiceTaxAmount;
           }
         } else {
@@ -175,7 +191,9 @@ exports.handler = async (event) => {
             }
           } else {
             // For package-based quotes, create a single line item for the package
-            const selectedPkg = packages.find(p => p.is_selected) || packages[0];
+            const selectedPkg = selected_package_id
+              ? packages.find(p => p.id === selected_package_id)
+              : packages.find(p => p.is_selected) || packages[0];
             if (selectedPkg) {
               await supabase.from('invoice_line_items').insert({
                 invoice_id: invoice.id,
@@ -185,7 +203,7 @@ exports.handler = async (event) => {
                 unit: 'each',
                 unit_price: parseFloat(selectedPkg.price) || invoiceSubtotal,
                 line_total: parseFloat(selectedPkg.price) || invoiceSubtotal,
-                is_taxable: true,
+                is_taxable: selectedPkg.apply_tax === true,
                 sort_order: 0,
               });
             }
