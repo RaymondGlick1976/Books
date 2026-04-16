@@ -1941,7 +1941,11 @@
           const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity, currentBasePrice) : 0;
 
           // Grid columns: select + price + (qty OR W+H) + total
+          // For sqft (showDims): select spans full width, then $/unit + W + H + Total on next row
           const dimCols = showDims ? '70px 70px' : showQty ? '80px' : '';
+          const gridCols = showDims
+            ? '1fr 1fr 1fr 90px'
+            : `1fr ${selectedOpt ? '80px' : ''} ${dimCols} 90px`;
 
           return `
             <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
@@ -1951,8 +1955,8 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${dimCols} 90px; gap: var(--space-sm); align-items: end;">
-                <div>
+              <div style="display: grid; grid-template-columns: ${gridCols}; gap: var(--space-sm); align-items: end;">
+                <div${showDims ? ' style="grid-column: 1 / -1;"' : ''}>
                   <select class="form-select attr-select" data-idx="${idx}">
                     <option value="">-- Select --</option>
                     ${(attr.options || []).sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map(opt => {
@@ -2255,7 +2259,7 @@
         title: 'Configure Item Options',
         content,
         footer,
-        size: 'md'
+        size: 'lg'
       });
       
       cancelBtn.addEventListener('click', () => closeModal(modal));
@@ -2394,7 +2398,11 @@
           const showDims = selectedOpt && isSqft && pricingType !== 'percentage';
           const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity, currentBasePrice) : 0;
 
+          // For sqft (showDims): select spans full width, then $/unit + W + H + Total on next row
           const dimCols = showDims ? '70px 70px' : showQty ? '80px' : '';
+          const gridCols = showDims
+            ? '1fr 1fr 1fr 90px'
+            : `1fr ${selectedOpt ? '80px' : ''} ${dimCols} 90px`;
 
           return `
             <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
@@ -2410,8 +2418,8 @@
                   </button>
                 </div>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${dimCols} 90px; gap: var(--space-sm); align-items: end;">
-                <div>
+              <div style="display: grid; grid-template-columns: ${gridCols}; gap: var(--space-sm); align-items: end;">
+                <div${showDims ? ' style="grid-column: 1 / -1;"' : ''}>
                   <select class="form-select attr-select" data-idx="${idx}">
                     <option value="">-- Select --</option>
                     ${(attr.options || []).sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map(opt => {
@@ -2697,7 +2705,7 @@
         title: 'Edit Item',
         content,
         footer,
-        size: 'md'
+        size: 'lg'
       });
       
       cancelBtn.addEventListener('click', () => closeModal(modal));
@@ -4711,7 +4719,11 @@
           const showDims = selectedOpt && isSqft && pricingType !== 'percentage';
           const lineTotal = selectedOpt ? calculateAttributeLineTotalWithPrice(effectiveUnitPrice, pricingType, isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity, currentBasePrice) : 0;
 
+          // For sqft (showDims): select spans full width, then $/unit + W + H + Total on next row
           const dimCols = showDims ? '70px 70px' : showQty ? '80px' : '';
+          const gridCols = showDims
+            ? '1fr 1fr 1fr 90px'
+            : `1fr ${selectedOpt ? '80px' : ''} ${dimCols} 90px`;
 
           return `
             <div class="attr-instance" data-idx="${idx}" style="padding: var(--space-md); background: var(--color-bg); border-radius: var(--radius-md); margin-bottom: var(--space-md);">
@@ -4721,8 +4733,8 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr ${selectedOpt ? '80px' : ''} ${dimCols} 90px; gap: var(--space-sm); align-items: end;">
-                <div>
+              <div style="display: grid; grid-template-columns: ${gridCols}; gap: var(--space-sm); align-items: end;">
+                <div${showDims ? ' style="grid-column: 1 / -1;"' : ''}>
                   <select class="form-select pkg-attr-select" data-idx="${idx}">
                     <option value="">-- Select --</option>
                     ${(attr.options || []).sort((a,b) => (a.sort_order || 0) - (b.sort_order || 0)).map(opt => {
