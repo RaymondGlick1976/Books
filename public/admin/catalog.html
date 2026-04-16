@@ -848,14 +848,14 @@
 
       panel.innerHTML = `
         <div class="detail-header">
-          <input type="text" class="detail-title-input" id="detail-name" value="${escapeHtml(item.name)}" placeholder="Item name">
+          <h2 class="detail-title-input" id="detail-title">${escapeHtml(item.name || 'New Item')}</h2>
         </div>
 
         <div class="detail-section">
           <div class="detail-row">
             <div class="form-group">
-              <label class="form-label">Item Number</label>
-              <input type="text" class="form-input" id="detail-item-number" value="${escapeHtml(item.item_number || '')}" placeholder="e.g., CAB-001">
+              <label class="form-label">Item Name</label>
+              <input type="text" class="form-input" id="detail-name" value="${escapeHtml(item.name || '')}" placeholder="e.g., Shaker Door">
             </div>
             <div class="form-group">
               <label class="form-label">Category</label>
@@ -942,6 +942,16 @@
         </div>
       `;
 
+      // Live-update the sidebar entry and the detail title as the user types the name
+      $('#detail-name').addEventListener('input', (e) => {
+        const newName = e.target.value;
+        const displayName = newName.trim() || 'New Item';
+        const titleEl = $('#detail-title');
+        if (titleEl) titleEl.textContent = displayName;
+        const sidebarEntry = document.querySelector(`.tree-item[data-id="${item.id}"] .item-name`);
+        if (sidebarEntry) sidebarEntry.textContent = displayName;
+      });
+
       // Wire save
       $('#detail-save-btn').addEventListener('click', () => saveItemDetail(item.id));
       $('#detail-copy-btn').addEventListener('click', () => copyItem(item.id));
@@ -953,7 +963,6 @@
         const supabase = await app.waitForSupabase();
         const data = {
           name: $('#detail-name').value.trim(),
-          item_number: $('#detail-item-number').value.trim() || null,
           category: $('#detail-category').value.trim() || null,
           description: $('#detail-description').value.trim() || null,
           default_price: parseFloat($('#detail-price').value) || null,
