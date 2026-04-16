@@ -1926,7 +1926,7 @@
       
       // Track the base price for custom items (can be edited)
       let currentBasePrice = basePrice;
-      
+
       function renderAttributeSelectors() {
         const instancesHtml = attributeInstances.length > 0 ? attributeInstances.map((inst, idx) => {
           const attr = inst.attr;
@@ -1934,6 +1934,7 @@
           const pricingType = selectedOpt?.pricing_type || 'each';
           const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
           const isSqft = catPricingType === 'sqft';
+          console.log('[AttrDebug] idx:', idx, 'attr:', JSON.stringify({ id: attr.id, name: attr.name, catalog_pricing_type: attr.catalog_pricing_type }), 'inst.catalogPricingType:', inst.catalogPricingType, 'catPricingType:', catPricingType, 'isSqft:', isSqft, 'option pricing_type:', pricingType);
           const defaultUnitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
           const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
           const showQty = selectedOpt && pricingType !== 'percentage' && !isSqft;
