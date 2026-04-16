@@ -1118,9 +1118,9 @@
         
         if (settings.quotes) {
           const quotes = settings.quotes;
-          $('#default-valid-days').value = quotes.default_valid_days || 30;
-          $('#default-tax-rate').value = quotes.default_tax_rate || 6.25;
-          $('#default-deposit').value = quotes.default_deposit || 50;
+          $('#default-valid-days').value = quotes.default_valid_days ?? 30;
+          $('#default-tax-rate').value = quotes.default_tax_rate ?? 6.25;
+          $('#default-deposit').value = quotes.default_deposit ?? 50;
         }
         
         if (settings.invoices) {
@@ -1209,10 +1209,13 @@
     // Quote settings form
     $('#quote-settings-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const validDays = parseInt($('#default-valid-days').value);
+      const taxRate = parseFloat($('#default-tax-rate').value);
+      const deposit = parseInt($('#default-deposit').value);
       const value = {
-        default_valid_days: parseInt($('#default-valid-days').value) || 30,
-        default_tax_rate: parseFloat($('#default-tax-rate').value) || 6.25,
-        default_deposit: parseInt($('#default-deposit').value) || 50
+        default_valid_days: Number.isFinite(validDays) ? validDays : 30,
+        default_tax_rate: Number.isFinite(taxRate) ? taxRate : 6.25,
+        default_deposit: Number.isFinite(deposit) ? deposit : 50
       };
       await saveSetting('quotes', value);
     });
@@ -3714,9 +3717,9 @@
           // Handle quote settings
           if (s.key === 'quotes' && s.value) {
             const quotes = s.value;
-            $('#default-valid-days').value = quotes.default_valid_days || 30;
-            $('#default-tax-rate').value = quotes.default_tax_rate || 6.25;
-            $('#default-deposit').value = quotes.default_deposit || 50;
+            $('#default-valid-days').value = quotes.default_valid_days ?? 30;
+            $('#default-tax-rate').value = quotes.default_tax_rate ?? 6.25;
+            $('#default-deposit').value = quotes.default_deposit ?? 50;
             return;
           }
           const input = document.getElementById(s.key);
