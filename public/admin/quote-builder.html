@@ -811,6 +811,10 @@
                     <span>Total</span>
                     <span id="summary-total">$0.00</span>
                   </div>
+                  <div class="summary-row text-muted" id="summary-optional-row" style="display: none; margin-top: var(--space-sm); padding-top: var(--space-sm); border-top: 1px dashed var(--color-border);">
+                    <span>Optional Items</span>
+                    <span id="summary-optional">$0.00</span>
+                  </div>
                 </div>
                 
                 <div class="mt-lg p-md" style="background: var(--color-bg-alt); border-radius: var(--radius-md);">
@@ -3158,12 +3162,28 @@
       // Only tax the taxable portion
       const tax = taxableSubtotal * taxRate;
       const total = subtotal + tax;
-      
+
+      // Optional items total — displayed for reference only, not included in the total
+      let optionalSubtotal = 0;
+      lineItems.forEach(item => {
+        if (item.isOptional) {
+          optionalSubtotal += (item.unitPrice || 0) * (item.quantity || 1);
+        }
+      });
+
       // Update display
       $('#summary-subtotal').textContent = formatCurrency(subtotal);
       $('#summary-tax').textContent = formatCurrency(tax);
       $('#summary-total').textContent = formatCurrency(total);
       $('#summary-tax-rate').textContent = (taxRate * 100).toFixed(2);
+
+      const optionalRow = $('#summary-optional-row');
+      if (optionalSubtotal > 0) {
+        $('#summary-optional').textContent = formatCurrency(optionalSubtotal);
+        optionalRow.style.display = '';
+      } else {
+        optionalRow.style.display = 'none';
+      }
       
       // Update payment schedule display
       updatePaymentScheduleDisplay(total);
