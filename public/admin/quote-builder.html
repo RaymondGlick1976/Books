@@ -1933,8 +1933,7 @@
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           const pricingType = selectedOpt?.pricing_type || 'each';
           const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
-          const isSqft = catPricingType === 'sqft';
-          console.log('[AttrDebug] idx:', idx, 'attr:', JSON.stringify({ id: attr.id, name: attr.name, catalog_pricing_type: attr.catalog_pricing_type }), 'inst.catalogPricingType:', inst.catalogPricingType, 'catPricingType:', catPricingType, 'isSqft:', isSqft, 'option pricing_type:', pricingType);
+          const isSqft = catPricingType === 'sqft' || pricingType === 'sqft';
           const defaultUnitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
           const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
           const showQty = selectedOpt && pricingType !== 'percentage' && !isSqft;
@@ -2051,7 +2050,7 @@
           if (selectedOpt) {
             const pricingType = selectedOpt.pricing_type || 'each';
             const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
-            const isSqft = catPricingType === 'sqft';
+            const isSqft = catPricingType === 'sqft' || pricingType === 'sqft';
             const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
             const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
@@ -2069,7 +2068,7 @@
         if (previewEl) previewEl.textContent = formatCurrency(total);
         if (attrTotalEl) attrTotalEl.textContent = formatCurrency(attributeTotal);
       }
-      
+
       function attachInstanceListeners() {
         // Option selection changes
         content.querySelectorAll('.attr-select').forEach(sel => {
@@ -2087,7 +2086,10 @@
         // Helper to get effective qty for an instance (sqft = w*h, else quantity)
         function getEffectiveQty(inst) {
           const catPricingType = inst.catalogPricingType || inst.attr?.catalog_pricing_type || 'each';
-          return catPricingType === 'sqft' ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+          const selectedOpt = inst.attr?.options?.find(o => o.id === inst.optionId);
+          const optPricingType = selectedOpt?.pricing_type || 'each';
+          const isSqft = catPricingType === 'sqft' || optPricingType === 'sqft';
+          return isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
         }
 
         // Unit price changes
@@ -2280,9 +2282,10 @@
           if (selectedOpt) {
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
-            const isSqft = catPricingType === 'sqft';
+            const optPricingType = selectedOpt.pricing_type || 'each';
+            const isSqft = catPricingType === 'sqft' || optPricingType === 'sqft';
             const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
-            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', qty, finalBasePrice);
+            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, optPricingType, qty, finalBasePrice);
             const selEntry = {
               attribute_id: inst.attrId,
               attribute_name: inst.attrName,
@@ -2384,7 +2387,7 @@
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           const pricingType = selectedOpt?.pricing_type || 'each';
           const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
-          const isSqft = catPricingType === 'sqft';
+          const isSqft = catPricingType === 'sqft' || pricingType === 'sqft';
           const defaultUnitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
           const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
           const showQty = selectedOpt && pricingType !== 'percentage' && !isSqft;
@@ -2488,7 +2491,7 @@
           if (selectedOpt) {
             const pricingType = selectedOpt.pricing_type || 'each';
             const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
-            const isSqft = catPricingType === 'sqft';
+            const isSqft = catPricingType === 'sqft' || pricingType === 'sqft';
             const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
             const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
@@ -2501,12 +2504,12 @@
         const previewEl = content.querySelector('#preview-price');
         const attrTotalEl = content.querySelector('#attr-total');
         const basePriceDisplay = content.querySelector('#base-price-display');
-        
+
         if (basePriceDisplay) basePriceDisplay.textContent = formatCurrency(currentBasePrice);
         if (previewEl) previewEl.textContent = formatCurrency(total);
         if (attrTotalEl) attrTotalEl.textContent = formatCurrency(attributeTotal);
       }
-      
+
       function attachInstanceListeners() {
         // Option selection changes
         content.querySelectorAll('.attr-select').forEach(sel => {
@@ -2524,7 +2527,10 @@
         // Helper to get effective qty for an instance (sqft = w*h, else quantity)
         function getEffectiveQty(inst) {
           const catPricingType = inst.catalogPricingType || inst.attr?.catalog_pricing_type || 'each';
-          return catPricingType === 'sqft' ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+          const selectedOpt = inst.attr?.options?.find(o => o.id === inst.optionId);
+          const optPricingType = selectedOpt?.pricing_type || 'each';
+          const isSqft = catPricingType === 'sqft' || optPricingType === 'sqft';
+          return isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
         }
 
         // Unit price changes
@@ -2706,9 +2712,10 @@
           if (selectedOpt) {
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
-            const isSqft = catPricingType === 'sqft';
+            const optPricingType = selectedOpt.pricing_type || 'each';
+            const isSqft = catPricingType === 'sqft' || optPricingType === 'sqft';
             const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
-            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', qty, currentBasePrice);
+            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, optPricingType, qty, currentBasePrice);
             attributeTotal += lineTotal;
             const selEntry = {
               attribute_id: inst.attrId,
@@ -4665,7 +4672,7 @@
           if (selectedOpt) {
             const pricingType = selectedOpt.pricing_type || 'each';
             const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
-            const isSqft = catPricingType === 'sqft';
+            const isSqft = catPricingType === 'sqft' || pricingType === 'sqft';
             const defaultUnitPrice = parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
             const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
@@ -4697,7 +4704,7 @@
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           const pricingType = selectedOpt?.pricing_type || 'each';
           const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
-          const isSqft = catPricingType === 'sqft';
+          const isSqft = catPricingType === 'sqft' || pricingType === 'sqft';
           const defaultUnitPrice = parseFloat(selectedOpt?.unit_price ?? selectedOpt?.flat_adjustment ?? 0);
           const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : defaultUnitPrice;
           const showQty = selectedOpt && pricingType !== 'percentage' && !isSqft;
@@ -4802,7 +4809,10 @@
         // Helper to get effective qty for an instance (sqft = w*h, else quantity)
         function getEffectiveQty(inst) {
           const catPricingType = inst.catalogPricingType || inst.attr?.catalog_pricing_type || 'each';
-          return catPricingType === 'sqft' ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
+          const selectedOpt = inst.attr?.options?.find(o => o.id === inst.optionId);
+          const optPricingType = selectedOpt?.pricing_type || 'each';
+          const isSqft = catPricingType === 'sqft' || optPricingType === 'sqft';
+          return isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
         }
 
         // Unit price changes
@@ -5025,9 +5035,10 @@
           if (selectedOpt) {
             const effectiveUnitPrice = inst.unitPriceOverride !== null ? inst.unitPriceOverride : parseFloat(selectedOpt.unit_price ?? selectedOpt.flat_adjustment ?? 0);
             const catPricingType = inst.catalogPricingType || attr.catalog_pricing_type || 'each';
-            const isSqft = catPricingType === 'sqft';
+            const optPricingType = selectedOpt.pricing_type || 'each';
+            const isSqft = catPricingType === 'sqft' || optPricingType === 'sqft';
             const qty = isSqft ? ((inst.width || 0) * (inst.height || 0)) / 144 : inst.quantity;
-            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, selectedOpt.pricing_type || 'each', qty, basePriceVal);
+            const lineTotal = calculateAttributeLineTotalWithPrice(effectiveUnitPrice, optPricingType, qty, basePriceVal);
             attributeTotal += lineTotal;
             const selEntry = {
               attribute_id: inst.attrId,
