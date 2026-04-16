@@ -38,6 +38,16 @@ exports.handler = async (event) => {
     return success({
       invoices: invoices || [],
       payments: payments || [],
+      customer: {
+        name: customer.name,
+        company: customer.company,
+        email: customer.email,
+        phone: customer.phone,
+        address: customer.address,
+        city: customer.city,
+        state: customer.state,
+        zip: customer.zip,
+      },
     });
     
   } catch (err) {

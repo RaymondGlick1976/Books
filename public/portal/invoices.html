@@ -140,11 +140,14 @@
     let cardElement = null;
     let currentInvoice = null;
     
+    let currentCustomer = null;
+
     async function loadInvoices() {
       try {
         const response = await apiCall('portal-invoices');
         invoices = response.invoices || [];
         payments = response.payments || [];
+        currentCustomer = response.customer || null;
         
         $('#loading-state').style.display = 'none';
         
@@ -522,6 +525,13 @@
       } catch (e) {}
 
       const companyName = company.name || 'Homestead Cabinet Design';
+      const companyCity = company.city || '';
+      const companyState = company.state || '';
+      const companyZip = company.zip || '';
+      const companyCityStateZip = [
+        companyCity,
+        [companyState, companyZip].filter(Boolean).join(' ')
+      ].filter(Boolean).join(', ');
       const itemsHtml = lineItems.length > 0 ? lineItems.map(item => {
         const attrs = (item.attribute_selections || []).filter(s => s.is_public && s.option_name);
         const attrsHtml = attrs.map(s => `<div style="color:#666;font-size:11px;margin-top:2px;">${s.attribute_name}: ${s.option_name}</div>`).join('');
@@ -561,6 +571,7 @@
         ${company.phone ? `<div style="color:#666;font-size:13px;">${company.phone}</div>` : ''}
         ${company.email ? `<div style="color:#666;font-size:13px;">${company.email}</div>` : ''}
         ${company.address ? `<div style="color:#666;font-size:13px;">${company.address}</div>` : ''}
+        ${companyCityStateZip ? `<div style="color:#666;font-size:13px;">${companyCityStateZip}</div>` : ''}
       </div>
     </div>
     <div style="text-align:right;">
@@ -569,7 +580,7 @@
     </div>
   </div>
   <div style="display:flex;justify-content:space-between;margin-bottom:25px;">
-    <div><div style="font-size:12px;text-transform:uppercase;color:#666;margin-bottom:4px;">Bill To</div><div style="font-weight:600;">${invoice.title || ''}</div></div>
+    <div><div style="font-size:12px;text-transform:uppercase;color:#666;margin-bottom:4px;">Bill To</div><div style="font-weight:600;">${currentCustomer?.name || invoice.title || ''}</div>${currentCustomer?.company ? `<div style="font-size:13px;">${currentCustomer.company}</div>` : ''}</div>
     <div style="text-align:right;">
       <div style="font-size:13px;color:#666;">Date: ${formatDate(invoice.created_at)}</div>
       ${invoice.due_date ? `<div style="font-size:13px;color:#666;">Due: ${formatDate(invoice.due_date)}</div>` : ''}
