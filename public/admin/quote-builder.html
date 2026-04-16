@@ -1584,6 +1584,8 @@
     function showCatalogModal() {
       const content = createElement('div');
       let catalogTab = 'items';
+      let itemSearchQuery = '';
+      let itemFolderFilter = 'all'; // 'all' | folder.id | '__unfiled__'
 
       // Tabs
       const tabRow = createElement('div', { style: 'display:flex; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-md);' });
@@ -1627,49 +1629,117 @@
       }
 
       function renderItemsTab() {
-        // Group items by folder
-        const byFolder = {};
-        const unfiled = [];
-        catalogItems.forEach(item => {
-          if (item.folder_id) {
-            if (!byFolder[item.folder_id]) byFolder[item.folder_id] = [];
-            byFolder[item.folder_id].push(item);
-          } else {
-            unfiled.push(item);
-          }
-        });
-
-        // Render folders with their items
-        const renderedFolders = catalogFolders.filter(f => byFolder[f.id] && byFolder[f.id].length > 0);
-        renderedFolders.forEach(folder => {
-          tabContent.appendChild(createElement('h4', {
-            className: 'mb-md mt-lg',
-            textContent: folder.name
-          }));
-          const grid = createElement('div', { className: 'catalog-modal-grid' });
-          byFolder[folder.id].forEach(item => grid.appendChild(makeCatalogCard(item)));
-          tabContent.appendChild(grid);
-        });
-
-        // Unfiled items
-        if (unfiled.length > 0) {
-          if (renderedFolders.length > 0) {
-            tabContent.appendChild(createElement('h4', {
-              className: 'mb-md mt-lg',
-              textContent: 'Other Items'
-            }));
-          }
-          const grid = createElement('div', { className: 'catalog-modal-grid' });
-          unfiled.forEach(item => grid.appendChild(makeCatalogCard(item)));
-          tabContent.appendChild(grid);
-        }
-
         if (catalogItems.length === 0) {
           tabContent.appendChild(createElement('div', {
             className: 'text-muted text-center p-xl',
             textContent: 'No active items in catalog.'
           }));
+          return;
         }
+
+        // Search input
+        const searchInput = createElement('input', {
+          type: 'text',
+          className: 'form-input',
+          placeholder: 'Search items by name...',
+          value: itemSearchQuery,
+          style: 'margin-bottom: var(--space-sm);'
+        });
+
+        // Folder filter chips
+        const hasUnfiled = catalogItems.some(i => !i.folder_id);
+        const chipsRow = createElement('div', {
+          style: 'display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-bottom: var(--space-md);'
+        });
+
+        function makeChip(label, value) {
+          const isActive = itemFolderFilter === value;
+          return createElement('button', {
+            className: 'btn btn-sm ' + (isActive ? 'btn-primary' : 'btn-secondary'),
+            textContent: label,
+            onClick: () => {
+              itemFolderFilter = value;
+              renderChips();
+              renderItemGrid();
+            }
+          });
+        }
+
+        function renderChips() {
+          clearElement(chipsRow);
+          chipsRow.appendChild(makeChip('All', 'all'));
+          catalogFolders.forEach(f => chipsRow.appendChild(makeChip(f.name, f.id)));
+          if (hasUnfiled) chipsRow.appendChild(makeChip('Other', '__unfiled__'));
+        }
+        renderChips();
+
+        tabContent.appendChild(searchInput);
+        tabContent.appendChild(chipsRow);
+
+        // Items container — re-rendered as filters change so search input keeps focus
+        const itemsContainer = createElement('div');
+        tabContent.appendChild(itemsContainer);
+
+        function renderItemGrid() {
+          clearElement(itemsContainer);
+          const q = itemSearchQuery.trim().toLowerCase();
+          const filtered = catalogItems.filter(item => {
+            const matchesSearch = !q || (item.name || '').toLowerCase().includes(q);
+            const matchesFolder = itemFolderFilter === 'all'
+              || (itemFolderFilter === '__unfiled__' && !item.folder_id)
+              || item.folder_id === itemFolderFilter;
+            return matchesSearch && matchesFolder;
+          });
+
+          // Group by folder
+          const byFolder = {};
+          const unfiled = [];
+          filtered.forEach(item => {
+            if (item.folder_id) {
+              if (!byFolder[item.folder_id]) byFolder[item.folder_id] = [];
+              byFolder[item.folder_id].push(item);
+            } else {
+              unfiled.push(item);
+            }
+          });
+
+          const renderedFolders = catalogFolders.filter(f => byFolder[f.id] && byFolder[f.id].length > 0);
+          renderedFolders.forEach(folder => {
+            itemsContainer.appendChild(createElement('h4', {
+              className: 'mb-md mt-lg',
+              textContent: folder.name
+            }));
+            const grid = createElement('div', { className: 'catalog-modal-grid' });
+            byFolder[folder.id].forEach(item => grid.appendChild(makeCatalogCard(item)));
+            itemsContainer.appendChild(grid);
+          });
+
+          if (unfiled.length > 0) {
+            if (renderedFolders.length > 0) {
+              itemsContainer.appendChild(createElement('h4', {
+                className: 'mb-md mt-lg',
+                textContent: 'Other Items'
+              }));
+            }
+            const grid = createElement('div', { className: 'catalog-modal-grid' });
+            unfiled.forEach(item => grid.appendChild(makeCatalogCard(item)));
+            itemsContainer.appendChild(grid);
+          }
+
+          if (filtered.length === 0) {
+            itemsContainer.appendChild(createElement('div', {
+              className: 'text-muted text-center p-xl',
+              textContent: 'No items match your filters.'
+            }));
+          }
+        }
+
+        searchInput.addEventListener('input', (e) => {
+          itemSearchQuery = e.target.value;
+          renderItemGrid();
+        });
+
+        renderItemGrid();
       }
 
       function renderAssembliesTab() {
