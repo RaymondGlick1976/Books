@@ -1439,7 +1439,10 @@
           $('#slider-after-desc').value = slider.after_desc || '';
         }
         
-        lineItems = (quote.quote_line_items || []).map(item => ({
+        lineItems = (quote.quote_line_items || [])
+          .slice()
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .map(item => ({
           id: item.id,
           catalogItemId: item.catalog_item_id,
           description: item.description,
