@@ -315,6 +315,10 @@
       // Load company info for header
       const { data: companySetting } = await supabase.from('settings').select('value').eq('key', 'company').single();
       const company = companySetting?.value || {};
+      const companyCityStateZip = [
+        company.city || '',
+        [company.state || '', company.zip || ''].filter(Boolean).join(' ')
+      ].filter(Boolean).join(', ');
 
       const statusColors = { draft: '#6b7280', sent: '#3b82f6', viewed: '#8b5cf6', partial: '#f59e0b', paid: '#10b981', overdue: '#ef4444', archived: '#9ca3af' };
       const statusColor = statusColors[invoice.status] || '#6b7280';
@@ -328,6 +332,7 @@
               ${company.phone ? `<div class="text-sm text-muted">${company.phone}</div>` : ''}
               ${company.email ? `<div class="text-sm text-muted">${company.email}</div>` : ''}
               ${company.address ? `<div class="text-sm text-muted">${company.address}</div>` : ''}
+              ${companyCityStateZip ? `<div class="text-sm text-muted">${companyCityStateZip}</div>` : ''}
             </div>
           </div>
           <div style="text-align:right;">
@@ -343,6 +348,7 @@
           <div>
             <div class="text-sm text-muted" style="font-weight:600;text-transform:uppercase;font-size:0.7rem;letter-spacing:0.03em;">Bill To</div>
             <div style="font-weight:600;margin-top:4px;">${invoice.customers?.name || '—'}</div>
+            ${invoice.customers?.company ? `<div class="text-sm">${invoice.customers.company}</div>` : ''}
             ${invoice.customers?.email ? `<div class="text-sm">${invoice.customers.email}</div>` : ''}
           </div>
           <div style="text-align:right;">

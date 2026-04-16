@@ -23,7 +23,7 @@ exports.handler = async (event) => {
     // Get invoice by access token
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('*, customers(name, email, phone, address, city, state, zip)')
+      .select('*, customers(name, company, email, phone, address, city, state, zip)')
       .eq('access_token', token)
       .single();
 

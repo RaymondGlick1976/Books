@@ -257,6 +257,7 @@
               <p id="company-phone"></p>
               <p id="company-email"></p>
               <p id="company-address"></p>
+              <p id="company-city-state-zip"></p>
             </div>
             <div class="invoice-meta">
               <div class="doc-type">INVOICE</div>
@@ -269,6 +270,7 @@
             <div>
               <div class="detail-label">Bill To</div>
               <div style="font-weight: 600; margin-top: 4px;" id="customer-name"></div>
+              <div class="text-sm" id="customer-company"></div>
               <div class="text-sm" id="customer-email-display"></div>
             </div>
             <div style="text-align: right;">
@@ -499,6 +501,14 @@
         document.getElementById('company-address').textContent = company.address;
         document.getElementById('company-address').style.display = 'block';
       }
+      const companyCityStateZip = [
+        company.city || '',
+        [company.state || '', company.zip || ''].filter(Boolean).join(' ')
+      ].filter(Boolean).join(', ');
+      if (companyCityStateZip) {
+        document.getElementById('company-city-state-zip').textContent = companyCityStateZip;
+        document.getElementById('company-city-state-zip').style.display = 'block';
+      }
 
       // Invoice meta
       document.getElementById('invoice-number').textContent = invoice.invoice_number;
@@ -511,6 +521,9 @@
       // Bill to
       const customer = invoice.customers || {};
       document.getElementById('customer-name').textContent = customer.name || '—';
+      if (customer.company) {
+        document.getElementById('customer-company').textContent = customer.company;
+      }
       if (customer.email) {
         document.getElementById('customer-email-display').textContent = customer.email;
       }
@@ -776,6 +789,10 @@
     // ===== Print =====
     document.getElementById('print-btn').addEventListener('click', () => {
       const companyName = company.name || 'Homestead Cabinet Design';
+      const companyCityStateZip = [
+        company.city || '',
+        [company.state || '', company.zip || ''].filter(Boolean).join(' ')
+      ].filter(Boolean).join(', ');
 
       const itemsHtml = lineItems.length > 0 ? lineItems.map(item => {
         const attrs = (item.attribute_selections || []).filter(s => s.is_public && s.option_name);
@@ -815,6 +832,7 @@
         ${company.phone ? `<div style="color:#666;font-size:13px;">${company.phone}</div>` : ''}
         ${company.email ? `<div style="color:#666;font-size:13px;">${company.email}</div>` : ''}
         ${company.address ? `<div style="color:#666;font-size:13px;">${company.address}</div>` : ''}
+        ${companyCityStateZip ? `<div style="color:#666;font-size:13px;">${companyCityStateZip}</div>` : ''}
       </div>
     </div>
     <div style="text-align:right;">
@@ -823,7 +841,7 @@
     </div>
   </div>
   <div style="display:flex;justify-content:space-between;margin-bottom:25px;">
-    <div><div style="font-size:12px;text-transform:uppercase;color:#666;margin-bottom:4px;">Bill To</div><div style="font-weight:600;">${escapeHtml(invoice.customers?.name || invoice.title || '')}</div></div>
+    <div><div style="font-size:12px;text-transform:uppercase;color:#666;margin-bottom:4px;">Bill To</div><div style="font-weight:600;">${escapeHtml(invoice.customers?.name || invoice.title || '')}</div>${invoice.customers?.company ? `<div style="font-size:13px;">${escapeHtml(invoice.customers.company)}</div>` : ''}</div>
     <div style="text-align:right;">
       <div style="font-size:13px;color:#666;">Date: ${formatDate(invoice.created_at)}</div>
       ${invoice.due_date ? `<div style="font-size:13px;color:#666;">Due: ${formatDate(invoice.due_date)}</div>` : ''}

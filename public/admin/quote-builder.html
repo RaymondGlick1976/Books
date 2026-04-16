@@ -570,7 +570,7 @@
                   </div>
                   <div class="form-group">
                     <label class="form-label">Tax Rate (%)</label>
-                    <input type="number" id="tax-rate" class="form-input" value="6.25" min="0" step="0.01">
+                    <input type="number" id="tax-rate" class="form-input" value="0" min="0" step="0.01">
                   </div>
                   <div class="form-group">
                     <label class="form-label">Payment Schedule</label>
@@ -964,7 +964,7 @@
           });
         }
         
-        const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 6.25 : taxRateVal) / 100;
+        const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 0 : taxRateVal) / 100;
         const taxAmount = taxableSubtotal * taxRate;
         const validDays = parseInt($('#valid-days').value) || 30;
         const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000);
@@ -1374,7 +1374,7 @@
         $('#quote-title').value = quote.title;
         $('#quote-description').value = quote.description || '';
         $('#valid-days').value = quote.valid_days;
-        $('#tax-rate').value = (quote.tax_rate ?? 0.0625) * 100; // Convert from decimal to percentage
+        $('#tax-rate').value = (quote.tax_rate ?? 0) * 100; // Convert from decimal to percentage
         $('#video-url').value = quote.video_url || '';
         $('#customer-notes').value = quote.notes || '';
         $('#internal-notes').value = quote.internal_notes || '';
@@ -3098,7 +3098,7 @@
       const summaryTotals = $('#summary-totals');
       
       // Get tax rate from input (stored as percentage)
-      const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 6.25 : taxRateVal) / 100;
+      const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 0 : taxRateVal) / 100;
       
       // Check if bundles exist (automatic - no toggle needed)
       const bundlesEnabled = packages.length > 0;
@@ -4028,7 +4028,7 @@
         }
         
         // Only tax the taxable portion
-        const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 6.25 : taxRateVal) / 100;
+        const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 0 : taxRateVal) / 100;
         const taxAmount = taxableSubtotal * taxRate;
         
         const validDays = parseInt($('#valid-days').value) || 30;
