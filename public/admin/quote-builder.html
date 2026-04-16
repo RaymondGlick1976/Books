@@ -2376,6 +2376,13 @@
         }).filter(inst => inst.attr);
       }
 
+      // Only show attributes that are checked/assigned for this catalog item.
+      // For custom items (no catalogItem) fall back to all pricing attributes.
+      const itemAttrs = catalogItem && catalogItemAttributes[catalogItem.id]
+        ? catalogItemAttributes[catalogItem.id]
+        : pricingAttributes;
+      const itemAttrIds = new Set(itemAttrs.map(a => a.id));
+
       const PRICING_LABELS = {
         sqft: 'Sq. Ft.',
         linft: 'Lin. Ft.',
@@ -2386,7 +2393,9 @@
       const content = createElement('div');
       
       function renderAttributeSelectors() {
-        const instancesHtml = attributeInstances.length > 0 ? attributeInstances.map((inst, idx) => {
+        const renderedHtml = attributeInstances.map((inst, idx) => {
+          // Skip instances whose attribute isn't checked for this catalog item
+          if (!itemAttrIds.has(inst.attrId)) return '';
           const attr = inst.attr;
           const selectedOpt = attr.options?.find(o => o.id === inst.optionId);
           const pricingType = selectedOpt?.pricing_type || 'each';
@@ -2473,10 +2482,11 @@
               ${showDims && inst.width && inst.height ? `<div class="text-muted text-xs" style="margin-top: 4px; text-align: right;">${inst.width}\u2033 × ${inst.height}\u2033 = ${((inst.width * inst.height) / 144).toFixed(2)} sq ft</div>` : ''}
             </div>
           `;
-        }).join('') : '<p class="text-muted text-center" style="padding: var(--space-lg);">No attributes. Click a button below to add pricing attributes.</p>';
+        }).join('');
+        const instancesHtml = renderedHtml || '<p class="text-muted text-center" style="padding: var(--space-lg);">No attributes. Click a button below to add pricing attributes.</p>';
 
-        // Buttons to add each attribute type
-        const addButtonsHtml = pricingAttributes.map(attr => `
+        // Buttons to add each attribute type — only attributes checked for this catalog item
+        const addButtonsHtml = itemAttrs.map(attr => `
           <button type="button" class="btn btn-secondary btn-sm add-attr-btn" data-attr-id="${attr.id}" style="margin-right: var(--space-sm); margin-bottom: var(--space-sm);">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             ${attr.name}
@@ -2620,7 +2630,7 @@
         content.querySelectorAll('.add-attr-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             const attrId = e.target.closest('.add-attr-btn').dataset.attrId;
-            const attr = pricingAttributes.find(a => a.id === attrId);
+            const attr = itemAttrs.find(a => a.id === attrId);
             if (attr) {
               attributeInstances.push({
                 attrId: attr.id,
