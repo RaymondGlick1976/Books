@@ -298,7 +298,7 @@ function showToast(message, type = 'info', duration = 4000) {
 // =============================================
 
 function createModal(options = {}) {
-  const { title, content, footer, size = 'md', onClose } = options;
+  const { title, content, footer, size = 'md', onClose, dismissable = true } = options;
   
   const overlay = createElement('div', { className: 'modal-overlay' });
   const modal = createElement('div', {
@@ -309,14 +309,17 @@ function createModal(options = {}) {
          : ''
   });
   
-  const header = createElement('div', { className: 'modal-header' }, [
-    createElement('h3', { className: 'modal-title', textContent: title }),
-    createElement('button', { 
+  const headerChildren = [
+    createElement('h3', { className: 'modal-title', textContent: title })
+  ];
+  if (dismissable) {
+    headerChildren.push(createElement('button', {
       className: 'modal-close',
       innerHTML: '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>',
       onClick: () => closeModal(overlay)
-    })
-  ]);
+    }));
+  }
+  const header = createElement('div', { className: 'modal-header' }, headerChildren);
   
   const body = createElement('div', { className: 'modal-body' });
   if (typeof content === 'string') {
@@ -339,9 +342,11 @@ function createModal(options = {}) {
   }
   
   overlay.appendChild(modal);
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeModal(overlay);
-  });
+  if (dismissable) {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal(overlay);
+    });
+  }
   
   document.body.appendChild(overlay);
   
