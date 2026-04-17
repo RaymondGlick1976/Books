@@ -543,6 +543,7 @@
     let assemblyItems = [];
     let pricingAttributes = [];
     let itemAttributeMap = {};
+    let vendors = [];
 
     let currentLibraryId = null;
     let activeTab = 'items';
@@ -560,14 +561,15 @@
       const supabase = await app.waitForSupabase();
 
       try {
-        const [libRes, folderRes, itemRes, asmRes, asmItemRes, attrRes, mapRes] = await Promise.all([
+        const [libRes, folderRes, itemRes, asmRes, asmItemRes, attrRes, mapRes, vendorRes] = await Promise.all([
           supabase.from('libraries').select('*').order('sort_order, name'),
           supabase.from('library_folders').select('*').order('sort_order, name'),
           supabase.from('items_catalog').select('*').order('name'),
           supabase.from('assemblies').select('*').order('sort_order, name'),
           supabase.from('assembly_items').select('*').order('sort_order'),
           supabase.from('pricing_attributes').select('*, options:pricing_attribute_options(*)').eq('is_active', true).order('sort_order, name'),
-          supabase.from('catalog_item_attributes').select('item_id, attribute_id, pricing_type')
+          supabase.from('catalog_item_attributes').select('item_id, attribute_id, pricing_type'),
+          supabase.from('vendors').select('id, name').order('name')
         ]);
 
         libraries = libRes.data || [];
@@ -576,6 +578,7 @@
         assemblies = asmRes.data || [];
         assemblyItems = asmItemRes.data || [];
         pricingAttributes = attrRes.data || [];
+        vendors = vendorRes.data || [];
 
         itemAttributeMap = {};
         (mapRes.data || []).forEach(m => {
@@ -886,6 +889,31 @@
               </select>
             </div>
           </div>
+          <div class="detail-row">
+            <div class="form-group">
+              <label class="form-label">Cost Price</label>
+              <input type="number" class="form-input" id="detail-cost-price" value="${item.cost_price || ''}" step="0.01" min="0" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Selling Price</label>
+              <input type="number" class="form-input" id="detail-selling-price" value="${item.selling_price || ''}" step="0.01" min="0" placeholder="0.00">
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="form-group">
+              <label class="form-label">Vendor</label>
+              <select class="form-select" id="detail-vendor">
+                <option value="">No vendor</option>
+                ${vendors.map(v =>
+                  `<option value="${v.id}" ${item.vendor_id === v.id ? 'selected' : ''}>${escapeHtml(v.name)}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Product SKU</label>
+              <input type="text" class="form-input" id="detail-sku" value="${escapeHtml(item.product_sku || '')}" placeholder="e.g., SHK-DR-001">
+            </div>
+          </div>
         </div>
 
         ${pricingAttributes.length > 0 ? `
@@ -971,6 +999,10 @@
           notes: $('#detail-notes').value.trim() || null,
           is_taxable: $('#detail-taxable').checked,
           is_active: $('#detail-active').checked,
+          vendor_id: $('#detail-vendor').value || null,
+          product_sku: $('#detail-sku').value.trim() || null,
+          cost_price: parseFloat($('#detail-cost-price').value) || null,
+          selling_price: parseFloat($('#detail-selling-price').value) || null,
           updated_at: new Date().toISOString()
         };
 
