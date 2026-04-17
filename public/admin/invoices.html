@@ -330,7 +330,7 @@
             <img src="/images/logo.gif" alt="${company.name || 'Company'}" style="height:60px;width:auto;" onerror="this.style.display='none'">
             <div>
               <div style="font-weight:700;font-size:1.1rem;">${company.name || 'Homestead Cabinet Design'}</div>
-              ${company.phone ? `<div class="text-sm text-muted">${company.phone}</div>` : ''}
+              ${company.phone ? `<div class="text-sm text-muted">${phoneLink(company.phone)}</div>` : ''}
               ${company.email ? `<div class="text-sm text-muted">${company.email}</div>` : ''}
               ${company.address ? `<div class="text-sm text-muted">${company.address}</div>` : ''}
               ${companyCityStateZip ? `<div class="text-sm text-muted">${companyCityStateZip}</div>` : ''}

@@ -185,8 +185,28 @@ function phoneLink(phone) {
   if (!phone) return '';
   const cleaned = phone.replace(/\D/g, '');
   const display = formatPhone(phone);
-  return `<a href="tel:+1${cleaned}">${display}</a>`;
+  const tel = `tel:+1${cleaned}`;
+  const sms = `sms:+1${cleaned}`;
+  return `<span class="phone-popover-wrap" style="position:relative;display:inline-block;">` +
+    `<a href="javascript:void(0)" class="phone-popover-trigger" style="color:var(--color-primary);text-decoration:none;cursor:pointer;">${display}</a>` +
+    `<span class="phone-popover" style="display:none;position:absolute;left:50%;transform:translateX(-50%);top:calc(100% + 6px);z-index:9999;background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius-md);box-shadow:0 4px 12px rgba(0,0,0,.15);padding:4px 0;white-space:nowrap;min-width:120px;">` +
+      `<a href="${tel}" class="phone-popover-opt" style="display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--color-text);text-decoration:none;font-size:.875rem;transition:background .15s;" onmouseenter="this.style.background='var(--color-bg-soft)'" onmouseleave="this.style.background='transparent'">📞 Call</a>` +
+      `<a href="${sms}" class="phone-popover-opt" style="display:flex;align-items:center;gap:8px;padding:8px 14px;color:var(--color-text);text-decoration:none;font-size:.875rem;transition:background .15s;" onmouseenter="this.style.background='var(--color-bg-soft)'" onmouseleave="this.style.background='transparent'">💬 Text</a>` +
+    `</span>` +
+  `</span>`;
 }
+
+// Global phone popover logic
+document.addEventListener('click', (e) => {
+  const trigger = e.target.closest('.phone-popover-trigger');
+  // Close all open popovers
+  document.querySelectorAll('.phone-popover').forEach(p => p.style.display = 'none');
+  if (trigger) {
+    e.preventDefault();
+    const popover = trigger.nextElementSibling;
+    if (popover) popover.style.display = 'block';
+  }
+});
 
 // Escape user-controlled text for safe insertion into HTML.
 function escapeHtml(value) {
