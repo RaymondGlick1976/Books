@@ -393,7 +393,7 @@
       }
       tbody.innerHTML = forms.map(f => `
         <tr>
-          <td><strong>${f.name}</strong></td>
+          <td><strong>${f.name}</strong>${f.is_active === false ? ' <span style="font-size:0.75rem;color:var(--color-text-muted);background:var(--color-bg-soft);padding:2px 6px;border-radius:var(--radius-sm);font-weight:400;">Draft</span>' : ''}</td>
           <td>${f.submission_count || 0}</td>
           <td>
             <div class="form-link">
@@ -403,6 +403,7 @@
           </td>
           <td>
             <button class="btn btn-sm btn-primary" onclick="editForm('${f.id}')">Edit</button>
+            <button class="btn btn-sm btn-secondary" onclick="copyForm('${f.id}')">Copy</button>
             <button class="btn btn-sm btn-secondary" onclick="deleteForm('${f.id}')" style="color:var(--color-danger);">Delete</button>
           </td>
         </tr>
@@ -526,7 +527,86 @@
         showToast('Failed to delete', 'error');
       }
     }
-    
+
+    async function copyForm(id) {
+      try {
+        const supabase = await app.waitForSupabase();
+
+        // 1. Fetch the original form
+        const { data: original, error: formErr } = await supabase
+          .from('booking_forms').select('*').eq('id', id).single();
+        if (formErr || !original) throw formErr || new Error('Form not found');
+
+        // 2. Fetch its questions separately (no joins)
+        const { data: originalQuestions, error: qErr } = await supabase
+          .from('booking_form_questions').select('*').eq('form_id', id).order('sort_order');
+        if (qErr) throw qErr;
+
+        // 3. Determine unique slug
+        const baseSlug = original.slug + '-copy';
+        const { data: existingSlugs } = await supabase
+          .from('booking_forms').select('slug').like('slug', baseSlug + '%');
+        const takenSlugs = new Set((existingSlugs || []).map(r => r.slug));
+        let newSlug = baseSlug;
+        if (takenSlugs.has(newSlug)) {
+          let n = 2;
+          while (takenSlugs.has(baseSlug + '-' + n)) n++;
+          newSlug = baseSlug + '-' + n;
+        }
+
+        // 4. Build the new form row (explicit fields, no id/created_at/updated_at)
+        const newForm = {
+          name: original.name + ' (Copy)',
+          slug: newSlug,
+          header_title: original.header_title,
+          header_description: original.header_description,
+          show_address: original.show_address,
+          show_service_details: original.show_service_details,
+          show_how_heard: original.show_how_heard,
+          show_date_time: original.show_date_time,
+          allow_attachments: original.allow_attachments,
+          attachments_required: original.attachments_required,
+          attachments_label: original.attachments_label,
+          show_sms_consent: original.show_sms_consent,
+          show_scheduler: original.show_scheduler,
+          primary_color: original.primary_color,
+          how_heard_options: original.how_heard_options || null,
+          thank_you_title: original.thank_you_title,
+          thank_you_message: original.thank_you_message,
+          thank_you_redirect_url: original.thank_you_redirect_url || null,
+          default_stage: original.default_stage,
+          is_active: false,
+          submission_count: 0
+        };
+
+        const { data: inserted, error: insertErr } = await supabase
+          .from('booking_forms').insert([newForm]).select().single();
+        if (insertErr || !inserted) throw insertErr || new Error('Failed to insert form');
+
+        // 5. Duplicate questions with new form_id
+        const questions = (originalQuestions || []).map(q => ({
+          form_id: inserted.id,
+          prompt: q.prompt,
+          field_type: q.field_type,
+          choices: q.choices || null,
+          is_required: q.is_required,
+          sort_order: q.sort_order
+        }));
+        if (questions.length > 0) {
+          const { error: qInsertErr } = await supabase
+            .from('booking_form_questions').insert(questions);
+          if (qInsertErr) throw qInsertErr;
+        }
+
+        // 6. Refresh and notify
+        await loadForms();
+        showToast(`"${inserted.name}" created as draft`, 'success');
+      } catch (err) {
+        console.error('Copy form error:', err);
+        showToast('Failed to copy form: ' + (err.message || err), 'error');
+      }
+    }
+
     function updateEmbedCodes() {
       const url = `${baseUrl}/book/${currentForm.slug}`;
       $('#form-url').value = url;
