@@ -1,9 +1,20 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+// Generate HMAC-signed token for secure redirect to schedule page
+function generateBookingToken(dealId, formId) {
+  const secret = process.env.BOOKING_TOKEN_SECRET;
+  if (!secret) return null;
+  const payload = { deal_id: dealId, form_id: formId, exp: Date.now() + 3600000 }; // 1 hour
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', secret).update(payloadB64).digest('base64url');
+  return `${payloadB64}.${sig}`;
+}
 
 exports.handler = async (event) => {
   const headers = {
@@ -276,13 +287,16 @@ exports.handler = async (event) => {
       console.error('Failed to send notification email:', emailErr);
     }
     
+    const token = generateBookingToken(deal.id, data.form_id);
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         success: true,
         customer_id: customerId,
-        deal_id: deal.id
+        deal_id: deal.id,
+        token: token
       })
     };
     

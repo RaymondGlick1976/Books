@@ -45,11 +45,6 @@
     .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); }
     .submit-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
     
-    .thank-you { text-align: center; padding: 60px 20px; }
-    .thank-you-icon { font-size: 4rem; margin-bottom: 20px; }
-    .thank-you-title { font-size: 2rem; font-weight: 600; margin-bottom: 10px; }
-    .thank-you-message { color: #666; font-size: 1.1rem; }
-    
     .loading { display: none; text-align: center; padding: 40px; }
     .spinner { width: 40px; height: 40px; border: 3px solid #eee; border-top-color: var(--primary-color, #38571a); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -185,12 +180,6 @@
         </form>
       </div>
       
-      <div class="thank-you" id="thank-you" style="display:none;">
-        <div class="thank-you-icon">✓</div>
-        <h2 class="thank-you-title" id="thank-you-title">Thank You!</h2>
-        <p class="thank-you-message" id="thank-you-message">We have received your request and will contact you shortly.</p>
-        <a id="schedule-link" href="/schedule" style="display:none; margin-top: 20px; background: var(--primary, #38571a); color: white; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 1rem;">Pick A Time Slot</a>
-      </div>
     </div>
   </div>
   
@@ -263,22 +252,6 @@
       // Render custom questions
       renderQuestions();
       
-      // Show scheduling link on thank-you page if enabled
-      if (formConfig.show_scheduler) {
-        const schedLink = document.getElementById('schedule-link');
-        if (schedLink) {
-          schedLink.style.display = 'inline-block';
-          schedLink.style.background = formConfig.primary_color || '#38571a';
-          if (formConfig.thank_you_redirect_url) {
-            schedLink.href = '/schedule?redirect=' + encodeURIComponent(formConfig.thank_you_redirect_url);
-            try { sessionStorage.setItem('booking_redirect_url', formConfig.thank_you_redirect_url); } catch(e) {}
-          }
-        }
-      }
-
-      // Thank you messages
-      document.getElementById('thank-you-title').textContent = formConfig.thank_you_title || 'Thank You!';
-      document.getElementById('thank-you-message').textContent = formConfig.thank_you_message || '';
     }
     
     function renderQuestions() {
@@ -436,19 +409,14 @@
         });
         
         if (!response.ok) throw new Error('Submission failed');
-        
-        // Show thank you
-        document.getElementById('form-content').style.display = 'none';
-        document.getElementById('thank-you').style.display = 'block';
+        const result = await response.json();
 
-        // Auto-redirect if scheduling is disabled and redirect URL is set
-        if (!formConfig.show_scheduler && formConfig.thank_you_redirect_url) {
-          const redirectNote = document.createElement('p');
-          redirectNote.style.cssText = 'color:#999; font-size:0.875rem; margin-top:16px;';
-          redirectNote.textContent = 'Redirecting you shortly...';
-          document.getElementById('thank-you').appendChild(redirectNote);
-          setTimeout(() => { window.location.href = formConfig.thank_you_redirect_url; }, 3000);
+        // Redirect to scheduling page with signed token
+        const scheduleUrl = new URL('/schedule', window.location.origin);
+        if (result.token) {
+          scheduleUrl.searchParams.set('token', result.token);
         }
+        window.top.location.href = scheduleUrl.toString();
         
       } catch (err) {
         console.error(err);

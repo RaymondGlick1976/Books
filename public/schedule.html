@@ -164,6 +164,13 @@
     @media (max-width: 400px) {
       .type-grid { grid-template-columns: 1fr; }
     }
+
+    /* Thank-you banner for leads arriving from booking form */
+    .lead-banner { text-align: center; padding: 24px 20px; margin-bottom: 24px; border-bottom: 1px solid #eee; }
+    .lead-banner-icon { font-size: 2.5rem; margin-bottom: 8px; }
+    .lead-banner-title { font-size: 1.35rem; font-weight: 600; color: #111827; margin-bottom: 4px; }
+    .lead-banner-message { color: #6b7280; font-size: 0.95rem; margin-bottom: 8px; }
+    .lead-banner-cta { color: #38571a; font-weight: 500; font-size: 0.95rem; }
   </style>
 </head>
 <body>
@@ -178,6 +185,14 @@
       <div class="loading" id="loading">
         <div class="spinner"></div>
         <p class="loading-text">Loading appointment types...</p>
+      </div>
+
+      <!-- Thank-you banner for leads arriving from booking form -->
+      <div id="lead-banner" class="lead-banner" style="display:none;">
+        <div class="lead-banner-icon">&#10003;</div>
+        <h2 class="lead-banner-title" id="lead-banner-title">Thank You!</h2>
+        <p class="lead-banner-message" id="lead-banner-message"></p>
+        <p class="lead-banner-cta">Pick a time below to schedule your appointment.</p>
       </div>
 
       <!-- Main wizard content (hidden until loaded) -->
@@ -302,6 +317,7 @@
     let maxPerDay = 0;
     let typeCountByDate = {};
     let currentMonth = new Date();
+    let leadData = null; // Pre-fill data from booking form token
 
     // ========== Helpers ==========
     function timeToMinutes(t) {
@@ -366,6 +382,19 @@
       // Show/hide step content
       document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
       document.getElementById('step-' + step).classList.add('active');
+      // Pre-fill customer info from booking form lead data
+      if (step === 4 && leadData?.customer) {
+        const c = leadData.customer;
+        const nameParts = (c.name || '').split(' ');
+        const first = document.getElementById('inp-first');
+        const last = document.getElementById('inp-last');
+        const email = document.getElementById('inp-email');
+        const phone = document.getElementById('inp-phone');
+        if (first && !first.value) first.value = nameParts[0] || '';
+        if (last && !last.value) last.value = nameParts.slice(1).join(' ') || '';
+        if (email && !email.value) email.value = c.email || '';
+        if (phone && !phone.value) phone.value = c.phone || '';
+      }
       // Scroll to top of card
       document.querySelector('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -373,6 +402,31 @@
     // ========== Step 1: Types ==========
     async function init() {
       try {
+        // Check for booking form token (lead arriving from form submission)
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        if (token) {
+          try {
+            const leadResp = await fetch('/api/booking-lead?token=' + encodeURIComponent(token));
+            if (leadResp.ok) {
+              leadData = await leadResp.json();
+              if (leadData.customer || leadData.form) {
+                const banner = document.getElementById('lead-banner');
+                banner.style.display = 'block';
+                if (leadData.form?.thank_you_title) {
+                  document.getElementById('lead-banner-title').textContent = leadData.form.thank_you_title;
+                }
+                if (leadData.form?.thank_you_message) {
+                  document.getElementById('lead-banner-message').textContent = leadData.form.thank_you_message;
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Lead token fetch failed:', e);
+            // Continue without pre-fill — schedule page still works standalone
+          }
+        }
+
         const resp = await fetch('/api/schedule-availability');
         if (!resp.ok) throw new Error('Failed to load appointment types');
         const data = await resp.json();
@@ -757,16 +811,14 @@
       document.getElementById('confirm-email').textContent =
         'A confirmation email has been sent to ' + email;
 
-      // Check for redirect URL (from query param or sessionStorage, set by booking form)
-      let redirectUrl = new URLSearchParams(window.location.search).get('redirect');
-      if (!redirectUrl) { try { redirectUrl = sessionStorage.getItem('booking_redirect_url'); } catch(e) {} }
+      // Redirect to contractor's thank-you URL after booking (if configured via booking form)
+      const redirectUrl = leadData?.form?.thank_you_redirect_url;
       if (redirectUrl) {
         const note = document.createElement('p');
         note.style.cssText = 'color:#6b7280; font-size:0.875rem; margin-top:16px;';
         note.textContent = 'Redirecting you shortly...';
         document.querySelector('#step-5 .confirmation').appendChild(note);
-        try { sessionStorage.removeItem('booking_redirect_url'); } catch(e) {}
-        setTimeout(() => { window.location.href = redirectUrl; }, 3000);
+        setTimeout(() => { window.top.location.href = redirectUrl; }, 3000);
       }
     }
 

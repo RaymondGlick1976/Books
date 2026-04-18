@@ -90,10 +90,6 @@
       }
       .hcd-submit-btn:hover { opacity: 0.9; }
       .hcd-submit-btn:disabled { background: #ccc; cursor: not-allowed; }
-      .hcd-thank-you { text-align: center; padding: 40px 20px; }
-      .hcd-thank-you-icon { font-size: 3rem; margin-bottom: 16px; }
-      .hcd-thank-you-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; }
-      .hcd-thank-you-message { color: #666; }
       .hcd-loading { text-align: center; padding: 40px; }
       .hcd-spinner {
         width: 36px; height: 36px; border: 3px solid #eee;
@@ -320,12 +316,6 @@
     html += `
           <button type="submit" class="hcd-submit-btn" id="hcd-submit-btn">Submit Request</button>
         </form>
-        
-        <div class="hcd-thank-you" id="hcd-thank-you" style="display:none;">
-          <div class="hcd-thank-you-icon">✓</div>
-          <h3 class="hcd-thank-you-title">${escapeHtml(formConfig.thank_you_title || 'Thank You!')}</h3>
-          <p class="hcd-thank-you-message">${escapeHtml(formConfig.thank_you_message || 'We have received your request and will contact you shortly.')}</p>
-        </div>
       </div>
     `;
 
@@ -464,10 +454,14 @@
         throw new Error(err.error || 'Submission failed');
       }
 
-      // Show thank you
-      container.querySelector('#hcd-booking-form-element').style.display = 'none';
-      container.querySelector('.hcd-form-header').style.display = 'none';
-      container.querySelector('#hcd-thank-you').style.display = 'block';
+      const result = await response.json();
+
+      // Redirect to scheduling page with signed token
+      const scheduleUrl = new URL('/schedule', apiBase);
+      if (result.token) {
+        scheduleUrl.searchParams.set('token', result.token);
+      }
+      window.top.location.href = scheduleUrl.toString();
 
     } catch (err) {
       console.error('HCD Form Error:', err);
