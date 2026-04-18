@@ -554,29 +554,30 @@
           newSlug = baseSlug + '-' + n;
         }
 
-        // 4. Build the new form row (explicit fields, no id/created_at/updated_at)
+        // 4. Build the new form row — explicit whitelist of real columns
+        //    (excludes id, created_at, updated_at, submission_count)
         const newForm = {
-          name: original.name + ' (Copy)',
-          slug: newSlug,
-          header_title: original.header_title,
-          header_description: original.header_description,
-          show_address: original.show_address,
-          show_service_details: original.show_service_details,
-          show_how_heard: original.show_how_heard,
-          show_date_time: original.show_date_time,
-          allow_attachments: original.allow_attachments,
-          attachments_required: original.attachments_required,
-          attachments_label: original.attachments_label,
-          show_sms_consent: original.show_sms_consent,
-          show_scheduler: original.show_scheduler,
-          primary_color: original.primary_color,
-          how_heard_options: original.how_heard_options || null,
-          thank_you_title: original.thank_you_title,
-          thank_you_message: original.thank_you_message,
+          name:                   original.name + ' (Copy)',
+          slug:                   newSlug,
+          header_title:           original.header_title,
+          header_description:     original.header_description,
+          show_address:           original.show_address,
+          show_service_details:   original.show_service_details,
+          show_how_heard:         original.show_how_heard,
+          show_date_time:         original.show_date_time,
+          allow_attachments:      original.allow_attachments,
+          attachments_required:   original.attachments_required,
+          attachments_label:      original.attachments_label || null,
+          show_sms_consent:       original.show_sms_consent,
+          show_scheduler:         original.show_scheduler,
+          primary_color:          original.primary_color,
+          how_heard_options:      original.how_heard_options || null,
+          thank_you_title:        original.thank_you_title,
+          thank_you_message:      original.thank_you_message,
           thank_you_redirect_url: original.thank_you_redirect_url || null,
-          default_stage: original.default_stage,
-          is_active: false,
-          submission_count: 0
+          default_stage:          original.default_stage,
+          is_active:              false,
+          submission_count:       0
         };
 
         const { data: inserted, error: insertErr } = await supabase
