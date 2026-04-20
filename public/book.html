@@ -424,6 +424,8 @@
         if (result.token) {
           scheduleUrl.searchParams.set('token', result.token);
         }
+        // Fire Meta Pixel Lead event on successful form submit
+        if (typeof fbq !== 'undefined') fbq('track', 'Lead');
         window.top.location.href = scheduleUrl.toString();
         
       } catch (err) {
