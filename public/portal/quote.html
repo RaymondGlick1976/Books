@@ -718,20 +718,8 @@
       #status-banner,
       #loading-state,
       .skeleton,
-      #quote-slider-top,
-      #quote-slider-top *,
-      #quote-slider-bottom,
-      #quote-slider-bottom *,
       .package-warning,
-      #ba-slider-container-top,
-      #ba-slider-container-bottom,
       .no-print {
-        display: none !important;
-      }
-
-      /* Double-ensure slider sections are hidden */
-      div[id^="quote-slider"],
-      div[id^="ba-slider"] {
         display: none !important;
       }
 
@@ -1221,28 +1209,6 @@
         <!-- Status Banner -->
         <div id="status-banner"></div>
         
-        <!-- Before/After Slider - TOP Position -->
-        <div id="quote-slider-top" class="quote-section" style="display: none;">
-          <div class="quote-section-body" style="padding: var(--space-xl);">
-            <div style="text-align: center; margin-bottom: var(--space-lg);">
-              <h3 id="quote-slider-title-top" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 5px;">See the Transformation</h3>
-              <p id="quote-slider-subtitle-top" style="color: var(--color-text-light); font-size: 0.9rem;">Drag the slider to reveal</p>
-            </div>
-            <div id="ba-slider-container-top" style="position: relative; height: 350px; cursor: ew-resize; user-select: none; overflow: hidden; border-radius: 12px; box-shadow: var(--shadow-lg); max-width: 700px; margin: 0 auto;">
-              <div id="ba-before-top" style="position: absolute; inset: 0; background-size: cover; background-position: center;">
-                <div id="ba-before-label-top" style="position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,.7); color: white; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;">Before</div>
-              </div>
-              <div id="ba-after-top" style="position: absolute; inset: 0; background-size: cover; background-position: center; clip-path: inset(0 50% 0 0);">
-                <div id="ba-after-label-top" style="position: absolute; top: 16px; right: 16px; background: var(--color-primary); color: white; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;">After</div>
-              </div>
-              <div id="ba-handle-top" style="position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 4px; background: white; box-shadow: 0 0 10px rgba(0,0,0,.3); z-index: 10;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 44px; height: 44px; background: white; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,.2); display: flex; align-items: center; justify-content: center; font-size: 16px; color: #6b7280;">⟷</div>
-              </div>
-              <div id="ba-hint-top" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,.7); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; pointer-events: none; transition: opacity .3s;">← Drag to Compare →</div>
-            </div>
-          </div>
-        </div>
-        
         <!-- Packages Section (shown when packages_enabled) -->
         <div id="packages-section" class="packages-section" style="display: none;">
           <h2>Select Your Bundle</h2>
@@ -1431,28 +1397,6 @@
           </div>
           <div class="quote-section-body">
             <div class="video-container" id="video-container"></div>
-          </div>
-        </div>
-        
-        <!-- Before/After Comparison Slider - BOTTOM Position -->
-        <div id="quote-slider-bottom" class="quote-section" style="display: none;">
-          <div class="quote-section-body" style="padding: var(--space-xl);">
-            <div style="text-align: center; margin-bottom: var(--space-lg);">
-              <h3 id="quote-slider-title-bottom" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 5px;">See the Transformation</h3>
-              <p id="quote-slider-subtitle-bottom" style="color: var(--color-text-light); font-size: 0.9rem;">Drag the slider to reveal</p>
-            </div>
-            <div id="ba-slider-container-bottom" style="position: relative; height: 350px; cursor: ew-resize; user-select: none; overflow: hidden; border-radius: 12px; box-shadow: var(--shadow-lg); max-width: 700px; margin: 0 auto;">
-              <div id="ba-before-bottom" style="position: absolute; inset: 0; background-size: cover; background-position: center;">
-                <div id="ba-before-label-bottom" style="position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,.7); color: white; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;">Before</div>
-              </div>
-              <div id="ba-after-bottom" style="position: absolute; inset: 0; background-size: cover; background-position: center; clip-path: inset(0 50% 0 0);">
-                <div id="ba-after-label-bottom" style="position: absolute; top: 16px; right: 16px; background: var(--color-primary); color: white; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;">After</div>
-              </div>
-              <div id="ba-handle-bottom" style="position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 4px; background: white; box-shadow: 0 0 10px rgba(0,0,0,.3); z-index: 10;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 44px; height: 44px; background: white; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,.2); display: flex; align-items: center; justify-content: center; font-size: 16px; color: #6b7280;">⟷</div>
-              </div>
-              <div id="ba-hint-bottom" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,.7); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; pointer-events: none; transition: opacity .3s;">← Drag to Compare →</div>
-            </div>
           </div>
         </div>
         
@@ -2065,99 +2009,6 @@
         banner.style.display = 'block';
       }
       
-      // Check for quote-specific slider settings first, then fall back to global
-      let sliderSettings = null;
-      let sliderPosition = 'top'; // Default to top
-      
-      // Quote-specific slider (from quote.slider_settings)
-      if (quote.slider_settings && quote.slider_settings.enabled && 
-          quote.slider_settings.before_image && quote.slider_settings.after_image) {
-        sliderSettings = {
-          enabled: true,
-          title: quote.slider_settings.title,
-          subtitle: quote.slider_settings.subtitle,
-          before_image: quote.slider_settings.before_image,
-          before_label: quote.slider_settings.before_label,
-          before_desc: quote.slider_settings.before_desc,
-          after_image: quote.slider_settings.after_image,
-          after_label: quote.slider_settings.after_label,
-          after_desc: quote.slider_settings.after_desc,
-          position: quote.slider_settings.position || 'top'
-        };
-        sliderPosition = sliderSettings.position;
-      } 
-      // Fall back to global slider settings
-      else if (globalFooter && globalFooter.slider_enabled && 
-               globalFooter.before_image && globalFooter.after_image) {
-        sliderSettings = {
-          enabled: true,
-          title: globalFooter.slider_title,
-          subtitle: globalFooter.slider_subtitle,
-          before_image: globalFooter.before_image,
-          before_label: globalFooter.before_label,
-          before_desc: globalFooter.before_desc,
-          after_image: globalFooter.after_image,
-          after_label: globalFooter.after_label,
-          after_desc: globalFooter.after_desc,
-          position: globalFooter.slider_position || 'top'
-        };
-        sliderPosition = sliderSettings.position;
-      }
-      
-      // Display slider if we have valid settings
-      if (sliderSettings && sliderSettings.enabled) {
-        const suffix = sliderPosition === 'bottom' ? '-bottom' : '-top';
-        const slider = $(`#quote-slider${suffix}`);
-        const beforeEl = $(`#ba-before${suffix}`);
-        const afterEl = $(`#ba-after${suffix}`);
-        const handle = $(`#ba-handle${suffix}`);
-        const hint = $(`#ba-hint${suffix}`);
-        const container = $(`#ba-slider-container${suffix}`);
-        
-        // Set title and subtitle
-        $(`#quote-slider-title${suffix}`).textContent = sliderSettings.title || 'See the Transformation';
-        $(`#quote-slider-subtitle${suffix}`).textContent = sliderSettings.subtitle || 'Drag the slider to reveal';
-        
-        // Set images
-        beforeEl.style.backgroundImage = `url('${sliderSettings.before_image}')`;
-        afterEl.style.backgroundImage = `url('${sliderSettings.after_image}')`;
-        
-        // Set labels
-        $(`#ba-before-label${suffix}`).textContent = sliderSettings.before_label || 'Before';
-        $(`#ba-after-label${suffix}`).textContent = sliderSettings.after_label || 'After';
-        
-        // Show slider
-        slider.style.display = 'block';
-        
-        // Initialize drag interaction
-        let dragging = false;
-        
-        function updateSlider(clientX) {
-          const rect = container.getBoundingClientRect();
-          const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-          const pos = (x / rect.width) * 100;
-          afterEl.style.clipPath = 'inset(0 ' + (100 - pos) + '% 0 0)';
-          handle.style.left = pos + '%';
-        }
-        
-        container.addEventListener('mousedown', (e) => { 
-          e.preventDefault(); 
-          dragging = true; 
-          if (hint) hint.style.opacity = '0';
-        });
-        container.addEventListener('touchstart', () => { 
-          dragging = true; 
-          if (hint) hint.style.opacity = '0';
-        });
-        document.addEventListener('mouseup', () => { dragging = false; });
-        document.addEventListener('touchend', () => { dragging = false; });
-        document.addEventListener('mousemove', (e) => { 
-          if (dragging) updateSlider(e.clientX); 
-        });
-        document.addEventListener('touchmove', (e) => { 
-          if (dragging && e.touches[0]) updateSlider(e.touches[0].clientX); 
-        });
-      }
     }
     
     function renderLineItems() {
