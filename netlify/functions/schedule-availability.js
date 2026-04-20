@@ -94,6 +94,15 @@ exports.handler = async (event) => {
       };
     }
 
+    // Get branding settings (logo_url)
+    const { data: brandingRow } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'branding')
+      .maybeSingle();
+
+    const logo_url = brandingRow?.value?.logo_url || null;
+
     // -------------------------------------------------------
     // GET without type_id: return list of enabled types
     // -------------------------------------------------------
@@ -110,7 +119,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ types: enabledTypes })
+        body: JSON.stringify({ types: enabledTypes, logo_url })
       };
     }
 

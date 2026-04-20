@@ -191,7 +191,7 @@
 </head>
 <body>
   <div class="header">
-    <img src="/images/logo.gif" alt="Homestead Cabinet Design" class="logo">
+    <img src="" alt="" class="logo" id="logo" style="display:none;">
   </div>
 
   <div class="container">
@@ -447,6 +447,14 @@
         if (!resp.ok) throw new Error('Failed to load appointment types');
         const data = await resp.json();
         types = data.types || [];
+
+        // Apply logo
+        const logoEl = document.getElementById('logo');
+        if (data.logo_url) {
+          logoEl.src = data.logo_url;
+          logoEl.alt = 'Company Logo';
+          logoEl.style.display = '';
+        }
 
         if (types.length === 0) {
           document.getElementById('loading').innerHTML = '<p style="color:#6b7280;">Online scheduling is not currently available.</p>';

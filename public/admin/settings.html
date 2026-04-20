@@ -81,14 +81,11 @@
                   <label class="form-label">Company Logo</label>
                   <div style="background: var(--color-bg-soft); border: 2px dashed var(--color-border); border-radius: var(--radius-lg); padding: var(--space-xl); text-align: center;">
                     <img id="logo-preview" src="/images/logo.gif" alt="Logo" style="max-width: 200px; max-height: 80px; margin-bottom: var(--space-md);">
-                    <div>
-                      <input type="file" id="logo-upload" accept="image/*" style="display: none;">
-                      <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('logo-upload').click()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        Upload New Logo
-                      </button>
+                    <div class="form-group" style="margin-top: var(--space-md); text-align: left;">
+                      <label class="form-label">Logo URL</label>
+                      <input type="url" id="logo-url" class="form-input" placeholder="https://example.com/logo.png">
+                      <div class="form-help">URL to your logo image. Used on booking forms and scheduling pages.</div>
                     </div>
-                    <p class="form-help" style="margin-top: var(--space-sm);">Recommended: PNG or GIF, max 500KB</p>
                   </div>
                 </div>
               </div>
@@ -976,25 +973,15 @@
       showToast('Copied to clipboard', 'success');
     }
 
-    // Logo upload handling
-    document.getElementById('logo-upload').addEventListener('change', async function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      if (file.size > 500000) {
-        showToast('Logo file must be under 500KB', 'error');
-        return;
+    // Logo URL preview
+    document.getElementById('logo-url').addEventListener('input', function(e) {
+      const url = e.target.value.trim();
+      if (url) {
+        document.getElementById('logo-preview').src = url;
+        document.getElementById('logo-preview').style.display = '';
+      } else {
+        document.getElementById('logo-preview').src = '/images/logo.gif';
       }
-      
-      // Preview
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        document.getElementById('logo-preview').src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-      
-      // For now, show a message about manual upload
-      showToast('Logo preview updated. Full logo upload coming soon!', 'success');
     });
     
     // Brand color sync
@@ -1052,6 +1039,10 @@
           $('#company-tagline').value = branding.tagline || 'Love your kitchen again';
           $('#brand-color').value = branding.color || '#38571a';
           $('#brand-color-hex').value = branding.color || '#38571a';
+          if (branding.logo_url) {
+            $('#logo-url').value = branding.logo_url;
+            $('#logo-preview').src = branding.logo_url;
+          }
         }
         
         if (settings.quotes) {
@@ -1139,7 +1130,8 @@
       // Also save branding
       const branding = {
         tagline: $('#company-tagline').value,
-        color: $('#brand-color').value
+        color: $('#brand-color').value,
+        logo_url: $('#logo-url').value.trim() || null
       };
       await saveSetting('branding', branding);
     });
@@ -3531,6 +3523,10 @@
             $('#company-tagline').value = branding.tagline || 'Love your kitchen again';
             $('#brand-color').value = branding.color || '#38571a';
             $('#brand-color-hex').value = branding.color || '#38571a';
+            if (branding.logo_url) {
+              $('#logo-url').value = branding.logo_url;
+              $('#logo-preview').src = branding.logo_url;
+            }
             return;
           }
           // Handle notification settings

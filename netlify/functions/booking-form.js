@@ -71,17 +71,27 @@ exports.handler = async (event) => {
       .select('*')
       .eq('form_id', form.id)
       .order('sort_order');
-    
+
     if (questionsError) {
       console.error('Questions query error:', questionsError);
     }
-    
+
+    // Get branding settings (logo_url)
+    const { data: brandingRow } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'branding')
+      .maybeSingle();
+
+    const logo_url = brandingRow?.value?.logo_url || null;
+
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         form,
-        questions: questions || []
+        questions: questions || [],
+        logo_url
       })
     };
     

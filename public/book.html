@@ -59,7 +59,7 @@
 </head>
 <body>
   <div class="header">
-    <img src="/images/logo.gif" alt="Homestead Cabinet Design" class="logo" id="logo">
+    <img src="" alt="" class="logo" id="logo" style="display:none;">
   </div>
   
   <div class="container">
@@ -201,7 +201,15 @@
         const data = await response.json();
         formConfig = data.form;
         questions = data.questions || [];
-        
+
+        // Apply logo
+        const logoEl = document.getElementById('logo');
+        if (data.logo_url) {
+          logoEl.src = data.logo_url;
+          logoEl.alt = 'Company Logo';
+          logoEl.style.display = '';
+        }
+
         applyFormConfig();
         document.getElementById('loading').style.display = 'none';
         document.getElementById('form-content').style.display = 'block';
