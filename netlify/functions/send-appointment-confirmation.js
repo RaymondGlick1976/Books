@@ -232,17 +232,21 @@ exports.handler = async (event) => {
           emailBody += `\n---\nView this appointment in your admin dashboard.`;
 
           if (process.env.RESEND_API_KEY) {
-            await fetch('https://api.resend.com/emails', {
+            const res = await fetch('https://api.resend.com/emails', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({ from: `${companyName} <${fromEmail}>`, to: [notificationEmail], subject: emailSubject, text: emailBody })
             });
+            if (res.ok) { console.log('Admin notification sent to:', notificationEmail); }
+            else { console.error('Resend error (admin notification):', await res.text()); }
           } else if (process.env.SENDGRID_API_KEY) {
-            await fetch('https://api.sendgrid.com/v3/mail/send', {
+            const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({ personalizations: [{ to: [{ email: notificationEmail }] }], from: { email: fromEmail, name: companyName }, subject: emailSubject, content: [{ type: 'text/plain', value: emailBody }] })
             });
+            if (res.ok || res.status === 202) { console.log('Admin notification sent to:', notificationEmail); }
+            else { console.error('SendGrid error (admin notification):', await res.text()); }
           }
         }
       } catch (adminErr) {

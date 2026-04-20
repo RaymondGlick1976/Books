@@ -399,7 +399,7 @@ exports.handler = async (event) => {
 </html>`;
 
       if (process.env.RESEND_API_KEY) {
-        await fetch('https://api.resend.com/emails', {
+        const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
@@ -412,9 +412,13 @@ exports.handler = async (event) => {
             html: customerHtml
           })
         });
-        console.log('Customer confirmation email sent to:', data.email);
+        if (res.ok) {
+          console.log('Customer confirmation email sent to:', data.email);
+        } else {
+          console.error('Resend error (customer confirmation):', await res.text());
+        }
       } else if (process.env.SENDGRID_API_KEY) {
-        await fetch('https://api.sendgrid.com/v3/mail/send', {
+        const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
@@ -427,7 +431,11 @@ exports.handler = async (event) => {
             content: [{ type: 'text/html', value: customerHtml }]
           })
         });
-        console.log('Customer confirmation email sent to:', data.email);
+        if (res.ok || res.status === 202) {
+          console.log('Customer confirmation email sent to:', data.email);
+        } else {
+          console.error('SendGrid error (customer confirmation):', await res.text());
+        }
       } else {
         console.log('No email provider configured. Would send confirmation to:', data.email);
       }
@@ -463,7 +471,7 @@ exports.handler = async (event) => {
           emailBody += `\n---\nView this appointment in your admin dashboard.`;
 
           if (process.env.RESEND_API_KEY) {
-            await fetch('https://api.resend.com/emails', {
+            const res = await fetch('https://api.resend.com/emails', {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
@@ -476,9 +484,13 @@ exports.handler = async (event) => {
                 text: emailBody
               })
             });
-            console.log('Admin notification email sent to:', notificationEmail);
+            if (res.ok) {
+              console.log('Admin notification email sent to:', notificationEmail);
+            } else {
+              console.error('Resend error (admin notification):', await res.text());
+            }
           } else if (process.env.SENDGRID_API_KEY) {
-            await fetch('https://api.sendgrid.com/v3/mail/send', {
+            const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
@@ -491,7 +503,11 @@ exports.handler = async (event) => {
                 content: [{ type: 'text/plain', value: emailBody }]
               })
             });
-            console.log('Admin notification email sent to:', notificationEmail);
+            if (res.ok || res.status === 202) {
+              console.log('Admin notification email sent to:', notificationEmail);
+            } else {
+              console.error('SendGrid error (admin notification):', await res.text());
+            }
           } else {
             console.log('No email provider configured. Would send admin notification to:', notificationEmail);
           }

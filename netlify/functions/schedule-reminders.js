@@ -188,7 +188,7 @@ exports.handler = async (event) => {
         let sent = false;
 
         if (process.env.RESEND_API_KEY) {
-          await fetch('https://api.resend.com/emails', {
+          const res = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
@@ -201,9 +201,14 @@ exports.handler = async (event) => {
               html: reminderHtml
             })
           });
-          sent = true;
+          if (res.ok) {
+            sent = true;
+          } else {
+            const errText = await res.text();
+            console.error(`Resend error for appointment ${appt.id}:`, errText);
+          }
         } else if (process.env.SENDGRID_API_KEY) {
-          await fetch('https://api.sendgrid.com/v3/mail/send', {
+          const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
@@ -216,21 +221,25 @@ exports.handler = async (event) => {
               content: [{ type: 'text/html', value: reminderHtml }]
             })
           });
-          sent = true;
+          if (res.ok || res.status === 202) {
+            sent = true;
+          } else {
+            const errText = await res.text();
+            console.error(`SendGrid error for appointment ${appt.id}:`, errText);
+          }
         } else {
           console.log(`No email provider configured. Would send reminder to: ${customerEmail}`);
         }
 
-        // Mark reminder as sent regardless of email provider
-        await supabase
-          .from('appointments')
-          .update({ reminder_sent_at: new Date().toISOString() })
-          .eq('id', appt.id);
-
+        // Only mark reminder as sent if email was actually delivered
         if (sent) {
+          await supabase
+            .from('appointments')
+            .update({ reminder_sent_at: new Date().toISOString() })
+            .eq('id', appt.id);
           console.log(`Reminder sent to ${customerEmail} for appointment ${appt.id}`);
+          sentCount++;
         }
-        sentCount++;
       } catch (emailErr) {
         console.error(`Failed to send reminder for appointment ${appt.id}:`, emailErr);
       }

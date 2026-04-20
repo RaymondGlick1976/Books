@@ -260,7 +260,7 @@ exports.handler = async (event) => {
             console.log('Notification email sent to:', notificationEmail);
           }
         } else if (process.env.SENDGRID_API_KEY) {
-          await fetch('https://api.sendgrid.com/v3/mail/send', {
+          const sgRes = await fetch('https://api.sendgrid.com/v3/mail/send', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
@@ -273,7 +273,12 @@ exports.handler = async (event) => {
               content: [{ type: 'text/plain', value: emailBody }]
             })
           });
-          console.log('Notification email sent to:', notificationEmail);
+          if (sgRes.ok || sgRes.status === 202) {
+            console.log('Notification email sent to:', notificationEmail);
+          } else {
+            const errText = await sgRes.text();
+            console.error('SendGrid failed to send notification email:', errText);
+          }
         } else {
           console.log('No email provider configured. Would send notification to:', notificationEmail);
           console.log('Subject:', emailSubject);
