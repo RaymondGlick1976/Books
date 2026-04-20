@@ -398,10 +398,13 @@
             <div style="margin-bottom: var(--space-xl);">
               <label class="form-label" style="font-weight: 600;">Blocked Dates</label>
               <p style="color: var(--color-text-muted); font-size: 0.8rem; margin-bottom: var(--space-sm);">Days when no online bookings are allowed (holidays, vacations, etc.)</p>
-              <div style="display: flex; gap: var(--space-sm); align-items: center; margin-bottom: var(--space-sm);">
-                <input type="date" id="scheduling-blocked-date-input" class="form-input" style="width: auto;">
+              <div style="display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-sm);">
+                <input type="date" id="scheduling-blocked-date-from" class="form-input" style="width: auto;">
+                <span style="color: var(--color-text-muted); font-size: 0.8rem;">to</span>
+                <input type="date" id="scheduling-blocked-date-to" class="form-input" style="width: auto;" placeholder="Optional">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="addBlockedDate()">Add</button>
               </div>
+              <div id="scheduling-blocked-date-error" style="color: var(--color-danger, #dc3545); font-size: 0.8rem; margin-bottom: var(--space-sm); display: none;"></div>
               <div id="scheduling-blocked-dates" style="display: flex; flex-wrap: wrap; gap: var(--space-xs);"></div>
             </div>
 
@@ -1648,31 +1651,93 @@
       renderSchedulingTypes();
     }
 
+    // Group sorted dates into consecutive ranges for display
+    function groupConsecutiveDates(dates) {
+      if (!dates.length) return [];
+      const sorted = [...dates].sort();
+      const groups = [];
+      let start = sorted[0], prev = sorted[0];
+      for (let i = 1; i < sorted.length; i++) {
+        const next = sorted[i];
+        const prevDate = new Date(prev + 'T00:00:00');
+        const nextDate = new Date(next + 'T00:00:00');
+        const diff = (nextDate - prevDate) / (1000 * 60 * 60 * 24);
+        if (diff === 1) {
+          prev = next;
+        } else {
+          groups.push({ start, end: prev });
+          start = next;
+          prev = next;
+        }
+      }
+      groups.push({ start, end: prev });
+      return groups;
+    }
+
+    function formatDateShort(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
     function renderBlockedDates() {
       const container = $('#scheduling-blocked-dates');
       if (!schedulingConfig.blocked_dates.length) {
         container.innerHTML = '<span style="color: var(--color-text-muted); font-size: 0.8rem;">No blocked dates</span>';
         return;
       }
-      container.innerHTML = schedulingConfig.blocked_dates
-        .sort()
-        .map((d, i) => `<span style="display: inline-flex; align-items: center; gap: 4px; background: var(--color-bg-soft); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem;">${d}<button type="button" onclick="removeBlockedDate(${i})" style="background: none; border: none; cursor: pointer; color: var(--color-text-muted); font-size: 1rem; line-height: 1; padding: 0 0 0 4px;">&times;</button></span>`)
-        .join('');
+      const sorted = [...schedulingConfig.blocked_dates].sort();
+      const groups = groupConsecutiveDates(sorted);
+      container.innerHTML = groups.map(g => {
+        const label = g.start === g.end
+          ? formatDateShort(g.start)
+          : `${formatDateShort(g.start)} – ${formatDateShort(g.end)}`;
+        return `<span style="display: inline-flex; align-items: center; gap: 4px; background: var(--color-bg-soft); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem;">${label}<button type="button" onclick="removeBlockedDateRange('${g.start}','${g.end}')" style="background: none; border: none; cursor: pointer; color: var(--color-text-muted); font-size: 1rem; line-height: 1; padding: 0 0 0 4px;">&times;</button></span>`;
+      }).join('');
     }
 
     window.addBlockedDate = () => {
-      const input = $('#scheduling-blocked-date-input');
-      const val = input.value;
-      if (!val) return;
-      if (!schedulingConfig.blocked_dates.includes(val)) {
-        schedulingConfig.blocked_dates.push(val);
+      const fromInput = $('#scheduling-blocked-date-from');
+      const toInput = $('#scheduling-blocked-date-to');
+      const errorEl = $('#scheduling-blocked-date-error');
+      errorEl.style.display = 'none';
+
+      const fromVal = fromInput.value;
+      const toVal = toInput.value;
+      if (!fromVal) return;
+
+      // If no end date, treat as single date
+      const startDate = new Date(fromVal + 'T00:00:00');
+      const endDate = toVal ? new Date(toVal + 'T00:00:00') : startDate;
+
+      if (endDate < startDate) {
+        errorEl.textContent = 'End date must be on or after the start date.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      // Expand range into individual dates
+      const datesToAdd = [];
+      const current = new Date(startDate);
+      while (current <= endDate) {
+        const ds = current.toISOString().split('T')[0];
+        if (!schedulingConfig.blocked_dates.includes(ds)) {
+          datesToAdd.push(ds);
+        }
+        current.setDate(current.getDate() + 1);
+      }
+
+      if (datesToAdd.length > 0) {
+        schedulingConfig.blocked_dates.push(...datesToAdd);
         renderBlockedDates();
       }
-      input.value = '';
+
+      fromInput.value = '';
+      toInput.value = '';
     };
 
-    window.removeBlockedDate = (idx) => {
-      schedulingConfig.blocked_dates.splice(idx, 1);
+    window.removeBlockedDateRange = (start, end) => {
+      schedulingConfig.blocked_dates = schedulingConfig.blocked_dates.filter(d => d < start || d > end);
       renderBlockedDates();
     };
 
