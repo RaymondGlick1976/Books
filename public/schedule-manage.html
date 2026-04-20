@@ -141,7 +141,8 @@
 </head>
 <body>
   <div class="header">
-    <img src="/images/logo.gif" alt="Homestead Cabinet Design" class="logo">
+    <img data-brand-logo src="" alt="Company Logo" class="logo" style="display:none;">
+    <script>(function(){var u=localStorage.getItem('brand_logo_url');if(u){var i=document.querySelector('[data-brand-logo]');i.src=u;i.style.display='';}})()</script>
   </div>
 
   <div class="container">

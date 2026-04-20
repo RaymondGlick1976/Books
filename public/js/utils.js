@@ -908,6 +908,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const cachedColor = localStorage.getItem('brand_color');
   if (cachedColor) applyBrandColor(cachedColor);
 
+  // Apply cached brand logo immediately to prevent flash
+  const cachedLogo = localStorage.getItem('brand_logo_url');
+  document.querySelectorAll('[data-brand-logo]').forEach(img => {
+    if (cachedLogo) { img.src = cachedLogo; img.style.display = ''; }
+    else { img.style.display = 'none'; }
+  });
+
   // Load and apply brand settings on all pages (don't block anything)
   loadBrandSettings().catch(e => console.log('Brand settings error:', e));
 });
@@ -936,9 +943,26 @@ async function loadBrandSettings() {
         applyBrandColor(branding.color);
         localStorage.setItem('brand_color', branding.color);
       }
+      // Apply logo
+      if (branding.logo_url) {
+        localStorage.setItem('brand_logo_url', branding.logo_url);
+        document.querySelectorAll('[data-brand-logo]').forEach(img => {
+          img.src = branding.logo_url;
+          img.style.display = '';
+        });
+      } else {
+        localStorage.removeItem('brand_logo_url');
+        document.querySelectorAll('[data-brand-logo]').forEach(img => {
+          img.style.display = 'none';
+        });
+      }
     } else {
       // No branding saved in DB — clear stale cache so CSS defaults apply
       localStorage.removeItem('brand_color');
+      localStorage.removeItem('brand_logo_url');
+      document.querySelectorAll('[data-brand-logo]').forEach(img => {
+        img.style.display = 'none';
+      });
     }
   } catch (e) {
     // Silently fail - will use default colors

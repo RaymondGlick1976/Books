@@ -10,7 +10,7 @@
 <body>
   <header class="portal-header">
     <a href="/portal/dashboard.html" class="portal-logo">
-      <img src="/images/logo.gif" alt="Homestead Cabinet Design" style="height: 56px; filter: brightness(0) invert(1);">
+      <img data-brand-logo src="" alt="Company Logo" style="height: 56px; filter: brightness(0) invert(1); display: none;">
     </a>
     <nav class="portal-nav">
       <a href="/portal/dashboard.html" class="portal-nav-link">Dashboard</a>
@@ -565,7 +565,7 @@
 </head><body>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #333;">
     <div style="display:flex;align-items:center;gap:16px;">
-      <img src="/images/logo.gif" alt="${companyName}" style="height:70px;width:auto;" onerror="this.style.display='none'">
+      ${localStorage.getItem('brand_logo_url') ? `<img src="${localStorage.getItem('brand_logo_url')}" alt="${companyName}" style="height:70px;width:auto;" onerror="this.style.display='none'">` : ''}
       <div>
         <div style="font-weight:700;font-size:16px;">${companyName}</div>
         ${company.phone ? `<div style="color:#666;font-size:13px;">${company.phone}</div>` : ''}

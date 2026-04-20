@@ -22,7 +22,7 @@
   <div class="app-layout">
     <aside class="app-sidebar">
       <div class="sidebar-logo">
-        <img src="/images/logo.gif" alt="Homestead Cabinet Design" style="height: 40px; filter: brightness(0) invert(1);">
+        <img data-brand-logo src="" alt="Company Logo" style="height: 40px; filter: brightness(0) invert(1); display: none;">
       </div>
       <nav>
         <ul class="sidebar-nav">
@@ -327,7 +327,7 @@
       const content = `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-xl);padding-bottom:var(--space-lg);border-bottom:2px solid var(--color-primary);">
           <div style="display:flex;align-items:center;gap:var(--space-md);">
-            <img src="/images/logo.gif" alt="${company.name || 'Company'}" style="height:60px;width:auto;" onerror="this.style.display='none'">
+            ${localStorage.getItem('brand_logo_url') ? `<img src="${localStorage.getItem('brand_logo_url')}" alt="${company.name || 'Company'}" style="height:60px;width:auto;" onerror="this.style.display='none'">` : ''}
             <div>
               <div style="font-weight:700;font-size:1.1rem;">${company.name || 'Homestead Cabinet Design'}</div>
               ${company.phone ? `<div class="text-sm text-muted">${phoneLink(company.phone)}</div>` : ''}
@@ -832,7 +832,7 @@
 <body>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #333;">
     <div style="display:flex;align-items:center;gap:16px;">
-      <img src="/images/logo.gif" alt="${companyName}" style="height:70px;width:auto;" onerror="this.style.display='none'">
+      ${localStorage.getItem('brand_logo_url') ? `<img src="${localStorage.getItem('brand_logo_url')}" alt="${companyName}" style="height:70px;width:auto;" onerror="this.style.display='none'">` : ''}
       <div>
         <div style="font-weight:700;font-size:16px;">${companyName}</div>
         ${companyPhone ? `<div style="color:#666;font-size:13px;">${companyPhone}</div>` : ''}
