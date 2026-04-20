@@ -398,6 +398,10 @@ exports.handler = async (event) => {
 </body>
 </html>`;
 
+      const custEmailSubject = `Your ${typeName} Appointment Confirmation`;
+      let custEmailStatus = 'sent';
+      let custEmailError = null;
+
       if (process.env.RESEND_API_KEY) {
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -408,14 +412,16 @@ exports.handler = async (event) => {
           body: JSON.stringify({
             from: `${companyName} <${fromEmail}>`,
             to: [data.email],
-            subject: `Your ${typeName} Appointment Confirmation`,
+            subject: custEmailSubject,
             html: customerHtml
           })
         });
         if (res.ok) {
           console.log('Customer confirmation email sent to:', data.email);
         } else {
-          console.error('Resend error (customer confirmation):', await res.text());
+          custEmailError = await res.text();
+          custEmailStatus = 'failed';
+          console.error('Resend error (customer confirmation):', custEmailError);
         }
       } else if (process.env.SENDGRID_API_KEY) {
         const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -427,17 +433,35 @@ exports.handler = async (event) => {
           body: JSON.stringify({
             personalizations: [{ to: [{ email: data.email }] }],
             from: { email: fromEmail, name: companyName },
-            subject: `Your ${typeName} Appointment Confirmation`,
+            subject: custEmailSubject,
             content: [{ type: 'text/html', value: customerHtml }]
           })
         });
         if (res.ok || res.status === 202) {
           console.log('Customer confirmation email sent to:', data.email);
         } else {
-          console.error('SendGrid error (customer confirmation):', await res.text());
+          custEmailError = await res.text();
+          custEmailStatus = 'failed';
+          console.error('SendGrid error (customer confirmation):', custEmailError);
         }
       } else {
         console.log('No email provider configured. Would send confirmation to:', data.email);
+      }
+
+      // Log customer confirmation email
+      try {
+        await supabase.from('email_logs').insert({
+          customer_id: customerId,
+          appointment_id: appt.id,
+          to_email: data.email,
+          subject: custEmailSubject,
+          body: customerHtml,
+          status: custEmailStatus,
+          error_message: custEmailError,
+          email_type: 'appointment_confirmation'
+        });
+      } catch (logErr) {
+        console.error('Failed to log customer email:', logErr);
       }
     } catch (emailErr) {
       // Don't fail the booking if customer email fails
@@ -470,6 +494,9 @@ exports.handler = async (event) => {
           emailBody += `\nSubmitted: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}\n`;
           emailBody += `\n---\nView this appointment in your admin dashboard.`;
 
+          let adminEmailStatus = 'sent';
+          let adminEmailError = null;
+
           if (process.env.RESEND_API_KEY) {
             const res = await fetch('https://api.resend.com/emails', {
               method: 'POST',
@@ -487,7 +514,9 @@ exports.handler = async (event) => {
             if (res.ok) {
               console.log('Admin notification email sent to:', notificationEmail);
             } else {
-              console.error('Resend error (admin notification):', await res.text());
+              adminEmailError = await res.text();
+              adminEmailStatus = 'failed';
+              console.error('Resend error (admin notification):', adminEmailError);
             }
           } else if (process.env.SENDGRID_API_KEY) {
             const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -506,10 +535,28 @@ exports.handler = async (event) => {
             if (res.ok || res.status === 202) {
               console.log('Admin notification email sent to:', notificationEmail);
             } else {
-              console.error('SendGrid error (admin notification):', await res.text());
+              adminEmailError = await res.text();
+              adminEmailStatus = 'failed';
+              console.error('SendGrid error (admin notification):', adminEmailError);
             }
           } else {
             console.log('No email provider configured. Would send admin notification to:', notificationEmail);
+          }
+
+          // Log admin notification email
+          try {
+            await supabase.from('email_logs').insert({
+              customer_id: customerId,
+              appointment_id: appt.id,
+              to_email: notificationEmail,
+              subject: emailSubject,
+              body: emailBody,
+              status: adminEmailStatus,
+              error_message: adminEmailError,
+              email_type: 'appointment_admin_notification'
+            });
+          } catch (logErr) {
+            console.error('Failed to log admin email:', logErr);
           }
         } else {
           console.log('No admin notification email configured');

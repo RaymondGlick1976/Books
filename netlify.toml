@@ -51,6 +51,9 @@
 [functions."schedule-reminders"]
   schedule = "@hourly"
 
+[functions."retry-failed-emails"]
+  schedule = "*/15 * * * *"
+
 # Environment variables (set these in Netlify dashboard)
 # SUPABASE_URL
 # SUPABASE_ANON_KEY

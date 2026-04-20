@@ -239,6 +239,9 @@ exports.handler = async (event) => {
         emailBody += `\n---\nView this lead in your admin dashboard.`;
         
         // Send via Resend or SendGrid
+        let emailStatus = 'sent';
+        let emailError = null;
+
         if (process.env.RESEND_API_KEY) {
           const emailRes = await fetch('https://api.resend.com/emails', {
             method: 'POST',
@@ -254,8 +257,9 @@ exports.handler = async (event) => {
             })
           });
           if (!emailRes.ok) {
-            const errText = await emailRes.text();
-            console.error('Failed to send notification email:', errText);
+            emailError = await emailRes.text();
+            emailStatus = 'failed';
+            console.error('Failed to send notification email:', emailError);
           } else {
             console.log('Notification email sent to:', notificationEmail);
           }
@@ -276,12 +280,29 @@ exports.handler = async (event) => {
           if (sgRes.ok || sgRes.status === 202) {
             console.log('Notification email sent to:', notificationEmail);
           } else {
-            const errText = await sgRes.text();
-            console.error('SendGrid failed to send notification email:', errText);
+            emailError = await sgRes.text();
+            emailStatus = 'failed';
+            console.error('SendGrid failed to send notification email:', emailError);
           }
         } else {
           console.log('No email provider configured. Would send notification to:', notificationEmail);
           console.log('Subject:', emailSubject);
+        }
+
+        // Log to email_logs
+        try {
+          await supabase.from('email_logs').insert({
+            customer_id: customerId,
+            deal_id: deal.id,
+            to_email: notificationEmail,
+            subject: emailSubject,
+            body: emailBody,
+            status: emailStatus,
+            error_message: emailError,
+            email_type: 'lead_notification'
+          });
+        } catch (logErr) {
+          console.error('Failed to log email:', logErr);
         }
         } else {
           console.log('No notification email configured');
