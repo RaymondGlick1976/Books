@@ -908,19 +908,22 @@
         });
       });
       
-      // Cancel button
-      content.parentElement.querySelector('#email-cancel-btn').addEventListener('click', () => closeModal(modal));
-      
-      // Send button
-      content.parentElement.querySelector('#email-send-btn').addEventListener('click', async () => {
+      // Attach listeners to buttons via the live DOM modal
+      const cancelBtn = modal.querySelector('#email-cancel-btn');
+      const sendBtn = modal.querySelector('#email-send-btn');
+
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+
+      sendBtn.addEventListener('click', async () => {
+        console.log('Send Email button clicked for', customer.email);
         const subject = $('#email-subject').value.trim();
         const body = $('#email-body').value.trim();
-        
+
         if (!subject || !body) {
           showToast('Please enter subject and message', 'error');
           return;
         }
-        
+
         await sendCustomerEmail(customer, subject, body);
         closeModal(modal);
       });
