@@ -194,6 +194,7 @@
           <button class="template-type-tab" data-type="quote" onclick="filterByType('quote')">📄 Quotes</button>
           <button class="template-type-tab" data-type="invoice" onclick="filterByType('invoice')">🧾 Invoices</button>
           <button class="template-type-tab" data-type="payment" onclick="filterByType('payment')">💳 Payments</button>
+          <button class="template-type-tab" data-type="general" onclick="filterByType('general')">✉️ General</button>
         </div>
         
         <!-- Templates List -->
@@ -260,7 +261,8 @@
         'appointment': 'appointment',
         'quote': 'quote',
         'invoice': 'invoice',
-        'payment': 'payment confirmation'
+        'payment': 'payment confirmation',
+        'general': 'general'
       };
       return labels[type] || type;
     }
@@ -292,6 +294,8 @@
           badge = '<span class="badge" style="background: #f59e0b; color: white;">Invoice Email</span>';
         } else if (template.template_type === 'payment') {
           badge = '<span class="badge" style="background: #8b5cf6; color: white;">Payment Confirmation</span>';
+        } else if (template.template_type === 'general') {
+          badge = '<span class="badge" style="background: #6b7280; color: white;">General</span>';
         }
         
         return `
@@ -342,6 +346,7 @@
               <option value="quote" ${defaultType === 'quote' ? 'selected' : ''}>Quote Email</option>
               <option value="invoice" ${defaultType === 'invoice' ? 'selected' : ''}>Invoice Email</option>
               <option value="payment" ${defaultType === 'payment' ? 'selected' : ''}>Payment Confirmation</option>
+              <option value="general" ${defaultType === 'general' ? 'selected' : ''}>General</option>
             </select>
           </div>
           <div class="form-group" id="stage-select-group">
@@ -419,6 +424,10 @@
           case 'payment':
             typeVars = ['{{total}}', '{{invoice_number}}'];
             helpText = 'Shown on the thank you page after a customer makes a payment.';
+            break;
+          case 'general':
+            typeVars = [];
+            helpText = 'General-purpose templates available in all email compose modals.';
             break;
         }
         
