@@ -149,6 +149,7 @@
                 <a href="#" class="dropdown-item" onclick="createChangeOrder()">Create Change Order</a>
               </div>
             </div>
+            <a href="#" id="print-estimate-btn" class="btn btn-secondary" target="_blank">🖨️ Print</a>
             <a href="#" id="customer-view-newtab" class="btn btn-primary" target="_blank">👁️ Customer View</a>
             <div class="dropdown" id="more-actions-dropdown">
               <button class="btn btn-ghost" onclick="toggleDropdown('more-actions-dropdown')">
@@ -529,11 +530,14 @@
       
       // Customer view - set up the new tab link (no preview param - allows real checkout)
       const newTabLink = $('#customer-view-newtab');
+      const printBtn = $('#print-estimate-btn');
       if (quote.access_token) {
         newTabLink.href = `/portal/quote.html?token=${quote.access_token}`;
+        printBtn.href = `/portal/quote.html?token=${quote.access_token}&print=1&hideUnselected=1`;
       } else {
         newTabLink.href = '#';
-        newTabLink.onclick = async (e) => {
+        printBtn.href = '#';
+        const generateToken = async (e) => {
           e.preventDefault();
           try {
             const supabase = await app.waitForSupabase();
@@ -542,13 +546,17 @@
             quote.access_token = token;
             newTabLink.href = `/portal/quote.html?token=${token}`;
             newTabLink.onclick = null;
-            showToast('Customer link generated!', 'success');
+            printBtn.href = `/portal/quote.html?token=${token}&print=1&hideUnselected=1`;
+            printBtn.onclick = null;
+            showToast('Customer link generated! Click again to proceed.', 'success');
           } catch (err) {
             showToast('Failed to generate link', 'error');
           }
         };
+        newTabLink.onclick = generateToken;
+        printBtn.onclick = generateToken;
       }
-      
+
       // Customer info
       $('#customer-info').innerHTML = `
         <div>

@@ -109,6 +109,77 @@ function generateToken() {
   return require('crypto').randomUUID();
 }
 
+// Advance a deal's pipeline stage forward (never backward).
+// Finds the job by quoteId first, falls back to customerId.
+// Only updates if the target stage's sort_order > current stage's sort_order.
+async function advanceDealStage(supabase, { quoteId, customerId, targetStageId }) {
+  try {
+    // Find the job
+    let job = null;
+    if (quoteId) {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, stage')
+        .eq('quote_id', quoteId)
+        .limit(1)
+        .single();
+      job = data;
+    }
+    if (!job && customerId) {
+      const { data } = await supabase
+        .from('jobs')
+        .select('id, stage')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      job = data;
+    }
+    if (!job) {
+      console.log('[advanceDealStage] No job found for quote:', quoteId, 'customer:', customerId);
+      return;
+    }
+
+    // Already at the target stage
+    if (job.stage === targetStageId) return;
+
+    // Get sort_order for current and target stages
+    const { data: stages } = await supabase
+      .from('job_stages')
+      .select('stage_id, sort_order')
+      .in('stage_id', [job.stage, targetStageId]);
+
+    if (!stages || stages.length < 2) {
+      console.log('[advanceDealStage] Could not find both stages:', job.stage, targetStageId);
+      return;
+    }
+
+    const currentOrder = stages.find(s => s.stage_id === job.stage)?.sort_order;
+    const targetOrder = stages.find(s => s.stage_id === targetStageId)?.sort_order;
+
+    if (currentOrder == null || targetOrder == null) return;
+
+    // Only move forward
+    if (currentOrder >= targetOrder) {
+      console.log('[advanceDealStage] Skipping: current stage', job.stage, '(order', currentOrder, ') >= target', targetStageId, '(order', targetOrder, ')');
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from('jobs')
+      .update({ stage: targetStageId, updated_at: new Date().toISOString() })
+      .eq('id', job.id);
+
+    if (updateError) {
+      console.error('[advanceDealStage] Failed to update job stage:', updateError);
+    } else {
+      console.log('[advanceDealStage] Advanced job', job.id, 'from', job.stage, 'to', targetStageId);
+    }
+  } catch (err) {
+    console.error('[advanceDealStage] Error:', err);
+  }
+}
+
 module.exports = {
   getSupabase,
   success,
@@ -120,4 +191,5 @@ module.exports = {
   setSessionCookie,
   clearSessionCookie,
   generateToken,
+  advanceDealStage,
 };

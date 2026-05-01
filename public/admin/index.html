@@ -402,37 +402,47 @@
     
     async function loadPipelineSummary(supabase) {
       const container = $('#pipeline-summary');
-      
+
       try {
-        // Get stages
-        const { data: stages } = await supabase
-          .from('job_stages')
-          .select('*')
-          .order('sort_order');
-        
-        // Get job counts per stage
-        const { data: jobs } = await supabase
-          .from('jobs')
-          .select('stage');
-        
+        // Get stages and dashboard preferences in parallel
+        const [stagesRes, jobsRes, dashRes] = await Promise.all([
+          supabase.from('job_stages').select('*').order('sort_order'),
+          supabase.from('jobs').select('stage'),
+          supabase.from('settings').select('value').eq('key', 'dashboard').single()
+        ]);
+
+        const stages = stagesRes.data;
+        const jobs = jobsRes.data;
+        const visibleStages = dashRes.data?.value?.pipeline_stages || null;
+
         if (!stages || stages.length === 0) {
           container.innerHTML = '<div class="text-muted">No pipeline stages configured. <a href="/admin/pipeline.html">Set up your pipeline</a></div>';
           return;
         }
-        
+
+        // Filter stages by saved preferences (null = show all)
+        const filteredStages = visibleStages
+          ? stages.filter(s => visibleStages.includes(s.stage_id))
+          : stages;
+
+        if (filteredStages.length === 0) {
+          container.innerHTML = '<div class="text-muted">No stages selected. <a href="/admin/settings.html">Configure dashboard preferences</a></div>';
+          return;
+        }
+
         const stageCounts = {};
         (jobs || []).forEach(job => {
           stageCounts[job.stage] = (stageCounts[job.stage] || 0) + 1;
         });
-        
-        container.innerHTML = stages.map(stage => `
+
+        container.innerHTML = filteredStages.map(stage => `
           <div style="flex: 1; min-width: 100px; text-align: center; padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
             <div style="width: 12px; height: 12px; background: ${stage.color}; border-radius: 50%; margin: 0 auto var(--space-sm);"></div>
             <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text);">${stageCounts[stage.stage_id] || 0}</div>
             <div style="font-size: 0.75rem; color: var(--color-text-muted);">${stage.label}</div>
           </div>
         `).join('');
-        
+
       } catch (err) {
         console.error('Error loading pipeline:', err);
         container.innerHTML = '<div class="text-muted">Pipeline not yet configured. <a href="/admin/pipeline.html">Set it up</a></div>';

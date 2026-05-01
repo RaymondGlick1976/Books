@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const { advanceDealStage } = require('./utils');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -239,6 +240,13 @@ exports.handler = async (event) => {
     
     if (updateError) {
       console.error('Failed to update quote status:', updateError);
+    }
+
+    // Advance deal to "Quote Sent" stage
+    try {
+      await advanceDealStage(supabase, { quoteId, customerId: customer.id, targetStageId: 'quote-sent' });
+    } catch (stageErr) {
+      console.error('Stage advance failed (non-blocking):', stageErr);
     }
 
     return {

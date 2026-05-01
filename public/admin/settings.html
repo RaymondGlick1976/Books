@@ -311,7 +311,21 @@
             </form>
           </div>
         </div>
-        
+
+        <!-- Dashboard Preferences -->
+        <div class="card mb-xl">
+          <div class="card-header">
+            <h3 class="card-title">Dashboard Preferences</h3>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-lg">Choose which pipeline stages appear in the Deals Pipeline widget on the dashboard.</p>
+            <div id="dashboard-stages-list">
+              <div class="text-muted">Loading stages...</div>
+            </div>
+            <button type="button" class="btn btn-primary mt-lg" onclick="saveDashboardPreferences()">Save Dashboard Preferences</button>
+          </div>
+        </div>
+
         <!-- Lead Sources -->
         <div class="card mb-xl">
           <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -1105,6 +1119,48 @@
       }
     }
     
+    // Dashboard Preferences
+    async function loadDashboardStages() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data: stages } = await supabase
+          .from('job_stages')
+          .select('stage_id, label, color')
+          .order('sort_order');
+
+        if (!stages || stages.length === 0) {
+          $('#dashboard-stages-list').innerHTML = '<div class="text-muted">No pipeline stages found.</div>';
+          return;
+        }
+
+        // Get saved preferences (default: all visible)
+        const savedStages = settings.dashboard?.pipeline_stages || null;
+
+        const container = $('#dashboard-stages-list');
+        container.innerHTML = stages.map(stage => {
+          const checked = savedStages === null || savedStages.includes(stage.stage_id);
+          return `
+            <label style="display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) 0; cursor: pointer;">
+              <input type="checkbox" class="dashboard-stage-toggle" value="${stage.stage_id}" ${checked ? 'checked' : ''}>
+              <span style="width: 12px; height: 12px; background: ${stage.color}; border-radius: 50%; display: inline-block;"></span>
+              <span>${stage.label}</span>
+            </label>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Load dashboard stages error:', err);
+      }
+    }
+
+    async function saveDashboardPreferences() {
+      const checkboxes = document.querySelectorAll('.dashboard-stage-toggle');
+      const visibleStages = Array.from(checkboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+
+      await saveSetting('dashboard', { pipeline_stages: visibleStages });
+    }
+
     async function saveTerms() {
       const value = {
         quote: $('#quote-terms').value,
@@ -3624,6 +3680,11 @@
             $('#default-deposit').value = quotes.default_deposit ?? 50;
             return;
           }
+          // Handle dashboard settings
+          if (s.key === 'dashboard' && s.value) {
+            settings.dashboard = s.value;
+            return;
+          }
           const input = document.getElementById(s.key);
           if (input) {
             if (input.type === 'checkbox') input.checked = s.value === 'true';
@@ -3660,8 +3721,11 @@
       // Process users
       appUsers = usersRes.data || [];
       renderUsers();
+
+      // Load dashboard stage toggles
+      loadDashboardStages();
     }
-    
+
     initSettings();
   </script>
 </body>

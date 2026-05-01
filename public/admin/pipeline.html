@@ -2379,6 +2379,18 @@
     // EMAIL FUNCTIONALITY
     // ==========================================
     
+    function formatApptDate(dateStr) {
+      if (!dateStr) return '';
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
+    function formatApptTime(timeStr) {
+      if (!timeStr) return '';
+      const [h, m] = timeStr.split(':').map(Number);
+      return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+    }
+
     function replaceEmailVariables(text, data) {
       return text
         .replace(/\{\{first_name\}\}/g, data.firstName || data.customerName?.split(' ')[0] || 'there')
@@ -2387,8 +2399,8 @@
         .replace(/\{\{deal_name\}\}/g, data.dealName || '')
         .replace(/\{\{company_name\}\}/g, 'Homestead Cabinet Design')
         .replace(/\{\{appointment_type\}\}/g, data.appointmentType || '')
-        .replace(/\{\{appointment_date\}\}/g, data.appointmentDate ? formatDate(data.appointmentDate) : '')
-        .replace(/\{\{appointment_time\}\}/g, data.appointmentTime || '')
+        .replace(/\{\{appointment_date\}\}/g, formatApptDate(data.appointmentDate))
+        .replace(/\{\{appointment_time\}\}/g, formatApptTime(data.appointmentTime))
         .replace(/\{\{appointment_location\}\}/g, data.appointmentLocation || '')
         .replace(/\{\{location\}\}/g, data.appointmentLocation || '')
         .replace(/\{\{reschedule_link\}\}/g, data.rescheduleLink || '')

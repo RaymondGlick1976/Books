@@ -2,7 +2,7 @@
 // PORTAL QUOTE SELECTION - Save optional item and package selections
 // =============================================
 
-const { getSupabase, success, error, handleCors, validateSession, parseBody } = require('./utils');
+const { getSupabase, success, error, handleCors, validateSession, parseBody, advanceDealStage } = require('./utils');
 
 exports.handler = async (event) => {
   const corsResponse = handleCors(event);
@@ -81,6 +81,13 @@ exports.handler = async (event) => {
         .eq('id', quote_id);
       
       if (updateError) throw updateError;
+
+      // Advance deal to "Quote Accepted" stage
+      try {
+        await advanceDealStage(supabase, { quoteId: quote_id, customerId: customer.id, targetStageId: 'job-sold' });
+      } catch (stageErr) {
+        console.error('Stage advance failed (non-blocking):', stageErr);
+      }
 
       // Create invoice from quote
       try {

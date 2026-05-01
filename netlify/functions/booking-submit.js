@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const { advanceDealStage } = require('./utils');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -129,7 +130,14 @@ exports.handler = async (event) => {
       .single();
     
     if (dealError) throw dealError;
-    
+
+    // Advance deal to "Booked Appointment" stage if still at new-lead
+    try {
+      await advanceDealStage(supabase, { customerId, targetStageId: 'quotes' });
+    } catch (stageErr) {
+      console.error('Stage advance failed (non-blocking):', stageErr);
+    }
+
     // Create submission record
     const { error: subError } = await supabase
       .from('booking_submissions')

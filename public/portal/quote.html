@@ -1435,6 +1435,8 @@
     const params = new URLSearchParams(window.location.search);
     const quoteId = params.get('id');
     accessToken = params.get('token');
+    const hideUnselected = params.get('hideUnselected') === '1';
+    const autoPrint = params.get('print') === '1';
     
     // Check for payment status
     const paymentStatus = params.get('payment');
@@ -1491,6 +1493,11 @@
           });
         });
 
+        // Filter out unselected optional items when printing from admin
+        if (hideUnselected) {
+          lineItems = lineItems.filter(item => !item.is_optional || item.is_selected);
+        }
+
         attachments = response.attachments;
         changeOrders = response.change_orders || [];
         payments = response.payments || [];
@@ -1500,6 +1507,11 @@
         linkedInvoice = response.linked_invoice || null;
 
         renderQuote();
+
+        // Auto-trigger print dialog when opened from admin Print button
+        if (autoPrint) {
+          setTimeout(() => window.print(), 600);
+        }
         
       } catch (err) {
         console.error('Failed to load quote:', err);
@@ -1737,6 +1749,11 @@
     }
     
     function renderDeclinedOptions() {
+      // Hide declined options when printing without unselected items
+      if (hideUnselected) {
+        $('#declined-options-section').style.display = 'none';
+        return;
+      }
       // Only show declined options after quote has been accepted
       if (!['accepted', 'converted'].includes(quote.status)) {
         $('#declined-options-section').style.display = 'none';
