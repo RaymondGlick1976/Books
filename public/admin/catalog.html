@@ -876,10 +876,6 @@
         <div class="detail-section">
           <div class="detail-row">
             <div class="form-group">
-              <label class="form-label">Default Price</label>
-              <input type="number" class="form-input" id="detail-price" value="${item.default_price || ''}" step="0.01" min="0" placeholder="0.00">
-            </div>
-            <div class="form-group">
               <label class="form-label">Folder</label>
               <select class="form-select" id="detail-folder">
                 <option value="">No folder</option>
@@ -1002,7 +998,7 @@
       if (!cost || isNaN(cost)) { showToast('Enter a cost first', 'error'); return; }
       if (isNaN(markup)) { showToast('Enter a markup percentage', 'error'); return; }
       const price = Math.round(cost * (1 + markup / 100) * 100) / 100;
-      $('#detail-price').value = price;
+      $('#detail-selling-price').value = price;
     }
 
     async function saveItemDetail(id) {
@@ -1012,7 +1008,6 @@
           name: $('#detail-name').value.trim(),
           category: $('#detail-category').value.trim() || null,
           description: $('#detail-description').value.trim() || null,
-          default_price: parseFloat($('#detail-price').value) || null,
           folder_id: $('#detail-folder').value || null,
           notes: $('#detail-notes').value.trim() || null,
           is_taxable: $('#detail-taxable').checked,
