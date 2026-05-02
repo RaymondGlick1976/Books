@@ -21,9 +21,9 @@ exports.handler = async (event) => {
   // 1. Fetch active catalog items
   const supabase = getSupabase();
   const { data: catalog, error: catalogError } = await supabase
-    .from('catalog_items')
-    .select('id, name, unit, base_price')
-    .eq('active', true);
+    .from('items_catalog')
+    .select('id, name, default_price')
+    .eq('is_active', true);
 
   if (catalogError) {
     console.error('Catalog fetch error:', catalogError);
@@ -66,11 +66,11 @@ exports.handler = async (event) => {
 
   const enrichedLineItems = (parsed.line_items || []).map((item) => {
     const catalogItem = catalogMap[item.catalog_item_id];
-    const unitPrice = catalogItem ? catalogItem.base_price : 0;
+    const unitPrice = catalogItem ? catalogItem.default_price : 0;
     return {
       ...item,
       unit_price: unitPrice,
-      unit: catalogItem ? catalogItem.unit : null,
+      unit: 'each',
       line_total: unitPrice * (item.quantity || 0),
     };
   });
