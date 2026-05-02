@@ -904,10 +904,6 @@
           </div>
           <div class="detail-row">
             <div class="form-group">
-              <label class="form-label">Cost Price</label>
-              <input type="number" class="form-input" id="detail-cost-price" value="${item.cost_price || ''}" step="0.01" min="0" placeholder="0.00">
-            </div>
-            <div class="form-group">
               <label class="form-label">Selling Price</label>
               <input type="number" class="form-input" id="detail-selling-price" value="${item.selling_price || ''}" step="0.01" min="0" placeholder="0.00">
             </div>
@@ -1025,7 +1021,6 @@
           product_sku: $('#detail-sku').value.trim() || null,
           cost: parseFloat($('#detail-cost').value) || null,
           markup_percentage: parseFloat($('#detail-markup').value) || null,
-          cost_price: parseFloat($('#detail-cost-price').value) || null,
           selling_price: parseFloat($('#detail-selling-price').value) || null,
           updated_at: new Date().toISOString()
         };
