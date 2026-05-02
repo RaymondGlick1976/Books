@@ -401,6 +401,68 @@
       margin-top: var(--space-sm);
       padding-top: var(--space-md);
     }
+
+    .ai-assist-panel {
+      background: var(--color-bg-alt);
+      border: 1px solid var(--color-border-light);
+      border-radius: var(--radius-md);
+      padding: var(--space-lg);
+    }
+
+    .ai-assist-panel .hidden {
+      display: none;
+    }
+
+    .ai-assist-panel textarea {
+      width: 100%;
+      resize: vertical;
+    }
+
+    .ai-spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: ai-spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: var(--space-sm);
+    }
+
+    @keyframes ai-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .ai-preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: var(--space-md);
+    }
+
+    .ai-preview-table th,
+    .ai-preview-table td {
+      text-align: left;
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .ai-preview-table th {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+    }
+
+    .ai-preview-table td:nth-child(2),
+    .ai-preview-table td:nth-child(3),
+    .ai-preview-table td:nth-child(4) {
+      text-align: right;
+    }
+
+    .ai-error-msg {
+      color: var(--color-danger, #c0392b);
+      margin-bottom: var(--space-md);
+    }
   </style>
 </head>
 <body>
@@ -656,6 +718,57 @@
               </div>
             </div>
             
+            <!-- AI Assist -->
+            <div class="card mb-xl">
+              <div class="card-header">
+                <h3 class="card-title">AI Quote Assist</h3>
+              </div>
+              <div class="card-body">
+                <div class="ai-assist-panel">
+
+                  <div id="ai-state-idle">
+                    <textarea id="ai-prompt" class="form-textarea" rows="3" placeholder="Describe the job in plain English..."></textarea>
+                    <button class="btn btn-primary btn-sm mt-md" onclick="runAIAssist()">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                      </svg>
+                      Generate Line Items
+                    </button>
+                  </div>
+
+                  <div id="ai-state-loading" class="hidden">
+                    <span class="ai-spinner"></span>
+                    Finding catalog items...
+                  </div>
+
+                  <div id="ai-state-preview" class="hidden">
+                    <table class="ai-preview-table">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th>Qty</th>
+                          <th>Unit Price</th>
+                          <th>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody id="ai-preview-body"></tbody>
+                    </table>
+                    <ul id="ai-unmatched" class="hidden" style="color: var(--color-danger, #c0392b); margin-bottom: var(--space-md);"></ul>
+                    <div class="btn-group">
+                      <button class="btn btn-primary btn-sm" id="ai-add-btn" onclick="insertIntoQuote()">Add All to Quote</button>
+                      <button class="btn btn-secondary btn-sm" onclick="setAIState('idle')">Cancel</button>
+                    </div>
+                  </div>
+
+                  <div id="ai-state-error" class="hidden">
+                    <p class="ai-error-msg" id="ai-error-msg">Something went wrong.</p>
+                    <button class="btn btn-secondary btn-sm" onclick="setAIState('idle')">Try Again</button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
             <!-- Line Items -->
             <div class="card mb-xl">
               <div class="card-header">
@@ -4146,6 +4259,108 @@
       }
     }
     
+    // ---- AI Assist ----
+
+    let aiResult = null;
+
+    function setAIState(state) {
+      ['idle', 'loading', 'preview', 'error'].forEach(s => {
+        const el = $(`#ai-state-${s}`);
+        if (s === state) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+    }
+
+    async function runAIAssist() {
+      const prompt = $('#ai-prompt').value.trim();
+      if (!prompt) {
+        showToast('Please describe the job first', 'error');
+        return;
+      }
+
+      setAIState('loading');
+
+      try {
+        const res = await fetch('/.netlify/functions/ai-quote-assist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.error || `Request failed (${res.status})`);
+        }
+
+        aiResult = await res.json();
+
+        // Render preview table
+        const tbody = $('#ai-preview-body');
+        tbody.innerHTML = '';
+        (aiResult.line_items || []).forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${escapeHtml(item.name)}</td>
+            <td>${item.quantity}</td>
+            <td>${formatCurrency(item.unit_price)}</td>
+            <td>${formatCurrency(item.line_total)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Render unmatched items
+        const unmatchedList = $('#ai-unmatched');
+        unmatchedList.innerHTML = '';
+        if (aiResult.unmatched && aiResult.unmatched.length > 0) {
+          aiResult.unmatched.forEach(text => {
+            const li = document.createElement('li');
+            li.textContent = text;
+            unmatchedList.appendChild(li);
+          });
+          unmatchedList.classList.remove('hidden');
+        } else {
+          unmatchedList.classList.add('hidden');
+        }
+
+        setAIState('preview');
+      } catch (err) {
+        console.error('AI assist error:', err);
+        $('#ai-error-msg').textContent = err.message || 'Something went wrong.';
+        setAIState('error');
+      }
+    }
+
+    function insertIntoQuote() {
+      if (!aiResult || !aiResult.line_items) return;
+
+      aiResult.line_items.forEach(item => {
+        const catalogItem = catalogItems.find(c => c.id === item.catalog_item_id);
+        addLineItem(catalogItem || {
+          id: item.catalog_item_id,
+          name: item.name,
+          default_price: item.unit_price,
+          is_taxable: true
+        });
+
+        // Set the quantity the AI suggested (addLineItem defaults to 1)
+        if (item.quantity && item.quantity !== 1) {
+          lineItems[lineItems.length - 1].quantity = item.quantity;
+        }
+      });
+
+      renderLineItems();
+      updateSummary();
+      setAIState('idle');
+      showToast(`Added ${aiResult.line_items.length} item(s) from AI`, 'success');
+      aiResult = null;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
     // Initialize
     init();
     

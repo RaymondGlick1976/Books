@@ -6,6 +6,7 @@
     "dev": "netlify dev"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@supabase/supabase-js": "^2.39.0",
     "stripe": "^14.10.0",
     "resend": "^2.1.0"
