@@ -53,12 +53,14 @@ exports.handler = async (event) => {
 
   // 3. Parse Claude's response
   let parsed;
+  const raw = message.content[0].text;
+  console.log('Claude raw response:', raw);
   try {
-    const raw = message.content[0].text;
-    parsed = JSON.parse(raw);
+    const cleaned = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+    parsed = JSON.parse(cleaned);
   } catch (err) {
     console.error('JSON parse error:', err);
-    return error('Failed to parse AI response as JSON', 502);
+    return error('Failed to parse AI response as JSON. Raw response: ' + raw, 502);
   }
 
   // 4. Enrich line items with pricing from catalog
