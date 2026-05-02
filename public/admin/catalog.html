@@ -891,6 +891,19 @@
           </div>
           <div class="detail-row">
             <div class="form-group">
+              <label class="form-label">Cost</label>
+              <input type="number" class="form-input" id="detail-cost" value="${item.cost || ''}" step="0.01" min="0" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Markup %</label>
+              <input type="number" class="form-input" id="detail-markup" value="${item.markup_percentage || ''}" step="0.01" min="0" placeholder="e.g., 40">
+            </div>
+            <div class="form-group" style="display: flex; align-items: flex-end;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="calculatePrice()">Calculate Price</button>
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="form-group">
               <label class="form-label">Cost Price</label>
               <input type="number" class="form-input" id="detail-cost-price" value="${item.cost_price || ''}" step="0.01" min="0" placeholder="0.00">
             </div>
@@ -987,6 +1000,15 @@
       $('#detail-delete-btn').addEventListener('click', () => deleteItem(item.id));
     }
 
+    function calculatePrice() {
+      const cost = parseFloat($('#detail-cost').value);
+      const markup = parseFloat($('#detail-markup').value);
+      if (!cost || isNaN(cost)) { showToast('Enter a cost first', 'error'); return; }
+      if (isNaN(markup)) { showToast('Enter a markup percentage', 'error'); return; }
+      const price = Math.round(cost * (1 + markup / 100) * 100) / 100;
+      $('#detail-price').value = price;
+    }
+
     async function saveItemDetail(id) {
       try {
         const supabase = await app.waitForSupabase();
@@ -1001,6 +1023,8 @@
           is_active: $('#detail-active').checked,
           vendor_id: $('#detail-vendor').value || null,
           product_sku: $('#detail-sku').value.trim() || null,
+          cost: parseFloat($('#detail-cost').value) || null,
+          markup_percentage: parseFloat($('#detail-markup').value) || null,
           cost_price: parseFloat($('#detail-cost-price').value) || null,
           selling_price: parseFloat($('#detail-selling-price').value) || null,
           updated_at: new Date().toISOString()
@@ -1067,7 +1091,9 @@
           price_range_high: item.price_range_high,
           notes: item.notes,
           is_taxable: item.is_taxable,
-          is_active: item.is_active
+          is_active: item.is_active,
+          cost: item.cost,
+          markup_percentage: item.markup_percentage
         }).select().single();
         if (error) throw error;
 
