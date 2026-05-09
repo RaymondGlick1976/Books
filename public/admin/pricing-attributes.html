@@ -489,30 +489,75 @@
       const name = $('#attr-name').value.trim();
       const description = $('#attr-description').value.trim();
       const isActive = $('#attr-active').checked;
-      
+
       if (!name) {
         showToast('Attribute name is required', 'error');
         return;
       }
-      
+
       try {
         const supabase = await app.waitForSupabase();
         const isPublic = $('#attr-public').checked;
         const defaultMarkupVal = $('#attr-default-markup').value;
         const defaultMarkup = defaultMarkupVal !== '' ? parseFloat(defaultMarkupVal) : null;
         const data = { name, description: description || null, is_active: isActive, is_public: isPublic, default_markup_percentage: defaultMarkup };
-        
+
         let error;
         if (attributeId) {
           ({ error } = await supabase.from('pricing_attributes').update(data).eq('id', attributeId));
         } else {
           ({ error } = await supabase.from('pricing_attributes').insert(data));
         }
-        
+
         if (error) throw error;
-        
-        closeModal(modal);
+
         showToast(attributeId ? 'Attribute updated' : 'Attribute created', 'success');
+
+        // Check if we should prompt to apply markup to options
+        const attr = attributeId ? attributes.find(a => a.id === attributeId) : null;
+        const hasOptions = attr?.options?.length > 0;
+        if (defaultMarkup != null && hasOptions) {
+          // Show inline confirmation inside the modal
+          const modalBody = modal.querySelector('.modal-body');
+          const modalFooter = modal.querySelector('.modal-footer');
+          modalBody.innerHTML = `
+            <div style="text-align: center; padding: var(--space-md) 0;">
+              <p style="font-weight: 500; margin-bottom: var(--space-md);">Apply new markup to all options?</p>
+              <div style="display: flex; gap: var(--space-sm); justify-content: center; flex-wrap: wrap;">
+                <button type="button" class="btn btn-primary" id="markup-apply-all">All Options</button>
+                <button type="button" class="btn btn-secondary" id="markup-apply-unset">Unset Only</button>
+                <button type="button" class="btn btn-secondary" id="markup-apply-skip">Skip</button>
+              </div>
+              <p class="text-muted" style="font-size: 0.85em; margin-top: var(--space-sm);">Options without a cost will not be changed.</p>
+            </div>
+          `;
+          if (modalFooter) modalFooter.style.display = 'none';
+
+          const finish = async (mode) => {
+            if (mode !== 'skip') {
+              const options = attr.options.filter(o => o.cost && o.cost > 0);
+              const toUpdate = mode === 'all' ? options : options.filter(o => !o.markup_percentage);
+              for (const opt of toUpdate) {
+                const newPrice = +(opt.cost * (1 + defaultMarkup / 100)).toFixed(2);
+                await supabase.from('pricing_attribute_options')
+                  .update({ markup_percentage: defaultMarkup, unit_price: newPrice })
+                  .eq('id', opt.id);
+              }
+              if (toUpdate.length > 0) {
+                showToast(`Updated ${toUpdate.length} option${toUpdate.length === 1 ? '' : 's'}`, 'success');
+              }
+            }
+            closeModal(modal);
+            await loadAttributes();
+          };
+
+          modal.querySelector('#markup-apply-all').addEventListener('click', () => finish('all'));
+          modal.querySelector('#markup-apply-unset').addEventListener('click', () => finish('unset'));
+          modal.querySelector('#markup-apply-skip').addEventListener('click', () => finish('skip'));
+          return;
+        }
+
+        closeModal(modal);
         await loadAttributes();
       } catch (err) {
         console.error('Error saving attribute:', err);
