@@ -745,6 +745,7 @@
                     <table class="ai-preview-table">
                       <thead>
                         <tr>
+                          <th style="width: 32px;"><input type="checkbox" id="ai-select-all" checked onchange="document.querySelectorAll('.ai-row-check').forEach(c => c.checked = this.checked)"></th>
                           <th>Item</th>
                           <th>Qty</th>
                           <th>Unit Price</th>
@@ -4297,9 +4298,10 @@
         // Render preview table
         const tbody = $('#ai-preview-body');
         tbody.innerHTML = '';
-        (aiResult.line_items || []).forEach(item => {
+        (aiResult.line_items || []).forEach((item, idx) => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
+            <td><input type="checkbox" class="ai-row-check" data-index="${idx}" checked></td>
             <td>${escapeHtml(item.name)}</td>
             <td>${item.quantity}</td>
             <td>${formatCurrency(item.unit_price)}</td>
@@ -4307,6 +4309,7 @@
           `;
           tbody.appendChild(tr);
         });
+        $('#ai-select-all').checked = true;
 
         // Render unmatched items
         const unmatchedList = $('#ai-unmatched');
@@ -4333,7 +4336,17 @@
     function insertIntoQuote() {
       if (!aiResult || !aiResult.line_items) return;
 
-      aiResult.line_items.forEach(item => {
+      const checked = Array.from(document.querySelectorAll('.ai-row-check:checked'));
+      if (checked.length === 0) {
+        showToast('Select at least one item', 'error');
+        return;
+      }
+
+      const selectedIndices = new Set(checked.map(cb => parseInt(cb.dataset.index)));
+      let added = 0;
+
+      aiResult.line_items.forEach((item, idx) => {
+        if (!selectedIndices.has(idx)) return;
         const catalogItem = catalogItems.find(c => c.id === item.catalog_item_id);
         addLineItem(catalogItem || {
           id: item.catalog_item_id,
@@ -4346,12 +4359,13 @@
         if (item.quantity && item.quantity !== 1) {
           lineItems[lineItems.length - 1].quantity = item.quantity;
         }
+        added++;
       });
 
       renderLineItems();
       updateSummary();
       setAIState('idle');
-      showToast(`Added ${aiResult.line_items.length} item(s) from AI`, 'success');
+      showToast(`Added ${added} item(s) from AI`, 'success');
       aiResult = null;
     }
 

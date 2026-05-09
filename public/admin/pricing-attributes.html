@@ -454,6 +454,14 @@
             </label>
           </div>
           <div class="form-group">
+            <label class="form-label">Default Markup % <span class="text-muted">(optional)</span></label>
+            <div class="input-with-prefix">
+              <span class="input-prefix">%</span>
+              <input type="number" class="form-input" id="attr-default-markup" value="${attr?.default_markup_percentage ?? ''}" step="0.01" min="0" placeholder="e.g., 40">
+            </div>
+            <small class="text-muted">Applied as the default markup when adding new options</small>
+          </div>
+          <div class="form-group">
             <label class="form-check">
               <input type="checkbox" id="attr-public" ${attr?.is_public ? 'checked' : ''}>
               <span>Customer Selectable</span>
@@ -490,7 +498,9 @@
       try {
         const supabase = await app.waitForSupabase();
         const isPublic = $('#attr-public').checked;
-        const data = { name, description: description || null, is_active: isActive, is_public: isPublic };
+        const defaultMarkupVal = $('#attr-default-markup').value;
+        const defaultMarkup = defaultMarkupVal !== '' ? parseFloat(defaultMarkupVal) : null;
+        const data = { name, description: description || null, is_active: isActive, is_public: isPublic, default_markup_percentage: defaultMarkup };
         
         let error;
         if (attributeId) {
@@ -586,18 +596,37 @@
       const opt = optionId ? attr?.options.find(o => o.id === optionId) : null;
       const isEdit = !!opt;
       const existingPrice = opt?.unit_price ?? opt?.flat_adjustment ?? 0;
-      
+      const existingCost = opt?.cost ?? '';
+      // Use option's markup if set, otherwise fall back to parent attribute's default
+      const existingMarkup = opt?.markup_percentage ?? attr?.default_markup_percentage ?? '';
+
       // Build pricing type options dynamically
-      const pricingTypeOptions = pricingTypes.map(pt => 
+      const pricingTypeOptions = pricingTypes.map(pt =>
         `<option value="${pt.code}" ${opt?.pricing_type === pt.code || (!opt?.pricing_type && pt.code === 'each') ? 'selected' : ''}>${pt.name} (${pt.label})</option>`
       ).join('');
-      
+
       const content = createElement('div');
       content.innerHTML = `
         <form id="option-form">
           <div class="form-group">
             <label class="form-label">Option Name *</label>
             <input type="text" class="form-input" id="opt-name" value="${opt?.name || ''}" placeholder="e.g., Cherry, Maple, Oak" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Cost</label>
+              <div class="input-with-prefix">
+                <span class="input-prefix">$</span>
+                <input type="number" class="form-input" id="opt-cost" value="${existingCost}" step="0.01" min="0">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Markup %</label>
+              <div class="input-with-prefix">
+                <span class="input-prefix">%</span>
+                <input type="number" class="form-input" id="opt-markup" value="${existingMarkup}" step="0.01" min="0">
+              </div>
+            </div>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -623,18 +652,32 @@
           </div>
         </form>
       `;
-      
+
       const footer = createElement('div', { className: 'btn-group' });
       const cancelBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
       const saveBtn = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: isEdit ? 'Save Option' : 'Add Option' });
       footer.appendChild(cancelBtn);
       footer.appendChild(saveBtn);
-      
+
       const modal = createModal({ title: isEdit ? 'Edit Option' : `Add Option to "${attr.name}"`, content, footer });
-      
+
+      // Auto-calculate price when cost or markup changes
+      const costInput = $('#opt-cost');
+      const markupInput = $('#opt-markup');
+      const priceInput = $('#opt-price');
+      function calcPriceFromCostMarkup() {
+        const cost = parseFloat(costInput.value);
+        const markup = parseFloat(markupInput.value);
+        if (!isNaN(cost) && !isNaN(markup)) {
+          priceInput.value = (cost * (1 + markup / 100)).toFixed(2);
+        }
+      }
+      costInput.addEventListener('input', calcPriceFromCostMarkup);
+      markupInput.addEventListener('input', calcPriceFromCostMarkup);
+
       cancelBtn.addEventListener('click', () => closeModal(modal));
       saveBtn.addEventListener('click', () => saveOption(attributeId, optionId, modal));
-      
+
       $('#opt-name').focus();
     }
     
@@ -656,7 +699,11 @@
           await supabase.from('pricing_attribute_options').update({ is_default: false }).eq('attribute_id', attributeId);
         }
         
-        const data = { attribute_id: attributeId, name, unit_price: unitPrice, pricing_type: pricingType, is_default: isDefault };
+        const costVal = $('#opt-cost').value;
+        const markupVal = $('#opt-markup').value;
+        const cost = costVal !== '' ? parseFloat(costVal) : null;
+        const markupPct = markupVal !== '' ? parseFloat(markupVal) : null;
+        const data = { attribute_id: attributeId, name, unit_price: unitPrice, pricing_type: pricingType, is_default: isDefault, cost, markup_percentage: markupPct };
         
         let error;
         if (optionId) {

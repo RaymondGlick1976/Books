@@ -454,7 +454,7 @@
         </form>
       </div>
       <div class="modal-footer" style="justify-content: space-between; flex-wrap: wrap;">
-        <div style="display: flex; gap: var(--space-sm);">
+        <div style="display: flex; gap: var(--space-sm); flex-wrap: wrap; align-items: center;">
           <button type="button" class="btn btn-secondary" id="email-appt-btn" style="display:none;" onclick="openApptEmailModal()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             Send Reminder
@@ -463,6 +463,18 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Push to GCal
           </button>
+          <button type="button" class="btn btn-secondary" id="reschedule-appt-btn" style="display:none;" onclick="rescheduleAppt()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            Reschedule
+          </button>
+          <span id="cancel-appt-wrapper" style="display:none;">
+            <button type="button" class="btn btn-danger" id="cancel-appt-btn" onclick="cancelAppt()">Cancel Appointment</button>
+            <span id="cancel-appt-confirm" style="display:none; align-items: center; gap: var(--space-xs);">
+              <span style="font-size: 0.85em; font-weight: 500;">Are you sure?</span>
+              <button type="button" class="btn btn-danger btn-sm" onclick="confirmCancelAppt()">Yes, Cancel</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="abortCancelAppt()">No</button>
+            </span>
+          </span>
         </div>
         <div style="display: flex; gap: var(--space-sm);">
           <button type="button" class="btn btn-secondary" onclick="closeApptModal()">Cancel</button>
@@ -1944,6 +1956,12 @@
         $('#email-appt-btn').style.display = hasEmail ? 'block' : 'none';
         // Show push-to-GCal button if not already synced
         $('#push-gcal-btn').style.display = appt.gcal_event_id ? 'none' : 'block';
+        // Show Cancel Appointment & Reschedule only for non-cancelled appointments
+        const isCancelled = appt.status === 'cancelled';
+        $('#cancel-appt-wrapper').style.display = isCancelled ? 'none' : 'inline';
+        $('#cancel-appt-btn').style.display = isCancelled ? 'none' : '';
+        $('#cancel-appt-confirm').style.display = 'none';
+        $('#reschedule-appt-btn').style.display = isCancelled ? 'none' : 'block';
         $('#appt-new-options').style.display = 'none';
         // Status badges
         const emailBc = appt.confirmation_email_sent_at ? 'badge-accepted' : 'badge-draft';
@@ -1951,13 +1969,16 @@
         const gcalBc = appt.gcal_event_id ? 'badge-accepted' : 'badge-draft';
         const gcalBt = appt.gcal_event_id ? 'GCal Synced' : 'GCal Not Synced';
         $('#appt-edit-badges').style.display = '';
-        $('#appt-edit-badges > div').innerHTML = `<span class="badge ${emailBc}">${emailBt}</span> <span class="badge ${gcalBc}">${gcalBt}</span>`;
+        const cancelledBadge = isCancelled ? '<span class="badge" style="background:#fee2e2;color:#b91c1c;">Cancelled</span> ' : '';
+        $('#appt-edit-badges > div').innerHTML = `${cancelledBadge}<span class="badge ${emailBc}">${emailBt}</span> <span class="badge ${gcalBc}">${gcalBt}</span>`;
       }
       else {
         $('#appt-modal-title').textContent = 'New Appointment';
         $('#delete-appt-btn').style.display = 'none';
         $('#email-appt-btn').style.display = 'none';
         $('#push-gcal-btn').style.display = 'none';
+        $('#cancel-appt-wrapper').style.display = 'none';
+        $('#reschedule-appt-btn').style.display = 'none';
         $('#appt-edit-badges').style.display = 'none';
         $('#appt-form').reset();
         $('#appt-id').value = '';
@@ -2101,6 +2122,76 @@
         closeApptModal(); await loadData(); renderCalendar(); showToast('Appointment deleted', 'success');
       }
       catch (err) { showToast('Failed to delete', 'error'); }
+    }
+
+    function cancelAppt() {
+      $('#cancel-appt-btn').style.display = 'none';
+      $('#cancel-appt-confirm').style.display = 'inline-flex';
+    }
+
+    function abortCancelAppt() {
+      $('#cancel-appt-confirm').style.display = 'none';
+      $('#cancel-appt-btn').style.display = '';
+    }
+
+    async function confirmCancelAppt() {
+      const id = $('#appt-id').value;
+      if (!id) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        // Fetch appointment details for GCal cleanup and optional email
+        const { data: appt } = await supabase.from('appointments')
+          .select('gcal_event_id, customer_id, customers(name, email, first_name), title, appointment_date, appointment_time, location, appointment_type_id')
+          .eq('id', id).single();
+
+        // Remove from Google Calendar if synced
+        if (appt?.gcal_event_id) {
+          try { await fetch(`/.netlify/functions/gcal-delete-event?event_id=${encodeURIComponent(appt.gcal_event_id)}`, { method: 'POST' }); } catch (e) { console.error('GCal delete failed:', e); }
+        }
+
+        // Update status to cancelled
+        await supabase.from('appointments').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', id);
+
+        // Send cancellation email if customer has email on file
+        const customer = appt?.customers;
+        if (customer?.email) {
+          const cancellationTemplate = emailTemplates.find(t => t.template_type === 'cancellation');
+          if (cancellationTemplate) {
+            const apptType = appointmentTypes.find(t => t.id === appt.appointment_type_id);
+            const data = {
+              firstName: customer.first_name || customer.name?.split(' ')[0] || '',
+              customerName: customer.name,
+              customerEmail: customer.email,
+              appointmentType: apptType ? `${apptType.icon} ${apptType.name}` : 'Appointment',
+              appointmentDate: appt.appointment_date,
+              appointmentTime: appt.appointment_time,
+              appointmentLocation: appt.location || ''
+            };
+            const subject = replaceEmailVariables(cancellationTemplate.subject, data);
+            const body = replaceEmailVariables(cancellationTemplate.body, data);
+            try {
+              await fetch('/.netlify/functions/send-template-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to_email: customer.email, subject, body, template_id: cancellationTemplate.id, customer_id: appt.customer_id, appointment_id: id })
+              });
+            } catch (e) { console.error('Cancellation email failed:', e); }
+          }
+        }
+
+        closeApptModal(); await loadData(); renderCalendar();
+        showToast('Appointment cancelled', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to cancel appointment', 'error');
+      }
+    }
+
+    function rescheduleAppt() {
+      $('#appt-date').value = '';
+      $('#appt-time').value = '';
+      $('#appt-date').focus();
+      showToast('Pick a new date and time, then Save', 'info');
     }
 
     async function pushToGcal() {
@@ -2299,7 +2390,7 @@
     
     function buildEventsLookup() {
       const events = {};
-      appointments.forEach(appt => { const dateStr = appt.appointment_date, type = appt.appointment_types || appointmentTypes.find(t => t.id === appt.appointment_type_id); if (!events[dateStr]) events[dateStr] = []; events[dateStr].push({ type: 'appointment', data: appt, color: type?.color || '#38571a', icon: type?.icon || '📅', label: appt.title }); });
+      appointments.forEach(appt => { const dateStr = appt.appointment_date, type = appt.appointment_types || appointmentTypes.find(t => t.id === appt.appointment_type_id); if (!events[dateStr]) events[dateStr] = []; const isCancelled = appt.status === 'cancelled'; events[dateStr].push({ type: 'appointment', data: appt, color: isCancelled ? '#999' : (type?.color || '#38571a'), icon: type?.icon || '📅', label: appt.title, cancelled: isCancelled }); });
       
       // Deal events - support date ranges and show customer last name + event type
       // Filter by selected stages
@@ -2358,7 +2449,8 @@
         // For range events, show icon on start, just label on middle/end
         const showIcon = !e.isRange || e.isStart;
         const displayLabel = showIcon ? `${e.icon} ${e.label}` : e.label;
-        return `<div class="calendar-event" style="background:${bgColor};color:${e.color};border-left:3px solid ${e.color};" onclick="${onclick}">${displayLabel}</div>`;
+        const cancelledStyle = e.cancelled ? 'text-decoration:line-through;opacity:0.6;' : '';
+        return `<div class="calendar-event" style="background:${bgColor};color:${e.color};border-left:3px solid ${e.color};${cancelledStyle}" onclick="${onclick}">${displayLabel}</div>`;
       }).join('');
       if (dayEvents.length > maxVisible) html += `<div class="calendar-more">+${dayEvents.length - maxVisible} more</div>`;
       return html;
