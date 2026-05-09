@@ -4997,7 +4997,7 @@
                 ${showQty ? `
                   <div>
                     <label class="form-label text-sm">${PRICING_LABELS[pricingType] || 'Qty'}</label>
-                    <input type="number" class="form-input pkg-attr-qty" data-idx="${idx}" value="${inst.quantity}" min="0" step="0.01" style="font-size: 0.875rem;">
+                    <input type="number" class="form-input pkg-attr-qty" data-idx="${idx}" value="${Math.round(inst.quantity)}" min="0" step="1" style="font-size: 0.875rem;">
                   </div>
                 ` : ''}
                 <div style="text-align: right;">
@@ -5070,7 +5070,7 @@
         content.querySelectorAll('.pkg-attr-qty').forEach(inp => {
           inp.addEventListener('input', (e) => {
             const idx = parseInt(e.target.dataset.idx);
-            attributeInstances[idx].quantity = parseFloat(e.target.value) || 0;
+            attributeInstances[idx].quantity = Math.round(parseFloat(e.target.value) || 0);
 
             const inst = attributeInstances[idx];
             const selectedOpt = inst.attr.options?.find(o => o.id === inst.optionId);
