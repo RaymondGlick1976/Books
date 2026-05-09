@@ -599,7 +599,8 @@
           name: `Copy of ${attr.name}`,
           description: attr.description || null,
           is_active: attr.is_active,
-          is_public: attr.is_public || false
+          is_public: attr.is_public || false,
+          default_markup_percentage: attr.default_markup_percentage ?? null
         };
         
         const { data: newAttr, error: attrError } = await supabase
@@ -618,7 +619,9 @@
             unit_price: opt.unit_price || 0,
             pricing_type: opt.pricing_type || 'each',
             is_default: opt.is_default || false,
-            sort_order: index
+            sort_order: index,
+            cost: opt.cost ?? null,
+            markup_percentage: opt.markup_percentage ?? null
           }));
           
           const { error: optError } = await supabase
