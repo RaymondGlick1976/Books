@@ -363,8 +363,10 @@ function createModal(options = {}) {
   
   overlay.appendChild(modal);
   if (dismissable) {
+    let mouseDownTarget = null;
+    overlay.addEventListener('mousedown', (e) => { mouseDownTarget = e.target; });
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeModal(overlay);
+      if (e.target === overlay && mouseDownTarget === overlay) closeModal(overlay);
     });
   }
   
