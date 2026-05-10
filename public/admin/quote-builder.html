@@ -5196,8 +5196,35 @@
             });
           });
         });
+
+        // Refresh Prices button
+        const refreshBtn = content.querySelector('#pkg-refresh-prices-btn');
+        const refreshConfirm = content.querySelector('#pkg-refresh-confirm');
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', () => {
+            refreshBtn.style.display = 'none';
+            refreshConfirm.style.display = 'inline-flex';
+          });
+          content.querySelector('#pkg-refresh-no').addEventListener('click', () => {
+            refreshConfirm.style.display = 'none';
+            refreshBtn.style.display = '';
+          });
+          content.querySelector('#pkg-refresh-yes').addEventListener('click', () => {
+            attributeInstances.forEach(inst => {
+              if (!inst.optionId) return;
+              const catalogAttr = pricingAttributes.find(a => a.id === inst.attrId);
+              const catalogOpt = catalogAttr?.options?.find(o => o.id === inst.optionId);
+              if (!catalogOpt) return;
+              const catalogPrice = parseFloat(catalogOpt.unit_price ?? catalogOpt.flat_adjustment ?? 0);
+              inst.unitPriceOverride = catalogPrice;
+            });
+            refreshConfirm.style.display = 'none';
+            refreshBtn.style.display = '';
+            renderPkgAttributeSelectors();
+          });
+        }
       }
-      
+
       // Determine if we have pricing attributes available
       const hasAttributes = pricingAttributes.length > 0;
       
@@ -5240,7 +5267,20 @@
           <div style="margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: 1px solid var(--color-border);">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md);">
               <h4 style="margin: 0;">Pricing Attributes</h4>
-              <span class="badge badge-info" style="font-size: 0.7rem;">Hidden from customer</span>
+              <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                <span id="pkg-refresh-prices-wrapper">
+                  <button type="button" class="btn btn-secondary btn-sm" id="pkg-refresh-prices-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    Refresh Prices
+                  </button>
+                  <span id="pkg-refresh-confirm" style="display:none; align-items:center; gap: var(--space-xs);">
+                    <span style="font-size:0.8em; font-weight:500;">Update to catalog prices?</span>
+                    <button type="button" class="btn btn-primary btn-sm" id="pkg-refresh-yes">Confirm</button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="pkg-refresh-no">Cancel</button>
+                  </span>
+                </span>
+                <span class="badge badge-info" style="font-size: 0.7rem;">Hidden from customer</span>
+              </div>
             </div>
             <div id="pkg-attr-instances"></div>
             <div id="pkg-add-buttons" style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
