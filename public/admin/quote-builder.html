@@ -2259,20 +2259,70 @@
           btn.addEventListener('click', (e) => {
             const attrId = e.target.closest('.add-attr-btn').dataset.attrId;
             const attr = itemAttrs.find(a => a.id === attrId);
-            if (attr) {
+            if (!attr) return;
+            const options = (attr.options || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+            if (options.length <= 1) {
               attributeInstances.push({
-                attrId: attr.id,
-                attrName: attr.name,
-                attr: attr,
+                attrId: attr.id, attrName: attr.name, attr,
                 catalogPricingType: attr.catalog_pricing_type || 'each',
-                optionId: '',
-                quantity: 1,
-                width: null,
-                height: null,
-                unitPriceOverride: null
+                optionId: options.length === 1 ? options[0].id : '',
+                quantity: 1, width: null, height: null, unitPriceOverride: null
               });
               renderAttributeSelectors();
+              return;
             }
+
+            const selContent = createElement('div');
+            selContent.innerHTML = `
+              <div style="margin-bottom: var(--space-sm);">
+                <label class="form-check" style="font-weight:500;">
+                  <input type="checkbox" id="li-opt-select-all">
+                  <span>Select All</span>
+                </label>
+              </div>
+              <div style="max-height: 320px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-sm);">
+                ${options.map(opt => {
+                  const price = parseFloat(opt.unit_price ?? 0);
+                  const pt = opt.pricing_type || 'each';
+                  const priceLabel = pt === 'percentage' ? (price ? ` (${price}%)` : '') : (price ? ` ($${price.toFixed(2)})` : '');
+                  return `<label class="form-check" style="display:flex;align-items:center;padding:4px 0;">
+                    <input type="checkbox" class="li-opt-check" value="${opt.id}">
+                    <span>${opt.name}${priceLabel}</span>
+                  </label>`;
+                }).join('')}
+              </div>
+            `;
+            const selFooter = createElement('div', { className: 'btn-group' });
+            const selCancel = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+            const selConfirm = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: 'Confirm' });
+            selFooter.appendChild(selCancel);
+            selFooter.appendChild(selConfirm);
+            const selModal = createModal({ title: attr.name, content: selContent, footer: selFooter });
+            selModal.querySelector('#li-opt-select-all').addEventListener('change', (ev) => {
+              selModal.querySelectorAll('.li-opt-check').forEach(cb => cb.checked = ev.target.checked);
+            });
+            selModal.querySelectorAll('.li-opt-check').forEach(cb => {
+              cb.addEventListener('change', () => {
+                const all = selModal.querySelectorAll('.li-opt-check');
+                const checked = selModal.querySelectorAll('.li-opt-check:checked');
+                selModal.querySelector('#li-opt-select-all').checked = all.length === checked.length;
+              });
+            });
+            selCancel.addEventListener('click', () => closeModal(selModal));
+            selConfirm.addEventListener('click', () => {
+              const selected = [...selModal.querySelectorAll('.li-opt-check:checked')].map(cb => cb.value);
+              selected.forEach(optId => {
+                attributeInstances.push({
+                  attrId: attr.id, attrName: attr.name, attr,
+                  catalogPricingType: attr.catalog_pricing_type || 'each',
+                  optionId: optId,
+                  quantity: 1, width: null, height: null, unitPriceOverride: null
+                });
+              });
+              closeModal(selModal);
+              if (selected.length > 0) renderAttributeSelectors();
+            });
           });
         });
 
@@ -2761,20 +2811,70 @@
           btn.addEventListener('click', (e) => {
             const attrId = e.target.closest('.add-attr-btn').dataset.attrId;
             const attr = itemAttrs.find(a => a.id === attrId);
-            if (attr) {
+            if (!attr) return;
+            const options = (attr.options || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+            if (options.length <= 1) {
               attributeInstances.push({
-                attrId: attr.id,
-                attrName: attr.name,
-                attr: attr,
+                attrId: attr.id, attrName: attr.name, attr,
                 catalogPricingType: attr.catalog_pricing_type || 'each',
-                optionId: '',
-                quantity: 1,
-                width: null,
-                height: null,
-                unitPriceOverride: null
+                optionId: options.length === 1 ? options[0].id : '',
+                quantity: 1, width: null, height: null, unitPriceOverride: null
               });
               renderAttributeSelectors();
+              return;
             }
+
+            const selContent = createElement('div');
+            selContent.innerHTML = `
+              <div style="margin-bottom: var(--space-sm);">
+                <label class="form-check" style="font-weight:500;">
+                  <input type="checkbox" id="li-opt-select-all">
+                  <span>Select All</span>
+                </label>
+              </div>
+              <div style="max-height: 320px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-sm);">
+                ${options.map(opt => {
+                  const price = parseFloat(opt.unit_price ?? 0);
+                  const pt = opt.pricing_type || 'each';
+                  const priceLabel = pt === 'percentage' ? (price ? ` (${price}%)` : '') : (price ? ` ($${price.toFixed(2)})` : '');
+                  return `<label class="form-check" style="display:flex;align-items:center;padding:4px 0;">
+                    <input type="checkbox" class="li-opt-check" value="${opt.id}">
+                    <span>${opt.name}${priceLabel}</span>
+                  </label>`;
+                }).join('')}
+              </div>
+            `;
+            const selFooter = createElement('div', { className: 'btn-group' });
+            const selCancel = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+            const selConfirm = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: 'Confirm' });
+            selFooter.appendChild(selCancel);
+            selFooter.appendChild(selConfirm);
+            const selModal = createModal({ title: attr.name, content: selContent, footer: selFooter });
+            selModal.querySelector('#li-opt-select-all').addEventListener('change', (ev) => {
+              selModal.querySelectorAll('.li-opt-check').forEach(cb => cb.checked = ev.target.checked);
+            });
+            selModal.querySelectorAll('.li-opt-check').forEach(cb => {
+              cb.addEventListener('change', () => {
+                const all = selModal.querySelectorAll('.li-opt-check');
+                const checked = selModal.querySelectorAll('.li-opt-check:checked');
+                selModal.querySelector('#li-opt-select-all').checked = all.length === checked.length;
+              });
+            });
+            selCancel.addEventListener('click', () => closeModal(selModal));
+            selConfirm.addEventListener('click', () => {
+              const selected = [...selModal.querySelectorAll('.li-opt-check:checked')].map(cb => cb.value);
+              selected.forEach(optId => {
+                attributeInstances.push({
+                  attrId: attr.id, attrName: attr.name, attr,
+                  catalogPricingType: attr.catalog_pricing_type || 'each',
+                  optionId: optId,
+                  quantity: 1, width: null, height: null, unitPriceOverride: null
+                });
+              });
+              closeModal(selModal);
+              if (selected.length > 0) renderAttributeSelectors();
+            });
           });
         });
 
