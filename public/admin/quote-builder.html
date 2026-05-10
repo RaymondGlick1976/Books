@@ -4498,11 +4498,9 @@
         return `
           <div class="package-card ${pkg.is_recommended ? 'recommended' : ''} ${pkg.is_selected ? 'selected' : ''}" data-package-index="${index}">
             <div class="package-header">
-              <div class="package-drag-handle">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="8" y1="6" x2="8" y2="6.01"/><line x1="8" y1="12" x2="8" y2="12.01"/><line x1="8" y1="18" x2="8" y2="18.01"/>
-                  <line x1="16" y1="6" x2="16" y2="6.01"/><line x1="16" y1="12" x2="16" y2="12.01"/><line x1="16" y1="18" x2="16" y2="18.01"/>
-                </svg>
+              <div style="display:flex;flex-direction:column;gap:2px;margin-right:4px;">
+                ${index > 0 ? `<button class="btn btn-ghost btn-sm" style="padding:0;min-width:20px;height:18px;line-height:1;font-size:0.7rem;" onclick="event.stopPropagation();movePackage(${index},-1)" title="Move up">&#9650;</button>` : '<span style="width:20px;height:18px;"></span>'}
+                ${index < packages.length - 1 ? `<button class="btn btn-ghost btn-sm" style="padding:0;min-width:20px;height:18px;line-height:1;font-size:0.7rem;" onclick="event.stopPropagation();movePackage(${index},1)" title="Move down">&#9660;</button>` : '<span style="width:20px;height:18px;"></span>'}
               </div>
               <div class="package-info">
                 <div class="package-title">
@@ -4726,6 +4724,15 @@
       };
     }
     
+    function movePackage(index, direction) {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= packages.length) return;
+      const temp = packages[index];
+      packages[index] = packages[newIndex];
+      packages[newIndex] = temp;
+      updatePackagesUI();
+    }
+
     function duplicatePackage(index) {
       const pkg = packages[index];
       
