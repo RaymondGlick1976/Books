@@ -2275,8 +2275,34 @@
             }
           });
         });
+
+        // Refresh Prices button
+        const refreshBtn = content.querySelector('#li-refresh-prices-btn');
+        const refreshConfirm = content.querySelector('#li-refresh-confirm');
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', () => {
+            refreshBtn.style.display = 'none';
+            refreshConfirm.style.display = 'inline-flex';
+          });
+          content.querySelector('#li-refresh-no').addEventListener('click', () => {
+            refreshConfirm.style.display = 'none';
+            refreshBtn.style.display = '';
+          });
+          content.querySelector('#li-refresh-yes').addEventListener('click', () => {
+            attributeInstances.forEach(inst => {
+              if (!inst.optionId) return;
+              const catalogAttr = pricingAttributes.find(a => a.id === inst.attrId);
+              const catalogOpt = catalogAttr?.options?.find(o => o.id === inst.optionId);
+              if (!catalogOpt) return;
+              inst.unitPriceOverride = parseFloat(catalogOpt.unit_price ?? catalogOpt.flat_adjustment ?? 0);
+            });
+            refreshConfirm.style.display = 'none';
+            refreshBtn.style.display = '';
+            renderAttributeSelectors();
+          });
+        }
       }
-      
+
       content.innerHTML = `
         <div class="mb-lg">
           ${isCustomItem ? `
@@ -2306,6 +2332,19 @@
               <p class="text-muted text-xs" style="margin: 4px 0 0;">Catalog default: ${formatCurrency(catalogItem?.default_price || 0)}</p>
             </div>
           `}
+        </div>
+        <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: var(--space-sm);">
+          <span id="li-refresh-prices-wrapper">
+            <button type="button" class="btn btn-secondary btn-sm" id="li-refresh-prices-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              Refresh Prices
+            </button>
+            <span id="li-refresh-confirm" style="display:none; align-items:center; gap: var(--space-xs);">
+              <span style="font-size:0.8em; font-weight:500;">Update to catalog prices?</span>
+              <button type="button" class="btn btn-primary btn-sm" id="li-refresh-yes">Confirm</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="li-refresh-no">Cancel</button>
+            </span>
+          </span>
         </div>
         <div id="attr-instances"></div>
         <div id="add-buttons" style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
@@ -2738,6 +2777,32 @@
             }
           });
         });
+
+        // Refresh Prices button
+        const refreshBtn = content.querySelector('#li-refresh-prices-btn');
+        const refreshConfirm = content.querySelector('#li-refresh-confirm');
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', () => {
+            refreshBtn.style.display = 'none';
+            refreshConfirm.style.display = 'inline-flex';
+          });
+          content.querySelector('#li-refresh-no').addEventListener('click', () => {
+            refreshConfirm.style.display = 'none';
+            refreshBtn.style.display = '';
+          });
+          content.querySelector('#li-refresh-yes').addEventListener('click', () => {
+            attributeInstances.forEach(inst => {
+              if (!inst.optionId) return;
+              const catalogAttr = pricingAttributes.find(a => a.id === inst.attrId);
+              const catalogOpt = catalogAttr?.options?.find(o => o.id === inst.optionId);
+              if (!catalogOpt) return;
+              inst.unitPriceOverride = parseFloat(catalogOpt.unit_price ?? catalogOpt.flat_adjustment ?? 0);
+            });
+            refreshConfirm.style.display = 'none';
+            refreshBtn.style.display = '';
+            renderAttributeSelectors();
+          });
+        }
       }
 
       content.innerHTML = `
@@ -2762,6 +2827,19 @@
             <input type="checkbox" id="edit-item-taxable" ${item.isTaxable ? 'checked' : ''}>
             <label for="edit-item-taxable" class="form-label" style="margin: 0;">Taxable</label>
           </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: var(--space-sm);">
+          <span id="li-refresh-prices-wrapper">
+            <button type="button" class="btn btn-secondary btn-sm" id="li-refresh-prices-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              Refresh Prices
+            </button>
+            <span id="li-refresh-confirm" style="display:none; align-items:center; gap: var(--space-xs);">
+              <span style="font-size:0.8em; font-weight:500;">Update to catalog prices?</span>
+              <button type="button" class="btn btn-primary btn-sm" id="li-refresh-yes">Confirm</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="li-refresh-no">Cancel</button>
+            </span>
+          </span>
         </div>
         <div id="attr-instances"></div>
         <div id="add-buttons" style="margin-bottom: var(--space-lg); padding: var(--space-md); background: var(--color-bg-soft); border-radius: var(--radius-md);">
