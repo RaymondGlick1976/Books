@@ -51,16 +51,28 @@ exports.handler = async (event) => {
     return error('AI service error: ' + err.message, 502);
   }
 
-  // 3. Parse Claude's response
+  // 3. Parse Claude's response (text block may not be first in content array)
   let parsed;
-  const raw = message.content[0].text;
+  const textBlock = (message.content || []).find((b) => b.type === 'text');
+  const raw = textBlock ? textBlock.text : '';
   console.log('Claude raw response:', raw);
   try {
     const cleaned = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
     parsed = JSON.parse(cleaned);
   } catch (err) {
-    console.error('JSON parse error:', err);
-    return error('Failed to parse AI response as JSON. Raw response: ' + raw, 502);
+    // Fallback: extract the first JSON object found in the text
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        parsed = JSON.parse(match[0]);
+      } catch (err2) {
+        console.error('JSON parse error:', err2);
+        return error('Failed to parse AI response as JSON. Raw response: ' + raw, 502);
+      }
+    } else {
+      console.error('JSON parse error:', err);
+      return error('Failed to parse AI response as JSON. Raw response: ' + raw, 502);
+    }
   }
 
   // 4. Enrich line items with pricing from catalog
