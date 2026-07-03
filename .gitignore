@@ -3,3 +3,4 @@ node_modules/
 .env.local
 .netlify/
 .claude/worktrees/
+g2-construction-books/

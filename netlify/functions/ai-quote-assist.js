@@ -36,7 +36,7 @@ exports.handler = async (event) => {
   let message;
   try {
     message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-5',
       max_tokens: 1024,
       system: 'You are a quoting assistant for a cabinet contracting business. Match the job description to catalog items only. Never invent items or prices. Flag anything you cannot match. Return only valid JSON, no prose, no markdown.',
       messages: [

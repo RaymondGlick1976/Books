@@ -1129,3 +1129,40 @@ if (document.readyState === 'loading') {
 }
 
 window.initMobileMenu = initMobileMenu;
+
+// =============================================
+// PRINT SHEETS NAV ITEM
+// =============================================
+(function () {
+  function injectPrintSheetsNavItem() {
+    if (!window.location.pathname.includes('/admin/')) return;
+    if (document.querySelector('a[href="/admin/spec-sheets.html"]')) return;
+
+    const li = document.createElement('li');
+    li.className = 'sidebar-nav-item';
+    const isActive = window.location.pathname.includes('spec-sheets');
+    li.innerHTML = '<a href="/admin/spec-sheets.html" class="sidebar-nav-link' + (isActive ? ' active' : '') + '">'
+      + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'
+      + '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>'
+      + '<polyline points="14 2 14 8 20 8"/>'
+      + '<line x1="16" y1="13" x2="8" y2="13"/>'
+      + '<line x1="16" y1="17" x2="8" y2="17"/>'
+      + '<polyline points="10 9 9 9 8 9"/>'
+      + '</svg>Print Sheets</a>';
+
+    // Insert after Punch List if present, otherwise append to first nav list
+    const punchList = document.querySelector('a[href="/admin/punch-list.html"]');
+    if (punchList) {
+      punchList.closest('li').after(li);
+    } else {
+      const navList = document.querySelector('ul.sidebar-nav');
+      if (navList) navList.appendChild(li);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectPrintSheetsNavItem);
+  } else {
+    injectPrintSheetsNavItem();
+  }
+})();

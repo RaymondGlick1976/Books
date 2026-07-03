@@ -15,7 +15,12 @@
       "mcp__claude_ai_Supabase__apply_migration",
       "mcp__claude_ai_Supabase__list_migrations",
       "Bash(node:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(netlify status:*)",
+      "Bash(npx:*)",
+      "WebFetch(domain:hcdbooks.netlify.app)",
+      "Bash(gh api:*)",
+      "mcp__claude_ai_Supabase__get_logs"
     ]
   }
 }
