@@ -408,7 +408,6 @@
               <div>
                 <div class="attribute-title">${escapeHtml(attr.name)}</div>
                 ${attr.description ? `<div class="attribute-description">${escapeHtml(attr.description)}</div>` : ''}
-                ${attr.is_public ? '<div class="attribute-description" style="color: var(--color-success); font-weight: 500;">Customer selectable</div>' : ''}
                 ${usageCount > 0 ? `<div class="attribute-description">Used in ${usageCount} catalog item(s)</div>` : ''}
               </div>
               <div class="attribute-actions">
@@ -461,13 +460,6 @@
             </div>
             <small class="text-muted">Applied as the default markup when adding new options</small>
           </div>
-          <div class="form-group">
-            <label class="form-check">
-              <input type="checkbox" id="attr-public" ${attr?.is_public ? 'checked' : ''}>
-              <span>Customer Selectable</span>
-            </label>
-            <small class="text-muted" style="margin-left: 24px;">Customers can choose between options on their quote and see the price update live</small>
-          </div>
         </form>
       `;
       
@@ -497,10 +489,10 @@
 
       try {
         const supabase = await app.waitForSupabase();
-        const isPublic = $('#attr-public').checked;
+        const existingAttr = attributeId ? attributes.find(a => a.id === attributeId) : null;
         const defaultMarkupVal = $('#attr-default-markup').value;
         const defaultMarkup = defaultMarkupVal !== '' ? parseFloat(defaultMarkupVal) : null;
-        const data = { name, description: description || null, is_active: isActive, is_public: isPublic, default_markup_percentage: defaultMarkup };
+        const data = { name, description: description || null, is_active: isActive, is_public: existingAttr?.is_public || false, default_markup_percentage: defaultMarkup };
 
         let error;
         if (attributeId) {
