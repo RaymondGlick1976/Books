@@ -283,6 +283,25 @@ exports.handler = async (event) => {
 
     if (apptError) throw apptError;
 
+    // 5a. Advance the customer's deal to the second pipeline stage (appointment scheduled).
+    // Uses sort_order to stay resilient to renamed/customized stages. No-op if no deal exists
+    // or the deal is already past stage 2.
+    try {
+      const { advanceDealStage } = require('./utils');
+      const { data: stages } = await supabase
+        .from('job_stages')
+        .select('stage_id, sort_order')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .limit(2);
+      const secondStage = stages?.[1];
+      if (secondStage?.stage_id) {
+        await advanceDealStage(supabase, { customerId, targetStageId: secondStage.stage_id });
+      }
+    } catch (stageErr) {
+      console.error('Stage advance failed (non-blocking):', stageErr);
+    }
+
     // 5b. Create Google Calendar event (don't fail booking if GCal fails)
     try {
       const { gcalRequest } = require('./gcal-utils');

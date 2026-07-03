@@ -876,6 +876,18 @@
                 </div>
                 <div class="text-muted text-sm" style="margin-top: var(--space-xs);" id="gcal-connected-info"></div>
               </div>
+              <div style="background: var(--color-bg-secondary, #f9fafb); border: 1px solid var(--color-border, #e5e7eb); border-radius: var(--radius-md); padding: var(--space-md); margin-bottom: var(--space-md);">
+                <div style="font-weight: 500; margin-bottom: var(--space-xs);">Re-sync to current calendar</div>
+                <p class="text-muted text-sm" style="margin: 0 0 var(--space-sm) 0;">If you switched Google accounts, push all upcoming non-cancelled appointments to your currently connected calendar. Events on the previous calendar must be removed manually in Google Calendar.</p>
+                <button type="button" class="btn btn-primary" id="sync-all-gcal-btn" onclick="syncAllAppointmentsToGCal()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: text-bottom;">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <polyline points="1 20 1 14 7 14"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                  </svg>
+                  Sync All Upcoming Appointments
+                </button>
+              </div>
               <button type="button" class="btn btn-secondary" onclick="disconnectGoogleCalendar()">
                 Disconnect Google Calendar
               </button>
@@ -3076,6 +3088,73 @@
         window.location.href = data.authUrl;
       } catch (err) {
         showToast('Failed to start Google Calendar connection', 'error');
+      }
+    }
+
+    async function syncAllAppointmentsToGCal() {
+      const btn = document.getElementById('sync-all-gcal-btn');
+      const originalHtml = btn.innerHTML;
+      try {
+        const supabase = await app.waitForSupabase();
+        const today = new Date().toISOString().split('T')[0];
+
+        const { data: appts, error } = await supabase
+          .from('appointments')
+          .select('id, title, appointment_date, gcal_event_id, status')
+          .gte('appointment_date', today)
+          .neq('status', 'cancelled')
+          .order('appointment_date', { ascending: true });
+
+        if (error) { showToast('Failed to load appointments: ' + error.message, 'error'); return; }
+        if (!appts || appts.length === 0) { showToast('No upcoming appointments to sync', 'info'); return; }
+
+        const msg = `Sync ${appts.length} upcoming appointment${appts.length === 1 ? '' : 's'} to your Google Calendar?\n\n` +
+                    `This creates events on your currently connected calendar. Any events already created on a previous calendar will remain there — delete them manually in Google Calendar if needed.`;
+        if (!confirm(msg)) return;
+
+        btn.disabled = true;
+        let success = 0, failed = 0;
+
+        for (let i = 0; i < appts.length; i++) {
+          btn.textContent = `Syncing ${i + 1} of ${appts.length}...`;
+          const appt = appts[i];
+          try {
+            // Best-effort: remove any prior event from the currently connected calendar
+            // (silently no-ops if the event lived on a previous calendar we no longer access)
+            if (appt.gcal_event_id) {
+              try {
+                await fetch(`/.netlify/functions/gcal-delete-event?event_id=${encodeURIComponent(appt.gcal_event_id)}`, { method: 'POST' });
+              } catch (_) { /* ignore */ }
+            }
+
+            const res = await fetch('/.netlify/functions/send-appointment-confirmation', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ appointment_id: appt.id, send_email: false, sync_gcal: true })
+            });
+            const result = await res.json();
+            if (result.gcal_synced) success++; else failed++;
+          } catch (e) {
+            console.error('Sync failed for appointment', appt.id, e);
+            failed++;
+          }
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+
+        if (failed === 0) {
+          showToast(`Synced ${success} appointment${success === 1 ? '' : 's'} to Google Calendar`, 'success');
+        } else if (success === 0) {
+          showToast(`Failed to sync all ${failed} appointments`, 'error');
+        } else {
+          showToast(`Synced ${success}, ${failed} failed`, 'warning');
+        }
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        showToast('Sync failed: ' + err.message, 'error');
       }
     }
 
