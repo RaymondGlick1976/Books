@@ -896,13 +896,30 @@ function applyRoleRestrictions() {
   }
 }
 
-// Run auth check and apply restrictions when DOM is ready
+// Verify there is a real Supabase Auth session behind the PIN session.
+// RLS enforces this server-side; this check just gives a clean redirect
+// instead of empty data when the session is missing/expired.
+async function verifySupabaseSession() {
+  if (window.location.pathname.includes('/admin/login.html')) return;
+  try {
+    const supabase = await waitForSupabase();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      localStorage.removeItem('app_user');
+      window.location.href = '/admin/login.html';
+    }
+  } catch (e) {
+    console.log('Session check error:', e);
+  }
+}
+
 // Run auth check and apply restrictions when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   // Only check auth on admin pages
   if (window.location.pathname.includes('/admin/')) {
     if (requireAuth()) {
       applyRoleRestrictions();
+      verifySupabaseSession();
     }
   }
   
@@ -1147,22 +1164,4 @@ window.initMobileMenu = initMobileMenu;
       + '<polyline points="14 2 14 8 20 8"/>'
       + '<line x1="16" y1="13" x2="8" y2="13"/>'
       + '<line x1="16" y1="17" x2="8" y2="17"/>'
-      + '<polyline points="10 9 9 9 8 9"/>'
-      + '</svg>Print Sheets</a>';
-
-    // Insert after Punch List if present, otherwise append to first nav list
-    const punchList = document.querySelector('a[href="/admin/punch-list.html"]');
-    if (punchList) {
-      punchList.closest('li').after(li);
-    } else {
-      const navList = document.querySelector('ul.sidebar-nav');
-      if (navList) navList.appendChild(li);
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', injectPrintSheetsNavItem);
-  } else {
-    injectPrintSheetsNavItem();
-  }
-})();
+      + '<

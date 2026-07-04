@@ -425,41 +425,13 @@
           }
           data = await response.json();
         } else {
-          // Authenticated access - fetch invoice data from supabase directly
-          const sb = await waitForSupabase();
-          const { data: inv, error: invError } = await sb
-            .from('invoices')
-            .select('*, customers(name, email, phone, address, city, state, zip)')
-            .eq('id', invoiceId)
-            .single();
-
-          if (invError || !inv) throw new Error('Invoice not found');
-
-          const { data: items } = await sb
-            .from('invoice_line_items')
-            .select('*')
-            .eq('invoice_id', invoiceId)
-            .order('sort_order');
-
-          const { data: pmts } = await sb
-            .from('payments')
-            .select('*')
-            .eq('invoice_id', invoiceId)
-            .eq('status', 'succeeded')
-            .order('payment_date', { ascending: false });
-
-          const { data: companySetting } = await sb
-            .from('settings')
-            .select('value')
-            .eq('key', 'company')
-            .single();
-
-          data = {
-            invoice: inv,
-            line_items: items || [],
-            payments: pmts || [],
-            company: companySetting?.value || null,
-          };
+          // Authenticated access - fetch via portal function (session cookie)
+          const response = await fetch(`/api/portal-invoices?id=${encodeURIComponent(invoiceId)}`);
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Invoice not found');
+          }
+          data = await response.json();
         }
 
         invoice = data.invoice;
@@ -879,3 +851,4 @@
   </script>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    

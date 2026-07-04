@@ -513,15 +513,15 @@
     }
     
     async function printInvoice(invoice) {
-      // Fetch line items and company info
+      // Fetch line items and company info via portal function (session cookie)
       let lineItems = [], company = {};
       try {
-        const { data: items } = await supabase.from('invoice_line_items').select('*').eq('invoice_id', invoice.id).order('sort_order');
-        lineItems = items || [];
-      } catch (e) {}
-      try {
-        const { data: s } = await supabase.from('settings').select('value').eq('key', 'company').single();
-        company = s?.value || {};
+        const response = await fetch(`/api/portal-invoices?id=${encodeURIComponent(invoice.id)}`);
+        if (response.ok) {
+          const detail = await response.json();
+          lineItems = detail.line_items || [];
+          company = detail.company || {};
+        }
       } catch (e) {}
 
       const companyName = company.name || 'Homestead Cabinet Design';
@@ -618,3 +618,4 @@
   </script>
 </body>
 </html>
+                                 

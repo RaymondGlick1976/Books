@@ -132,8 +132,18 @@
         <img data-brand-logo src="" alt="Company Logo" style="display: none;">
       </div>
       <h2 class="login-title">Welcome Back</h2>
-      
-      <div id="user-list">
+
+      <div id="auth-section" style="display: none;">
+        <p style="text-align: center; color: var(--color-text-muted); margin-bottom: var(--space-md);">Sign in to continue:</p>
+        <input type="email" id="auth-email" class="form-input" placeholder="Email" autocomplete="username" style="margin-bottom: var(--space-sm);">
+        <input type="password" id="auth-password" class="form-input" placeholder="Password" autocomplete="current-password">
+        <button class="btn btn-primary" id="auth-btn" style="width: 100%; margin-top: var(--space-md);" onclick="authLogin()">
+          Sign In
+        </button>
+        <div class="login-error" id="auth-error"></div>
+      </div>
+
+      <div id="user-list" style="display: none;">
         <p style="text-align: center; color: var(--color-text-muted); margin-bottom: var(--space-md);">Select your account:</p>
         <div class="user-select-grid" id="user-grid">
           <div style="text-align: center; padding: var(--space-xl);">
@@ -162,7 +172,36 @@
   <script>
     let users = [];
     let selectedUser = null;
-    
+
+    // --- Supabase Auth gate (email/password) ---
+    async function authLogin() {
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      const errEl = document.getElementById('auth-error');
+      errEl.textContent = '';
+      if (!email || !password) { errEl.textContent = 'Enter email and password'; return; }
+
+      const btn = document.getElementById('auth-btn');
+      btn.disabled = true;
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) { errEl.textContent = 'Invalid email or password'; return; }
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('user-list').style.display = 'block';
+        loadUsers();
+      } catch (err) {
+        console.error('Auth login error:', err);
+        errEl.textContent = 'Sign-in failed. Please try again.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('auth-password').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') authLogin();
+    });
+
     async function loadUsers() {
       try {
         const supabase = await app.waitForSupabase();
@@ -246,52 +285,4 @@
         // Update last login
         await supabase
           .from('app_users')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', data.id);
-        
-        // Store user session with role permissions
-        localStorage.setItem('app_user', JSON.stringify({
-          id: data.id,
-          name: data.name,
-          role_id: data.role_id,
-          role_name: data.app_roles?.name || 'Unknown',
-          permissions: {
-            can_access_settings: data.app_roles?.can_access_settings || false,
-            can_view_financials: data.app_roles?.can_view_financials || false,
-            can_delete: data.app_roles?.can_delete || false,
-            can_manage_users: data.app_roles?.can_manage_users || false,
-            can_send_invoices: data.app_roles?.can_send_invoices || false,
-            can_view_quotes: data.app_roles?.can_view_quotes || false,
-            can_view_invoices: data.app_roles?.can_view_invoices || false,
-            can_view_customers: data.app_roles?.can_view_customers || false,
-            can_view_pipeline: data.app_roles?.can_view_pipeline || false,
-            can_edit_quotes: data.app_roles?.can_edit_quotes || false,
-            can_edit_customers: data.app_roles?.can_edit_customers || false,
-            can_edit_pipeline: data.app_roles?.can_edit_pipeline || false
-          }
-        }));
-        
-        // Redirect to dashboard
-        window.location.href = '/admin/index.html';
-        
-      } catch (err) {
-        console.error('Login error:', err);
-        document.getElementById('login-error').textContent = 'Login failed. Please try again.';
-      }
-    }
-    
-    // Handle Enter key
-    document.getElementById('pin-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') login();
-    });
-    
-    // Check if already logged in
-    const existingUser = localStorage.getItem('app_user');
-    if (existingUser) {
-      window.location.href = '/admin/index.html';
-    } else {
-      loadUsers();
-    }
-  </script>
-</body>
-</html>
+          .update({ last_login: new D
