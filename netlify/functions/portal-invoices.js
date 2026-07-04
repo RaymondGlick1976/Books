@@ -50,4 +50,52 @@ exports.handler = async (event) => {
       return success({
         invoice: inv,
         line_items: items || [],
- 
+        payments: pmts || [],
+        company: companySetting?.value || null,
+      });
+    } catch (err) {
+      console.error('Invoice detail fetch error:', err);
+      return error('Failed to load invoice', 500);
+    }
+  }
+
+  try {
+    // Get invoices (exclude draft and archived)
+    const { data: invoices } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('customer_id', customer.id)
+      .not('status', 'in', '(draft,archived)')
+      .order('created_at', { ascending: false });
+    
+    // Get payments with invoice info
+    const { data: payments } = await supabase
+      .from('payments')
+      .select(`
+        *,
+        invoices(invoice_number, title)
+      `)
+      .eq('customer_id', customer.id)
+      .eq('status', 'succeeded')
+      .order('payment_date', { ascending: false });
+    
+    return success({
+      invoices: invoices || [],
+      payments: payments || [],
+      customer: {
+        name: customer.name,
+        company: customer.company,
+        email: customer.email,
+        phone: customer.phone,
+        address: customer.address,
+        city: customer.city,
+        state: customer.state,
+        zip: customer.zip,
+      },
+    });
+    
+  } catch (err) {
+    console.error('Invoices fetch error:', err);
+    return error('Failed to load invoices', 500);
+  }
+};

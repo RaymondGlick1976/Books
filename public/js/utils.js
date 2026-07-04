@@ -1164,4 +1164,22 @@ window.initMobileMenu = initMobileMenu;
       + '<polyline points="14 2 14 8 20 8"/>'
       + '<line x1="16" y1="13" x2="8" y2="13"/>'
       + '<line x1="16" y1="17" x2="8" y2="17"/>'
-      + '<
+      + '<polyline points="10 9 9 9 8 9"/>'
+      + '</svg>Print Sheets</a>';
+
+    // Insert after Punch List if present, otherwise append to first nav list
+    const punchList = document.querySelector('a[href="/admin/punch-list.html"]');
+    if (punchList) {
+      punchList.closest('li').after(li);
+    } else {
+      const navList = document.querySelector('ul.sidebar-nav');
+      if (navList) navList.appendChild(li);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectPrintSheetsNavItem);
+  } else {
+    injectPrintSheetsNavItem();
+  }
+})();
