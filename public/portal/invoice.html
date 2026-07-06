@@ -297,6 +297,10 @@
                 <span>Subtotal</span>
                 <span id="subtotal"></span>
               </div>
+              <div class="totals-row" id="discount-row" style="display: none;">
+                <span id="discount-label">Discount</span>
+                <span id="discount-amount"></span>
+              </div>
               <div class="totals-row" id="tax-row" style="display: none;">
                 <span id="tax-label">Tax</span>
                 <span id="tax-amount"></span>
@@ -512,6 +516,11 @@
 
       // Totals
       document.getElementById('subtotal').textContent = formatCurrency(invoice.subtotal || invoice.total);
+      if (invoice.discount_amount > 0) {
+        document.getElementById('discount-row').style.display = 'flex';
+        document.getElementById('discount-label').textContent = invoice.discount_type === 'percentage' ? `Discount (${parseFloat(invoice.discount_value)}%)` : 'Discount';
+        document.getElementById('discount-amount').textContent = '-' + formatCurrency(invoice.discount_amount);
+      }
       if (invoice.tax_amount > 0) {
         document.getElementById('tax-row').style.display = 'flex';
         document.getElementById('tax-label').textContent = invoice.tax_rate ? `Tax (${(invoice.tax_rate * 100).toFixed(2)}%)` : 'Tax';
@@ -831,6 +840,7 @@
   <div style="display:flex;justify-content:flex-end;">
     <div style="width:250px;">
       <div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Subtotal</span><span>${formatCurrency(invoice.subtotal || invoice.total)}</span></div>
+      ${invoice.discount_amount > 0 ? `<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Discount${invoice.discount_type === 'percentage' ? ` (${parseFloat(invoice.discount_value)}%)` : ''}</span><span>-${formatCurrency(invoice.discount_amount)}</span></div>` : ''}
       ${invoice.tax_amount > 0 ? `<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Tax</span><span>${formatCurrency(invoice.tax_amount)}</span></div>` : ''}
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #333;font-weight:700;font-size:1.1rem;"><span>Total</span><span>${formatCurrency(invoice.total)}</span></div>
       <div style="display:flex;justify-content:space-between;padding:4px 0;color:#10b981;"><span>Paid</span><span>${formatCurrency(invoice.amount_paid)}</span></div>
@@ -851,3 +861,4 @@
   </script>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    

@@ -1294,6 +1294,10 @@
             <span>Subtotal</span>
             <span id="subtotal">$0.00</span>
           </div>
+          <div class="totals-row" id="discount-row" style="display: none;">
+            <span id="discount-label">Discount</span>
+            <span id="discount-amount">-$0.00</span>
+          </div>
           <div class="totals-row" id="tax-row" style="display: none;">
             <span>Tax (<span id="tax-rate">0</span>%)</span>
             <span id="tax-amount">$0.00</span>
@@ -2392,6 +2396,8 @@
       let taxableSubtotal = 0;
       let taxableSubtotalLow = 0;
       let taxableSubtotalHigh = 0;
+      let discountableSubtotal = 0;
+      let taxableDiscountable = 0;
       let hasRange = false;
       
       // Check if we have packages and a selected one
@@ -2437,14 +2443,18 @@
             taxableSubtotalLow = pkgTotal;
             taxableSubtotalHigh = pkgTotal;
           }
+
+          // Whole bundle is discountable
+          discountableSubtotal = pkgTotal;
+          taxableDiscountable = selectedPkg.apply_tax ? pkgTotal : 0;
         }
-        
+
         // Also add any selected optional line items (add-ons)
         lineItems.forEach(item => {
           const isOptional = item.is_optional === true;
           const isSelected = item.is_selected === true;
           const isTaxable = item.is_taxable === true;
-          
+
           // Only add optional items that are selected
           if (isOptional && isSelected) {
             const total = parseFloat(item.line_total || 0);
@@ -2455,6 +2465,10 @@
               taxableSubtotal += total;
               taxableSubtotalLow += total;
               taxableSubtotalHigh += total;
+            }
+            if (item.apply_discount !== false) {
+              discountableSubtotal += total;
+              if (isTaxable) taxableDiscountable += total;
             }
           }
         });
@@ -2486,6 +2500,10 @@
                 taxableSubtotalLow += total;
                 taxableSubtotalHigh += total;
               }
+              if (item.apply_discount !== false) {
+                discountableSubtotal += total;
+                if (isTaxable) taxableDiscountable += total;
+              }
             }
           }
         });
@@ -2510,15 +2528,26 @@
         }
       });
       
+      // Discount (applied before tax; excluded items don't count toward the discount base)
+      const discType = quote.discount_type || 'percentage';
+      const discValue = parseFloat(quote.discount_value) || 0;
+      let discAmount = discType === 'percentage'
+        ? discountableSubtotal * (discValue / 100)
+        : Math.min(discValue, discountableSubtotal);
+      if (!(discAmount > 0)) discAmount = 0;
+      discAmount = Math.round(discAmount * 100) / 100;
+      const taxableShare = discountableSubtotal > 0 ? (taxableDiscountable / discountableSubtotal) : 0;
+      const taxableReduction = discAmount * taxableShare;
+
       const taxRate = parseFloat(quote.tax_rate || 0);
-      const taxAmount = taxableSubtotal * taxRate;
-      const taxAmountLow = taxableSubtotalLow * taxRate;
-      const taxAmountHigh = taxableSubtotalHigh * taxRate;
-      
-      const grandTotal = subtotal + taxAmount;
-      const grandTotalLow = subtotalLow + taxAmountLow;
-      const grandTotalHigh = subtotalHigh + taxAmountHigh;
-      
+      const taxAmount = Math.max(0, taxableSubtotal - taxableReduction) * taxRate;
+      const taxAmountLow = Math.max(0, taxableSubtotalLow - taxableReduction) * taxRate;
+      const taxAmountHigh = Math.max(0, taxableSubtotalHigh - taxableReduction) * taxRate;
+
+      const grandTotal = subtotal - discAmount + taxAmount;
+      const grandTotalLow = subtotalLow - discAmount + taxAmountLow;
+      const grandTotalHigh = subtotalHigh - discAmount + taxAmountHigh;
+
       // Update display
       if (hasRange) {
         $('#subtotal').textContent = formatCurrencyRange(subtotalLow, subtotalHigh);
@@ -2527,7 +2556,15 @@
         $('#subtotal').textContent = formatCurrency(subtotal);
         $('#grand-total').textContent = formatCurrency(grandTotal);
       }
-      
+
+      if (discAmount > 0) {
+        $('#discount-row').style.display = 'flex';
+        $('#discount-label').textContent = discType === 'percentage' ? `Discount (${discValue}%)` : 'Discount';
+        $('#discount-amount').textContent = '-' + formatCurrency(discAmount);
+      } else {
+        $('#discount-row').style.display = 'none';
+      }
+
       if (taxRate > 0) {
         $('#tax-row').style.display = 'flex';
         $('#tax-rate').textContent = (taxRate * 100).toFixed(2);

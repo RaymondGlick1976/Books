@@ -649,6 +649,21 @@
                     </select>
                   </div>
                 </div>
+
+                <div class="grid grid-cols-3 gap-lg">
+                  <div class="form-group">
+                    <label class="form-label">Discount Type</label>
+                    <select id="discount-type" class="form-select">
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="fixed">Dollar Amount ($)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Discount</label>
+                    <input type="number" id="discount-value" class="form-input" value="0" min="0" step="0.01">
+                    <p class="form-help" style="margin-top: 4px;">Applied before tax. Items with "Apply Discount" turned off are excluded.</p>
+                  </div>
+                </div>
                 
                 <!-- Payment Schedule Details -->
                 <div id="payment-schedule-section" style="display: none; margin-top: var(--space-md); padding: var(--space-md); background: var(--color-bg-alt); border-radius: var(--radius-md);">
@@ -860,6 +875,10 @@
                     <span>Subtotal</span>
                     <span id="summary-subtotal">$0.00</span>
                   </div>
+                  <div class="summary-row" id="summary-discount-row" style="display: none;">
+                    <span>Discount<span id="summary-discount-label"></span></span>
+                    <span id="summary-discount" style="color: var(--color-success, #16a34a);">-$0.00</span>
+                  </div>
                   <div class="summary-row" id="summary-tax-row">
                     <span>Tax (<span id="summary-tax-rate">6.25</span>%)</span>
                     <span id="summary-tax">$0.00</span>
@@ -985,7 +1004,9 @@
         // Calculate totals - use bundles if they exist, otherwise use line items
         let subtotal = 0;
         let taxableSubtotal = 0;
-        
+        let discountableSubtotal = 0;
+        let taxableDiscountable = 0;
+
         if (packages.length > 0) {
           // Use selected package or first package
           const selectedPkg = packages.find(p => p.is_selected) || packages[0];
@@ -1007,6 +1028,8 @@
               });
             }
           }
+          discountableSubtotal = subtotal;
+          taxableDiscountable = taxableSubtotal;
         } else {
           // Use line items
           lineItems.forEach(item => {
@@ -1017,12 +1040,19 @@
               if (item.isTaxable) {
                 taxableSubtotal += lineTotal;
               }
+              if (item.applyDiscount !== false) {
+                discountableSubtotal += lineTotal;
+                if (item.isTaxable) {
+                  taxableDiscountable += lineTotal;
+                }
+              }
             }
           });
         }
-        
+
         const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 0 : taxRateVal) / 100;
-        const taxAmount = taxableSubtotal * taxRate;
+        const disc = computeDiscount(discountableSubtotal, taxableDiscountable);
+        const taxAmount = Math.max(0, taxableSubtotal - disc.taxableReduction) * taxRate;
         const validDays = parseInt($('#valid-days').value) || 30;
         const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000);
         
@@ -1053,10 +1083,13 @@
           subtotal,
           subtotal_low: subtotal,
           subtotal_high: subtotal,
+          discount_type: disc.type,
+          discount_value: disc.value,
+          discount_amount: disc.amount,
           tax_amount: taxAmount,
-          total: subtotal + taxAmount,
-          total_low: subtotal + taxAmount,
-          total_high: subtotal + taxAmount,
+          total: subtotal - disc.amount + taxAmount,
+          total_low: subtotal - disc.amount + taxAmount,
+          total_high: subtotal - disc.amount + taxAmount,
           packages_enabled: packages.length > 0
         };
 
@@ -1117,6 +1150,7 @@
               photo_url: item.photoUrl,
               is_optional: item.isOptional,
               is_taxable: item.isTaxable,
+              apply_discount: item.applyDiscount !== false,
               sort_order: index,
               attribute_selections: item.attributeSelections || [],
               base_price: item.basePrice ?? null
@@ -1330,6 +1364,22 @@
             markDirty();
           });
         }
+
+        // Set up discount change listeners
+        const discountValueInput = $('#discount-value');
+        const discountTypeSelect = $('#discount-type');
+        if (discountValueInput) {
+          discountValueInput.addEventListener('input', () => {
+            updateSummary();
+            markDirty();
+          });
+        }
+        if (discountTypeSelect) {
+          discountTypeSelect.addEventListener('change', () => {
+            updateSummary();
+            markDirty();
+          });
+        }
         
         // If editing, load quote
         if (quoteId) {
@@ -1420,6 +1470,8 @@
         $('#quote-description').value = quote.description || '';
         $('#valid-days').value = quote.valid_days;
         $('#tax-rate').value = (quote.tax_rate ?? 0) * 100; // Convert from decimal to percentage
+        if ($('#discount-type')) $('#discount-type').value = quote.discount_type || 'percentage';
+        if ($('#discount-value')) $('#discount-value').value = quote.discount_value || 0;
         $('#video-url').value = quote.video_url || '';
         $('#customer-notes').value = quote.notes || '';
         $('#internal-notes').value = quote.internal_notes || '';
@@ -1484,6 +1536,7 @@
           photoUrl: item.photo_url,
           isOptional: item.is_optional,
           isTaxable: item.is_taxable,
+          applyDiscount: item.apply_discount !== false,
           sortOrder: item.sort_order,
           attributeSelections: item.attribute_selections || [],
           basePrice: item.attribute_selections?.length > 0 ? calculateBasePrice(item) : null
@@ -1989,6 +2042,7 @@
         photoUrl: catalogItem?.photo_url || null,
         isOptional: false,
         isTaxable: catalogItem?.is_taxable !== false,
+        applyDiscount: catalogItem?.apply_discount !== false,
         sortOrder: lineItems.length
       };
       
@@ -2927,6 +2981,10 @@
             <input type="checkbox" id="edit-item-taxable" ${item.isTaxable ? 'checked' : ''}>
             <label for="edit-item-taxable" class="form-label" style="margin: 0;">Taxable</label>
           </div>
+          <div class="form-group" style="display: flex; align-items: center; gap: var(--space-sm);">
+            <input type="checkbox" id="edit-item-apply-discount" ${item.applyDiscount !== false ? 'checked' : ''}>
+            <label for="edit-item-apply-discount" class="form-label" style="margin: 0;">Apply Discount</label>
+          </div>
         </div>
         <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: var(--space-sm);">
           <span id="li-refresh-prices-wrapper">
@@ -3041,6 +3099,7 @@
         lineItems[index].description = content.querySelector('#edit-item-description').value.trim() || lineItems[index].description;
         lineItems[index].details = content.querySelector('#edit-item-details').value.trim();
         lineItems[index].isTaxable = content.querySelector('#edit-item-taxable').checked;
+        lineItems[index].applyDiscount = content.querySelector('#edit-item-apply-discount').checked;
         lineItems[index].attributeSelections = selections;
         lineItems[index].unitPrice = Math.round(finalPrice * 100) / 100;
         lineItems[index].basePrice = currentBasePrice;
@@ -3285,6 +3344,27 @@
       });
     }
     
+    // --- Discount helpers ---
+    function getDiscountInput() {
+      const type = $('#discount-type')?.value || 'percentage';
+      const val = parseFloat($('#discount-value')?.value);
+      return { type, value: isNaN(val) || val < 0 ? 0 : val };
+    }
+
+    // discountableSubtotal: sum of line totals eligible for discount
+    // taxableDiscountable: portion of that which is also taxable
+    // Returns discount amount and how much to reduce the taxable base by (proportional)
+    function computeDiscount(discountableSubtotal, taxableDiscountable) {
+      const { type, value } = getDiscountInput();
+      let amount = type === 'percentage'
+        ? discountableSubtotal * (value / 100)
+        : Math.min(value, discountableSubtotal);
+      if (!(amount > 0)) amount = 0;
+      amount = Math.round(amount * 100) / 100;
+      const taxableShare = discountableSubtotal > 0 ? (taxableDiscountable / discountableSubtotal) : 0;
+      return { type, value, amount, taxableReduction: amount * taxableShare };
+    }
+
     function updateSummary() {
       const summaryItems = $('#summary-items');
       const summaryTotals = $('#summary-totals');
@@ -3298,7 +3378,9 @@
       // If bundles exist, use bundle totals; otherwise use line items
       let subtotal = 0;
       let taxableSubtotal = 0;
-      
+      let discountableSubtotal = 0;
+      let taxableDiscountable = 0;
+
       if (bundlesEnabled) {
         // Find selected package or use the first one for display
         const selectedPkg = packages.find(p => p.is_selected) || packages[0];
@@ -3326,6 +3408,10 @@
           }
         }
         
+        // Bundles have no per-item discount toggle - whole bundle is discountable
+        discountableSubtotal = subtotal;
+        taxableDiscountable = taxableSubtotal;
+
         if (subtotal === 0 && packages.length > 0) {
           // No selection, show the first bundle's total as preview
           summaryItems.innerHTML = '<p class="text-muted text-center" style="font-size: 0.85rem;">Bundle total shown.<br>Select a bundle to finalize.</p>';
@@ -3348,15 +3434,22 @@
             if (item.isTaxable) {
               taxableSubtotal += lineTotal;
             }
+            if (item.applyDiscount !== false) {
+              discountableSubtotal += lineTotal;
+              if (item.isTaxable) {
+                taxableDiscountable += lineTotal;
+              }
+            }
           }
         });
-        
+
         summaryItems.innerHTML = '';
       }
-      
-      // Only tax the taxable portion
-      const tax = taxableSubtotal * taxRate;
-      const total = subtotal + tax;
+
+      // Apply discount before tax; only tax the (discounted) taxable portion
+      const disc = computeDiscount(discountableSubtotal, taxableDiscountable);
+      const tax = Math.max(0, taxableSubtotal - disc.taxableReduction) * taxRate;
+      const total = subtotal - disc.amount + tax;
 
       // Optional items total — displayed for reference only, not included in the total
       let optionalSubtotal = 0;
@@ -3368,6 +3461,14 @@
 
       // Update display
       $('#summary-subtotal').textContent = formatCurrency(subtotal);
+      const discountRow = $('#summary-discount-row');
+      if (disc.amount > 0) {
+        $('#summary-discount').textContent = '-' + formatCurrency(disc.amount);
+        $('#summary-discount-label').textContent = disc.type === 'percentage' ? ` (${disc.value}%)` : '';
+        discountRow.style.display = '';
+      } else {
+        discountRow.style.display = 'none';
+      }
       $('#summary-tax').textContent = formatCurrency(tax);
       $('#summary-total').textContent = formatCurrency(total);
       $('#summary-tax-rate').textContent = (taxRate * 100).toFixed(2);
@@ -4183,7 +4284,9 @@
         // Calculate totals - use bundles if they exist, otherwise use line items
         let subtotal = 0;
         let taxableSubtotal = 0;
-        
+        let discountableSubtotal = 0;
+        let taxableDiscountable = 0;
+
         if (packages.length > 0) {
           // Use selected package or first package
           const selectedPkg = packages.find(p => p.is_selected) || packages[0];
@@ -4205,6 +4308,8 @@
               });
             }
           }
+          discountableSubtotal = subtotal;
+          taxableDiscountable = taxableSubtotal;
         } else {
           // Use line items
           lineItems.forEach(item => {
@@ -4215,14 +4320,21 @@
               if (item.isTaxable) {
                 taxableSubtotal += lineTotal;
               }
+              if (item.applyDiscount !== false) {
+                discountableSubtotal += lineTotal;
+                if (item.isTaxable) {
+                  taxableDiscountable += lineTotal;
+                }
+              }
             }
           });
         }
-        
-        // Only tax the taxable portion
+
+        // Apply discount before tax; only tax the (discounted) taxable portion
         const taxRateVal = parseFloat($('#tax-rate')?.value); const taxRate = (isNaN(taxRateVal) ? 0 : taxRateVal) / 100;
-        const taxAmount = taxableSubtotal * taxRate;
-        
+        const disc = computeDiscount(discountableSubtotal, taxableDiscountable);
+        const taxAmount = Math.max(0, taxableSubtotal - disc.taxableReduction) * taxRate;
+
         const validDays = parseInt($('#valid-days').value) || 30;
         const expiresAt = new Date(Date.now() + validDays * 24 * 60 * 60 * 1000);
         
@@ -4253,10 +4365,13 @@
           subtotal,
           subtotal_low: subtotal,
           subtotal_high: subtotal,
+          discount_type: disc.type,
+          discount_value: disc.value,
+          discount_amount: disc.amount,
           tax_amount: taxAmount,
-          total: subtotal + taxAmount,
-          total_low: subtotal + taxAmount,
-          total_high: subtotal + taxAmount,
+          total: subtotal - disc.amount + taxAmount,
+          total_low: subtotal - disc.amount + taxAmount,
+          total_high: subtotal - disc.amount + taxAmount,
           packages_enabled: packages.length > 0
         };
 
@@ -4313,6 +4428,7 @@
             photo_url: item.photoUrl,
             is_optional: item.isOptional,
             is_taxable: item.isTaxable,
+            apply_discount: item.applyDiscount !== false,
             sort_order: index,
             attribute_selections: item.attributeSelections || [],
             base_price: item.basePrice ?? null

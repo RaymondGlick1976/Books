@@ -318,6 +318,9 @@
             subtotal: quote.subtotal,
             subtotal_low: quote.subtotal_low,
             subtotal_high: quote.subtotal_high,
+            discount_type: quote.discount_type,
+            discount_value: quote.discount_value,
+            discount_amount: quote.discount_amount,
             tax_amount: quote.tax_amount,
             total: quote.total,
             total_low: quote.total_low,
@@ -394,14 +397,20 @@
         // Calculate totals including change orders
         let subtotal = 0;
         let taxableSubtotal = 0;
+        let discountableSubtotal = 0;
+        let taxableDiscountable = 0;
         const taxRate = quote.tax_rate || 0;
-        
+
         // Selected line items
         const selectedItems = (lineItems || []).filter(i => !i.is_optional || i.is_selected);
         selectedItems.forEach(item => {
           const lineTotal = (item.unit_price || item.price_range_low || 0) * item.quantity;
           subtotal += lineTotal;
           if (item.is_taxable) taxableSubtotal += lineTotal;
+          if (item.apply_discount !== false) {
+            discountableSubtotal += lineTotal;
+            if (item.is_taxable) taxableDiscountable += lineTotal;
+          }
         });
         
         // Change order items
@@ -422,12 +431,22 @@
           });
         });
         
-        const taxAmount = taxableSubtotal * taxRate;
-        const total = subtotal + taxAmount;
-        
+        // Carry the quote's discount over to the invoice (applied before tax)
+        const discType = quote.discount_type || 'percentage';
+        const discValue = parseFloat(quote.discount_value) || 0;
+        let discAmount = discType === 'percentage'
+          ? discountableSubtotal * (discValue / 100)
+          : Math.min(discValue, discountableSubtotal);
+        if (!(discAmount > 0)) discAmount = 0;
+        discAmount = Math.round(discAmount * 100) / 100;
+        const taxableShare = discountableSubtotal > 0 ? (taxableDiscountable / discountableSubtotal) : 0;
+
+        const taxAmount = Math.max(0, taxableSubtotal - discAmount * taxableShare) * taxRate;
+        const total = subtotal - discAmount + taxAmount;
+
         // Generate invoice number
         const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
-        
+
         // Create invoice
         const { data: invoice, error } = await supabase
           .from('invoices')
@@ -438,6 +457,9 @@
             title: quote.title,
             status: 'draft',
             subtotal: subtotal,
+            discount_type: discType,
+            discount_value: discValue,
+            discount_amount: discAmount,
             tax_rate: taxRate,
             tax_amount: taxAmount,
             total: total,
@@ -461,6 +483,7 @@
             unit_price: item.unit_price || item.price_range_low,
             line_total: (item.unit_price || item.price_range_low) * item.quantity,
             is_taxable: item.is_taxable,
+            apply_discount: item.apply_discount !== false,
             sort_order: index
           });
         });

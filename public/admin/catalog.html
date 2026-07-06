@@ -955,6 +955,10 @@
             <input type="checkbox" id="detail-taxable" ${item.is_taxable !== false ? 'checked' : ''}>
             <span class="form-check-label">Taxable</span>
           </label>
+          <label class="form-check" title="When off, this item is excluded from quote/invoice discounts">
+            <input type="checkbox" id="detail-apply-discount" ${item.apply_discount !== false ? 'checked' : ''}>
+            <span class="form-check-label">Apply Discount</span>
+          </label>
           <label class="form-check">
             <input type="checkbox" id="detail-active" ${item.is_active !== false ? 'checked' : ''}>
             <span class="form-check-label">Active</span>
@@ -1011,6 +1015,7 @@
           folder_id: $('#detail-folder').value || null,
           notes: $('#detail-notes').value.trim() || null,
           is_taxable: $('#detail-taxable').checked,
+          apply_discount: $('#detail-apply-discount').checked,
           is_active: $('#detail-active').checked,
           vendor_id: $('#detail-vendor').value || null,
           product_sku: $('#detail-sku').value.trim() || null,
@@ -1052,7 +1057,8 @@
           library_id: currentLibraryId,
           folder_id: folderId || null,
           is_active: true,
-          is_taxable: true
+          is_taxable: true,
+          apply_discount: true
         }).select().single();
         if (error) throw error;
 
@@ -1081,6 +1087,7 @@
           price_range_high: item.price_range_high,
           notes: item.notes,
           is_taxable: item.is_taxable,
+          apply_discount: item.apply_discount !== false,
           is_active: item.is_active,
           cost: item.cost,
           markup_percentage: item.markup_percentage

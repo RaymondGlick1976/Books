@@ -286,6 +286,10 @@
                 <span>Subtotal</span>
                 <span id="grand-subtotal">$0.00</span>
               </div>
+              <div class="totals-row" id="grand-discount-row" style="display: none;">
+                <span>Discount<span id="grand-discount-label"></span></span>
+                <span id="grand-discount" style="color: var(--color-success, #16a34a);">-$0.00</span>
+              </div>
               <div class="totals-row">
                 <span>Tax</span>
                 <span id="grand-tax">$0.00</span>
@@ -694,6 +698,8 @@
         // Calculate totals
         let subtotal = 0;
         let taxableSubtotal = 0;
+        let discountableSubtotal = 0;
+        let taxableDiscountable = 0;
         const taxRate = quote.tax_rate || 0;
 
         // Check packages vs line items
@@ -714,12 +720,18 @@
               sort_order: 0
             });
           }
+          discountableSubtotal = subtotal;
+          taxableDiscountable = taxableSubtotal;
         } else {
           selectedItems = lineItems.filter(i => !i.is_optional || i.is_selected);
           selectedItems.forEach(item => {
             const lineTotal = (item.unit_price || 0) * (item.quantity || 1);
             subtotal += lineTotal;
             if (item.is_taxable) taxableSubtotal += lineTotal;
+            if (item.apply_discount !== false) {
+              discountableSubtotal += lineTotal;
+              if (item.is_taxable) taxableDiscountable += lineTotal;
+            }
           });
         }
 
@@ -741,8 +753,11 @@
           });
         });
 
-        const taxAmount = taxableSubtotal * taxRate;
-        const total = subtotal + taxAmount;
+        // Carry the quote's discount over to the invoice (applied before tax)
+        const disc = computeQuoteDiscount(discountableSubtotal);
+        const taxableShare = discountableSubtotal > 0 ? (taxableDiscountable / discountableSubtotal) : 0;
+        const taxAmount = Math.max(0, taxableSubtotal - disc.amount * taxableShare) * taxRate;
+        const total = subtotal - disc.amount + taxAmount;
 
         // Generate invoice number
         const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
@@ -757,6 +772,9 @@
             title: quote.title,
             status: 'draft',
             subtotal,
+            discount_type: disc.type,
+            discount_value: disc.value,
+            discount_amount: disc.amount,
             tax_rate: taxRate,
             tax_amount: taxAmount,
             total,
@@ -788,6 +806,7 @@
               unit_price: item.unit_price,
               line_total: item.line_total,
               is_taxable: item.is_taxable,
+              apply_discount: item.apply_discount !== false,
               sort_order: index
             });
           });
@@ -807,6 +826,7 @@
               unit_price: item.unit_price || item.price_range_low,
               line_total: (item.unit_price || item.price_range_low) * item.quantity,
               is_taxable: item.is_taxable,
+              apply_discount: item.apply_discount !== false,
               sort_order: index
             });
           });
@@ -1185,12 +1205,15 @@
         `;
       }).join('');
       
-      // Update totals section
-      const tax = taxableSubtotal * TAX_RATE;
-      const total = subtotal + tax;
-      
+      // Update totals section - apply discount before tax
+      const disc = computeQuoteDiscount(subtotal);
+      const taxableShare = subtotal > 0 ? (taxableSubtotal / subtotal) : 0;
+      const tax = Math.max(0, (taxableSubtotal - disc.amount * taxableShare) * TAX_RATE);
+      const total = subtotal - disc.amount + tax;
+
       // Update the Grand Totals section
       $('#grand-subtotal').textContent = formatCurrency(subtotal);
+      renderDiscountRow(disc);
       $('#grand-tax').textContent = formatCurrency(tax);
       $('#grand-total').innerHTML = `<strong>${formatCurrency(total)}</strong>`;
     }
@@ -1374,9 +1397,33 @@
       }).join('');
     }
     
+    // Compute the quote's discount over a discountable base (items with apply_discount on)
+    function computeQuoteDiscount(discountableSubtotal) {
+      const type = quote?.discount_type || 'percentage';
+      const value = parseFloat(quote?.discount_value) || 0;
+      let amount = type === 'percentage'
+        ? discountableSubtotal * (value / 100)
+        : Math.min(value, discountableSubtotal);
+      if (!(amount > 0)) amount = 0;
+      return { type, value, amount: Math.round(amount * 100) / 100 };
+    }
+
+    function renderDiscountRow(disc) {
+      const row = $('#grand-discount-row');
+      if (!row) return;
+      if (disc.amount > 0) {
+        $('#grand-discount').textContent = '-' + formatCurrency(disc.amount);
+        $('#grand-discount-label').textContent = disc.type === 'percentage' ? ` (${disc.value}%)` : '';
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    }
+
     function calculateGrandTotals() {
       let subtotal = 0, tax = 0;
-      
+      let discountableSubtotal = 0, taxableDiscountable = 0;
+
       // Check if we have packages - if so, use package totals
       if (packages && packages.length > 0) {
         const selectedPkg = packages.find(p => p.is_selected || p.id === quote.selected_package_id) || packages[0];
@@ -1393,17 +1440,23 @@
           if (selectedPkg.apply_tax !== false) {
             tax = subtotal * TAX_RATE;
           }
+          discountableSubtotal = subtotal;
+          taxableDiscountable = selectedPkg.apply_tax !== false ? subtotal : 0;
         }
       } else {
         // Line items (accepted only)
         const acceptedItems = lineItems.filter(item => !item.is_optional || item.is_selected);
-        
+
         acceptedItems.forEach(item => {
           const qty = item.quantity || 1;
           const price = item.unit_price || 0;
           const lineSubtotal = price * qty;
           subtotal += lineSubtotal;
           if (item.is_taxable) tax += lineSubtotal * TAX_RATE;
+          if (item.apply_discount !== false) {
+            discountableSubtotal += lineSubtotal;
+            if (item.is_taxable) taxableDiscountable += lineSubtotal;
+          }
         });
       }
       
@@ -1420,11 +1473,17 @@
         }
       });
       
+      // Apply discount before tax (proportionally reduces the taxable portion)
+      const disc = computeQuoteDiscount(discountableSubtotal);
+      const taxableShare = discountableSubtotal > 0 ? (taxableDiscountable / discountableSubtotal) : 0;
+      tax = Math.max(0, tax - disc.amount * taxableShare * TAX_RATE);
+
       $('#grand-subtotal').textContent = formatCurrency(subtotal);
+      renderDiscountRow(disc);
       $('#grand-tax').textContent = formatCurrency(tax);
-      $('#grand-total').innerHTML = `<strong>${formatCurrency(subtotal + tax)}</strong>`;
+      $('#grand-total').innerHTML = `<strong>${formatCurrency(subtotal - disc.amount + tax)}</strong>`;
     }
-    
+
     // Change Order Functions
     function createChangeOrder() {
       coItems = [{ id: crypto.randomUUID(), description: '', quantity: 1, unit_price: 0 }];

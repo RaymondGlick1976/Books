@@ -200,6 +200,21 @@
                     </div>
                   </div>
 
+                  <div class="grid grid-cols-3 gap-lg">
+                    <div class="form-group">
+                      <label class="form-label">Discount Type</label>
+                      <select id="invoice-discount-type" class="form-select">
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Dollar Amount ($)</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Discount</label>
+                      <input type="number" id="invoice-discount-value" class="form-input" value="0" min="0" step="0.01">
+                      <p class="form-help" style="margin-top: 4px;">Applied before tax. Items with "Discount" unchecked are excluded.</p>
+                    </div>
+                  </div>
+
                   <div class="form-group">
                     <label class="form-label">Linked Quote <span class="form-label-optional">(optional)</span></label>
                     <select id="invoice-quote-link" class="form-select">
@@ -257,6 +272,10 @@
                   <div class="summary-row">
                     <span>Subtotal</span>
                     <span id="summary-subtotal">$0.00</span>
+                  </div>
+                  <div class="summary-row" id="summary-discount-row" style="display: none;">
+                    <span>Discount<span id="summary-discount-label"></span></span>
+                    <span id="summary-discount" style="color: var(--color-success, #16a34a);">-$0.00</span>
                   </div>
                   <div class="summary-row">
                     <span>Tax (<span id="summary-tax-rate">0</span>%)</span>
@@ -352,16 +371,23 @@
         // Calculate totals from line items
         let subtotal = 0;
         let taxableSubtotal = 0;
+        let discountableSubtotal = 0;
+        let taxableDiscountable = 0;
         lineItems.forEach(item => {
           const lineTotal = (item.unitPrice || 0) * (item.quantity || 1);
           subtotal += lineTotal;
           if (item.isTaxable) taxableSubtotal += lineTotal;
+          if (item.applyDiscount !== false) {
+            discountableSubtotal += lineTotal;
+            if (item.isTaxable) taxableDiscountable += lineTotal;
+          }
         });
 
         const taxRateVal = parseFloat($('#invoice-tax-rate').value);
         const taxRate = (isNaN(taxRateVal) ? 0 : taxRateVal) / 100;
-        const taxAmount = taxableSubtotal * taxRate;
-        const total = subtotal + taxAmount;
+        const disc = computeDiscount(discountableSubtotal, taxableDiscountable);
+        const taxAmount = Math.max(0, taxableSubtotal - disc.taxableReduction) * taxRate;
+        const total = subtotal - disc.amount + taxAmount;
         const amountPaid = parseFloat(invoice.amount_paid || 0);
         const amountDue = Math.max(0, total - amountPaid);
 
@@ -375,6 +401,9 @@
           due_date: dueDate,
           tax_rate: taxRate,
           subtotal,
+          discount_type: disc.type,
+          discount_value: disc.value,
+          discount_amount: disc.amount,
           tax_amount: taxAmount,
           total,
           amount_due: amountDue,
@@ -403,6 +432,7 @@
             unit_price: item.unitPrice || 0,
             line_total: (item.unitPrice || 0) * (item.quantity || 1),
             is_taxable: item.isTaxable !== false,
+            apply_discount: item.applyDiscount !== false,
             sort_order: index,
             attribute_selections: item.attributeSelections || [],
           }));
@@ -573,6 +603,22 @@
         taxLabel.appendChild(taxCheckbox);
         taxLabel.appendChild(createElement('span', { className: 'form-check-label text-sm', textContent: 'Taxable' }));
         taxCell.appendChild(taxLabel);
+
+        // Apply-discount toggle
+        const discLabel = createElement('label', { className: 'form-check', style: 'margin-top: 6px;' });
+        const discCheckbox = createElement('input', {
+          type: 'checkbox',
+          className: 'form-check-input',
+          checked: item.applyDiscount !== false,
+        });
+        discCheckbox.addEventListener('change', (e) => {
+          lineItems[index].applyDiscount = e.target.checked;
+          updateSummary();
+          markDirty();
+        });
+        discLabel.appendChild(discCheckbox);
+        discLabel.appendChild(createElement('span', { className: 'form-check-label text-sm', textContent: 'Discount' }));
+        taxCell.appendChild(discLabel);
         row.appendChild(taxCell);
 
         // Delete
@@ -596,23 +642,56 @@
       });
     }
 
+    // --- Discount helpers ---
+    function getDiscountInput() {
+      const type = $('#invoice-discount-type')?.value || 'percentage';
+      const val = parseFloat($('#invoice-discount-value')?.value);
+      return { type, value: isNaN(val) || val < 0 ? 0 : val };
+    }
+
+    function computeDiscount(discountableSubtotal, taxableDiscountable) {
+      const { type, value } = getDiscountInput();
+      let amount = type === 'percentage'
+        ? discountableSubtotal * (value / 100)
+        : Math.min(value, discountableSubtotal);
+      if (!(amount > 0)) amount = 0;
+      amount = Math.round(amount * 100) / 100;
+      const taxableShare = discountableSubtotal > 0 ? (taxableDiscountable / discountableSubtotal) : 0;
+      return { type, value, amount, taxableReduction: amount * taxableShare };
+    }
+
     function updateSummary() {
       let subtotal = 0;
       let taxableSubtotal = 0;
+      let discountableSubtotal = 0;
+      let taxableDiscountable = 0;
       lineItems.forEach(item => {
         const lineTotal = (item.unitPrice || 0) * (item.quantity || 1);
         subtotal += lineTotal;
         if (item.isTaxable !== false) taxableSubtotal += lineTotal;
+        if (item.applyDiscount !== false) {
+          discountableSubtotal += lineTotal;
+          if (item.isTaxable !== false) taxableDiscountable += lineTotal;
+        }
       });
 
       const taxRateVal = parseFloat($('#invoice-tax-rate').value);
       const taxRatePct = isNaN(taxRateVal) ? 0 : taxRateVal;
-      const taxAmount = taxableSubtotal * (taxRatePct / 100);
-      const total = subtotal + taxAmount;
+      const disc = computeDiscount(discountableSubtotal, taxableDiscountable);
+      const taxAmount = Math.max(0, taxableSubtotal - disc.taxableReduction) * (taxRatePct / 100);
+      const total = subtotal - disc.amount + taxAmount;
       const amountPaid = parseFloat(invoice?.amount_paid || 0);
       const amountDue = Math.max(0, total - amountPaid);
 
       $('#summary-subtotal').textContent = formatCurrency(subtotal);
+      const discountRow = $('#summary-discount-row');
+      if (disc.amount > 0) {
+        $('#summary-discount').textContent = '-' + formatCurrency(disc.amount);
+        $('#summary-discount-label').textContent = disc.type === 'percentage' ? ` (${disc.value}%)` : '';
+        discountRow.style.display = '';
+      } else {
+        discountRow.style.display = 'none';
+      }
       $('#summary-tax-rate').textContent = taxRatePct.toString();
       $('#summary-tax').textContent = formatCurrency(taxAmount);
       $('#summary-total').textContent = formatCurrency(total);
@@ -629,6 +708,7 @@
         unit: 'each',
         unitPrice: 0,
         isTaxable: true,
+        applyDiscount: true,
         attributeSelections: [],
       });
       renderLineItems();
@@ -699,6 +779,7 @@
         unit: it.unit || 'each',
         unitPrice: parseFloat(it.unit_price) || 0,
         isTaxable: it.is_taxable !== false,
+        applyDiscount: it.apply_discount !== false,
         attributeSelections: it.attribute_selections || [],
       }));
 
@@ -710,6 +791,8 @@
       $('#invoice-status').value = invoice.status || 'draft';
       $('#invoice-due-date').value = invoice.due_date || '';
       $('#invoice-tax-rate').value = ((parseFloat(invoice.tax_rate) || 0) * 100).toString();
+      $('#invoice-discount-type').value = invoice.discount_type || 'percentage';
+      $('#invoice-discount-value').value = (parseFloat(invoice.discount_value) || 0).toString();
       $('#invoice-quote-link').value = invoice.quote_id || '';
       $('#invoice-notes').value = invoice.notes || '';
       $('#invoice-internal-notes').value = invoice.internal_notes || '';
@@ -733,16 +816,18 @@
 
       // Wire up dirty tracking on top-level inputs
       ['customer-select', 'invoice-title', 'invoice-status', 'invoice-due-date',
-       'invoice-tax-rate', 'invoice-quote-link', 'invoice-notes', 'invoice-internal-notes'
+       'invoice-tax-rate', 'invoice-discount-type', 'invoice-discount-value',
+       'invoice-quote-link', 'invoice-notes', 'invoice-internal-notes'
       ].forEach(id => {
         const el = $('#' + id);
+        const affectsTotals = ['invoice-tax-rate', 'invoice-discount-type', 'invoice-discount-value'].includes(id);
         if (el) {
           el.addEventListener('input', () => {
-            if (id === 'invoice-tax-rate') updateSummary();
+            if (affectsTotals) updateSummary();
             markDirty();
           });
           el.addEventListener('change', () => {
-            if (id === 'invoice-tax-rate') updateSummary();
+            if (affectsTotals) updateSummary();
             markDirty();
           });
         }

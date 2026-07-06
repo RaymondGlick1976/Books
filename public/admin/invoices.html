@@ -374,6 +374,12 @@
               <span>Subtotal</span>
               <span>${formatCurrency(invoice.subtotal)}</span>
             </div>
+            ${invoice.discount_amount > 0 ? `
+              <div class="flex justify-between mb-sm" style="color:var(--color-success);">
+                <span>Discount${invoice.discount_type === 'percentage' ? ` (${parseFloat(invoice.discount_value)}%)` : ''}</span>
+                <span>-${formatCurrency(invoice.discount_amount)}</span>
+              </div>
+            ` : ''}
             ${invoice.tax_amount > 0 ? `
               <div class="flex justify-between mb-sm">
                 <span>Tax (${(invoice.tax_rate * 100).toFixed(2)}%)</span>
@@ -888,6 +894,12 @@
         <span style="color:#666;">Subtotal</span>
         <span>${formatCurrency(invoice.subtotal)}</span>
       </div>
+      ${invoice.discount_amount > 0 ? `
+        <div style="display:flex;justify-content:space-between;padding:6px 0;">
+          <span style="color:#666;">Discount${invoice.discount_type === 'percentage' ? ` (${parseFloat(invoice.discount_value)}%)` : ''}</span>
+          <span>-${formatCurrency(invoice.discount_amount)}</span>
+        </div>
+      ` : ''}
       ${invoice.tax_amount > 0 ? `
         <div style="display:flex;justify-content:space-between;padding:6px 0;">
           <span style="color:#666;">Tax (${(invoice.tax_rate * 100).toFixed(2)}%)</span>
