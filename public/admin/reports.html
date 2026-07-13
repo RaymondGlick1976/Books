@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HCD Books">
+  <title>Financial Reports | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css?v=51">
+  <style>
+    .report-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .report-tab { padding: 8px 16px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; font-weight: 500; }
+    .report-tab.active { background: var(--brand-color, #2563eb); color: #fff; border-color: transparent; }
+    .report-sheet { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 32px 40px; max-width: 780px; margin: 0 auto; }
+    .report-sheet h1 { font-size: 20px; margin: 0; text-align: center; }
+    .report-sheet .rpt-sub { text-align: center; color: #6b7280; margin: 4px 0 24px; }
+    .rpt-table { width: 100%; border-collapse: collapse; }
+    .rpt-table td { padding: 5px 8px; }
+    .rpt-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .rpt-section td { font-weight: 700; padding-top: 16px; border-bottom: 1px solid #111; }
+    .rpt-indent { padding-left: 24px !important; }
+    .rpt-total td { font-weight: 700; border-top: 1px solid #111; }
+    .rpt-grand td { font-weight: 800; border-top: 3px double #111; font-size: 15px; }
+    .neg { color: #b91c1c; }
+    .controls-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    @media print {
+      .app-sidebar, .app-header, .controls-bar, .report-tabs { display: none !important; }
+      .app-main { margin: 0 !important; }
+      .app-content { padding: 0 !important; }
+      .report-sheet { border: none; padding: 0; max-width: 100%; }
+      body { background: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <script>
+    const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+    if (!user) {
+      window.location.href = '/admin/login.html';
+    } else if (!user.permissions?.can_view_invoices) {
+      window.location.href = user.permissions?.can_view_pipeline ? '/admin/pipeline.html' : '/admin/index.html';
+    }
+  </script>
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <img data-brand-logo src="" alt="Company Logo" style="height: 40px; filter: brightness(0) invert(1); display: none;">
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Deals Pipeline</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html?view=calendar" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/vendors.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Vendors</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/payments.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Payments</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/punch-list.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Punch List</a></li>
+        </ul>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Bookkeeping</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/banking.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v3"/><path d="M12 14v3"/><path d="M16 14v3"/></svg>Banking</a></li>
+            <li class="sidebar-nav-item"><a href="/admin/reports.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg>Reports</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Lead Capture</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/booking-forms.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Booking Forms</a></li>
+            <li class="sidebar-nav-item"><a href="/schedule" target="_blank" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Online Scheduling</a></li>
+            <li class="sidebar-nav-item"><a href="/admin/bulk-email.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/><line x1="2" y1="20" x2="8" y2="14"/><line x1="22" y1="20" x2="16" y2="14"/></svg>Bulk Email</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Catalog</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/catalog.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Custom Library</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Settings</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/email-templates.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Templates</a></li>
+          </ul>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/settings.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="app-main">
+      <header class="app-header">
+        <h2>Financial Reports</h2>
+        <div class="flex gap-md">
+          <button class="btn btn-secondary" id="export-btn">Export Transactions CSV</button>
+          <button class="btn btn-primary" onclick="window.print()">🖨 Print</button>
+        </div>
+      </header>
+
+      <div class="app-content">
+        <div class="report-tabs">
+          <button class="report-tab active" data-tab="pl">Profit &amp; Loss</button>
+          <button class="report-tab" data-tab="bs">Balance Sheet</button>
+          <button class="report-tab" data-tab="sc">Schedule C Detail</button>
+        </div>
+
+        <div class="controls-bar" id="range-controls">
+          <select id="preset" class="form-select" style="max-width:200px;">
+            <option value="ytd" selected>This Year to Date</option>
+            <option value="lastyear">Last Year</option>
+            <option value="thismonth">This Month</option>
+            <option value="lastmonth">Last Month</option>
+            <option value="thisquarter">This Quarter</option>
+            <option value="lastquarter">Last Quarter</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input type="date" id="date-from" class="form-input" style="max-width:160px;">
+          <span id="range-to-label">to</span>
+          <input type="date" id="date-to" class="form-input" style="max-width:160px;">
+          <button class="btn btn-secondary" id="run-btn">Run Report</button>
+        </div>
+
+        <div id="report-area">
+          <div style="text-align:center; padding:60px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    let categories = [], accounts = [];
+    let activeTab = 'pl';
+    const fmt = v => formatCurrency(Math.abs(v) < 0.005 ? 0 : v);
+    const catById = id => categories.find(c => c.id === id);
+
+    function rangeFromPreset(p) {
+      const now = new Date();
+      const y = now.getFullYear(), m = now.getMonth();
+      const iso = d => d.toISOString().slice(0, 10);
+      const q = Math.floor(m / 3);
+      switch (p) {
+        case 'ytd': return [`${y}-01-01`, iso(now)];
+        case 'lastyear': return [`${y-1}-01-01`, `${y-1}-12-31`];
+        case 'thismonth': return [iso(new Date(y, m, 1)), iso(now)];
+        case 'lastmonth': return [iso(new Date(y, m-1, 1)), iso(new Date(y, m, 0))];
+        case 'thisquarter': return [iso(new Date(y, q*3, 1)), iso(now)];
+        case 'lastquarter': return [iso(new Date(y, q*3-3, 1)), iso(new Date(y, q*3, 0))];
+        default: return [$('#date-from').value, $('#date-to').value];
+      }
+    }
+
+    async function fetchTxns(from, to, withDetail = false) {
+      const supabase = await app.waitForSupabase();
+      const cols = withDetail
+        ? 'txn_date, amount, account_id, category_id, is_split, description, payee, memo, ledger_splits(category_id, amount, memo)'
+        : 'txn_date, amount, account_id, category_id, is_split, ledger_splits(category_id, amount)';
+      let all = [], page = 0;
+      while (true) {
+        let q = supabase.from('ledger_transactions').select(cols)
+          .neq('status', 'excluded')
+          .order('txn_date').range(page * 1000, page * 1000 + 999);
+        if (from) q = q.gte('txn_date', from);
+        if (to) q = q.lte('txn_date', to);
+        const { data, error } = await q;
+        if (error) throw error;
+        all = all.concat(data || []);
+        if ((data || []).length < 1000) break;
+        page++;
+      }
+      return all;
+    }
+
+    // Expand splits: returns [{category_id, amount, txn}]
+    function legs(txns) {
+      const out = [];
+      txns.forEach(t => {
+        if (t.is_split && t.ledger_splits?.length) {
+          t.ledger_splits.forEach(s => out.push({ category_id: s.category_id, amount: parseFloat(s.amount), txn: t }));
+        } else {
+          out.push({ category_id: t.category_id, amount: parseFloat(t.amount), txn: t });
+        }
+      });
+      return out;
+    }
+
+    function sumByCategory(lgs, types) {
+      const map = {};
+      lgs.forEach(l => {
+        const c = catById(l.category_id);
+        if (!c || !types.includes(c.cat_type)) return;
+        map[c.id] = (map[c.id] || 0) + l.amount;
+      });
+      return Object.entries(map).map(([id, total]) => ({ cat: catById(id), total }))
+        .sort((a, b) => (a.cat.sort_order || 0) - (b.cat.sort_order || 0));
+    }
+
+    // ---------- P&L ----------
+    async function renderPL() {
+      const [from, to] = rangeFromPreset($('#preset').value);
+      const lgs = legs(await fetchTxns(from, to));
+      const income = sumByCategory(lgs, ['income']);
+      const cogs = sumByCategory(lgs, ['cogs']);
+      const exp = sumByCategory(lgs, ['expense']);
+      const uncat = lgs.filter(l => { const c = catById(l.category_id); return !c || c.cat_type === 'uncategorized'; });
+      const tIncome = income.reduce((s, r) => s + r.total, 0);
+      const tCogs = cogs.reduce((s, r) => s + r.total, 0);
+      const tExp = exp.reduce((s, r) => s + r.total, 0);
+      const gross = tIncome + tCogs;
+      const net = gross + tExp;
+      const row = (name, v, indent = true) => `<tr><td class="${indent ? 'rpt-indent' : ''}">${escapeHtml(name)}</td><td class="num ${v < -0.005 ? 'neg' : ''}">${fmt(v)}</td></tr>`;
+      $('#report-area').innerHTML = `
+        <div class="report-sheet">
+          <h1>Homestead Cabinet Design — Profit &amp; Loss</h1>
+          <div class="rpt-sub">${formatDate(from)} through ${formatDate(to)} · Cash basis</div>
+          <table class="rpt-table">
+            <tr class="rpt-section"><td>Income</td><td></td></tr>
+            ${income.map(r => row(r.cat.name, r.total)).join('') || row('(no income recorded)', 0)}
+            <tr class="rpt-total"><td>Total Income</td><td class="num">${fmt(tIncome)}</td></tr>
+            <tr class="rpt-section"><td>Cost of Goods Sold</td><td></td></tr>
+            ${cogs.map(r => row(r.cat.name, -r.total)).join('') || row('(none)', 0)}
+            <tr class="rpt-total"><td>Total COGS</td><td class="num">${fmt(-tCogs)}</td></tr>
+            <tr class="rpt-total"><td>Gross Profit</td><td class="num ${gross < 0 ? 'neg' : ''}">${fmt(gross)}</td></tr>
+            <tr class="rpt-section"><td>Expenses</td><td></td></tr>
+            ${exp.map(r => row(r.cat.name, -r.total)).join('') || row('(none)', 0)}
+            <tr class="rpt-total"><td>Total Expenses</td><td class="num">${fmt(-tExp)}</td></tr>
+            <tr class="rpt-grand"><td>Net Income</td><td class="num ${net < 0 ? 'neg' : ''}">${fmt(net)}</td></tr>
+          </table>
+          ${uncat.length ? `<p class="text-sm" style="color:#b45309; margin-top:16px;">⚠ ${uncat.length} uncategorized transaction(s) totaling ${fmt(uncat.reduce((s, l) => s + l.amount, 0))} are NOT included. Categorize them on the Banking page for accurate numbers.</p>` : ''}
+          <p class="text-sm text-muted" style="margin-top:12px;">Meals are shown at full amount; only 50% is deductible on Schedule C. Transfers, owner draws/investments, and loan principal are excluded from P&amp;L by design.</p>
+        </div>`;
+    }
+
+    // ---------- Balance Sheet ----------
+    async function renderBS() {
+      const asOf = $('#date-to').value || new Date().toISOString().slice(0, 10);
+      const txns = await fetchTxns(null, asOf);
+      const lgs = legs(txns);
+      const balByAcct = {};
+      accounts.forEach(a => balByAcct[a.id] = parseFloat(a.opening_balance) * (a.opening_date <= asOf ? 1 : 0));
+      txns.forEach(t => { balByAcct[t.account_id] = (balByAcct[t.account_id] || 0) + parseFloat(t.amount); });
+      const cashAccts = accounts.filter(a => a.account_type !== 'credit_card');
+      const ccAccts = accounts.filter(a => a.account_type === 'credit_card');
+      const tAssets = cashAccts.reduce((s, a) => s + (balByAcct[a.id] || 0), 0);
+      const tLiab = ccAccts.reduce((s, a) => s + -(balByAcct[a.id] || 0), 0);
+      const openingEq = accounts.filter(a => a.opening_date <= asOf).reduce((s, a) => s + parseFloat(a.opening_balance), 0);
+      const sumType = types => lgs.reduce((s, l) => { const c = catById(l.category_id); return c && types.includes(c.cat_type) ? s + l.amount : s; }, 0);
+      const netIncome = sumType(['income', 'cogs', 'expense']);
+      const sumKey = key => lgs.reduce((s, l) => { const c = catById(l.category_id); return c && c.system_key === key ? s + l.amount : s; }, 0);
+      const draws = sumKey('owner_draw');
+      const invest = sumKey('owner_investment');
+      const totalEquity = tAssets - tLiab;
+      const other = totalEquity - openingEq - netIncome - draws - invest;
+      const row = (name, v, indent = true) => `<tr><td class="${indent ? 'rpt-indent' : ''}">${escapeHtml(name)}</td><td class="num ${v < -0.005 ? 'neg' : ''}">${fmt(v)}</td></tr>`;
+      $('#report-area').innerHTML = `
+        <div class="report-sheet">
+          <h1>Homestead Cabinet Design — Balance Sheet</h1>
+          <div class="rpt-sub">As of ${formatDate(asOf)} · Cash basis</div>
+          <table class="rpt-table">
+            <tr class="rpt-section"><td>Assets</td><td></td></tr>
+            ${cashAccts.map(a => row(a.name, balByAcct[a.id] || 0)).join('') || row('(no accounts)', 0)}
+            <tr class="rpt-total"><td>Total Assets</td><td class="num">${fmt(tAssets)}</td></tr>
+            <tr class="rpt-section"><td>Liabilities</td><td></td></tr>
+            ${ccAccts.map(a => row(a.name, -(balByAcct[a.id] || 0))).join('') || row('(none)', 0)}
+            <tr class="rpt-total"><td>Total Liabilities</td><td class="num">${fmt(tLiab)}</td></tr>
+            <tr class="rpt-section"><td>Equity</td><td></td></tr>
+            ${row('Opening Balance Equity', openingEq)}
+            ${row('Owner Investments', invest)}
+            ${row("Owner's Draws", draws)}
+            ${row('Net Income (cumulative)', netIncome)}
+            ${Math.abs(other) > 0.005 ? row('Other Adjustments (transfers in transit, loan/tax principal, uncategorized)', other) : ''}
+            <tr class="rpt-total"><td>Total Equity</td><td class="num ${totalEquity < 0 ? 'neg' : ''}">${fmt(totalEquity)}</td></tr>
+            <tr class="rpt-grand"><td>Liabilities + Equity</td><td class="num">${fmt(tLiab + totalEquity)}</td></tr>
+          </table>
+          <p class="text-sm text--muted text-muted" style="margin-top:12px;">Cash-basis balance sheet: assets are bank balances; accounts receivable and inventory are not included. Note this is not tax or accounting advice — review with your accountant at year end.</p>
+        </div>`;
+    }
+
+    // ---------- Schedule C ----------
+    async function renderSC() {
+      const [from, to] = rangeFromPreset($('#preset').value);
+      const lgs = legs(await fetchTxns(from, to));
+      const rows = sumByCategory(lgs, ['income', 'cogs', 'expense']);
+      const byLine = {};
+      rows.forEach(r => {
+        const line = r.cat.schedule_c_line || 'Unmapped';
+        if (!byLine[line]) byLine[line] = [];
+        byLine[line].push(r);
+      });
+      const lines = Object.keys(byLine).sort();
+      $('#report-area').innerHTML = `
+        <div class="report-sheet">
+          <h1>Homestead Cabinet Design — Schedule C Detail</h1>
+          <div class="rpt-sub">${formatDate(from)} through ${formatDate(to)} · Cash basis · For tax preparation</div>
+          <table class="rpt-table">
+            ${lines.map(line => {
+              const cats = byLine[line];
+              const total = cats.reduce((s, r) => s + r.total, 0);
+              const isIncome = cats[0].cat.cat_type === 'income';
+              const disp = v => isIncome ? v : -v;
+              return `
+                <tr class="rpt-section"><td>${escapeHtml(line)}</td><td></td></tr>
+                ${cats.map(r => `<tr><td class="rpt-indent">${escapeHtml(r.cat.name)}</td><td class="num">${fmt(disp(r.total))}</td></tr>`).join('')}
+                <tr class="rpt-total"><td>Total — ${escapeHtml(line)}</td><td class="num">${fmt(disp(total))}</td></tr>`;
+            }).join('')}
+          </table>
+          <p class="text-sm text-muted" style="margin-top:12px;">Reminder: Meals are 50% deductible — your tax preparer applies the limit. Vehicle expenses may be better claimed via the standard mileage rate; discuss with your preparer.</p>
+        </div>`;
+    }
+
+    // ---------- CSV export ----------
+    async function exportCSV() {
+      const [from, to] = rangeFromPreset($('#preset').value);
+      const txns = await fetchTxns(from, to, true);
+      const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const lines = ['Date,Account,Description,Payee,Category,Schedule C Line,Amount,Memo'];
+      txns.forEach(t => {
+        const acct = accounts.find(a => a.id === t.account_id)?.name || '';
+        if (t.is_split && t.ledger_splits?.length) {
+          t.ledger_splits.forEach(s => {
+            const c = catById(s.category_id);
+            lines.push([t.txn_date, esc(acct), esc(t.description), esc(t.payee), esc(c?.name || ''), esc(c?.schedule_c_line || ''), s.amount, esc(s.memo)].join(','));
+          });
+        } else {
+          const c = catById(t.category_id);
+          lines.push([t.txn_date, esc(acct), esc(t.description), esc(t.payee), esc(c?.name || 'UNCATEGORIZED'), esc(c?.schedule_c_line || ''), t.amount, esc(t.memo)].join(','));
+        }
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `hcd-transactions-${from}-to-${to}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    // ---------- Run ----------
+    async function run() {
+      $('#report-area').innerHTML = '<div style="text-align:center; padding:60px;"><div class="loading-spinner" style="margin:0 auto;"></div></div>';
+      try {
+        if (activeTab === 'pl') await renderPL();
+        else if (activeTab === 'bs') await renderBS();
+        else await renderSC();
+      } catch (err) {
+        $('#report-area').innerHTML = `<p class="text-danger text-center">Error: ${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    function syncRangeInputs() {
+      const p = $('#preset').value;
+      if (p !== 'custom') {
+        const [f, t] = rangeFromPreset(p);
+        $('#date-from').value = f; $('#date-to').value = t;
+      }
+      const isBS = activeTab === 'bs';
+      $('#preset').style.display = isBS ? 'none' : '';
+      $('#date-from').style.display = isBS ? 'none' : '';
+      $('#range-to-label').textContent = isBS ? 'As of:' : 'to';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.querySelectorAll('.report-tab').forEach(btn => btn.addEventListener('click', () => {
+        document.querySelectorAll('.report-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTab = btn.dataset.tab;
+        syncRangeInputs(); run();
+      }));
+      $('#preset').addEventListener('change', () => { syncRangeInputs(); run(); });
+      $('#run-btn').addEventListener('click', run);
+      $('#export-btn').addEventListener('click', exportCSV);
+      try {
+        const supabase = await app.waitForSupabase();
+        const [catRes, acctRes] = await Promise.all([
+          supabase.from('coa_categories').select('*').order('sort_order'),
+          supabase.from('ledger_accounts').select('*').eq('is_active', true).order('sort_order')
+        ]);
+        categories = catRes.data || [];
+        accounts = acctRes.data || [];
+        syncRangeInputs();
+        await run();
+      } catch (err) {
+        $('#report-area').innerHTML = `<p class="text-danger text-center">Failed to load: ${escapeHtml(err.message)}</p>`;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HCD Books">
+  <title>Banking | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css?v=51">
+  <style>
+    .account-cards { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    .account-card { background: #fff; border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px; padding: 14px 18px; min-width: 200px; cursor: pointer; position: relative; }
+    .account-card.selected { border-color: var(--brand-color, #2563eb); box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+    .account-card .acct-name { font-weight: 600; }
+    .account-card .acct-type { font-size: 12px; color: #6b7280; text-transform: capitalize; }
+    .account-card .acct-balance { font-size: 20px; font-weight: 700; margin-top: 6px; }
+    .account-card .acct-review { font-size: 12px; color: #b45309; margin-top: 2px; }
+    .amount-pos { color: #15803d; font-weight: 600; }
+    .amount-neg { color: #b91c1c; font-weight: 600; }
+    .txn-uncat td { background: #fffbeb; }
+    .cat-select { min-width: 210px; }
+    .import-preview-table { font-size: 12px; }
+    .import-preview-table th, .import-preview-table td { padding: 4px 8px; border: 1px solid #e5e7eb; }
+    .split-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .badge-review { background: #fef3c7; color: #92400e; }
+    .badge-categorized { background: #dcfce7; color: #166534; }
+    .badge-excluded { background: #f3f4f6; color: #6b7280; }
+    .badge-matched { background: #dbeafe; color: #1e40af; }
+  </style>
+</head>
+<body>
+  <script>
+    const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+    if (!user) {
+      window.location.href = '/admin/login.html';
+    } else if (!user.permissions?.can_view_invoices) {
+      window.location.href = user.permissions?.can_view_pipeline ? '/admin/pipeline.html' : '/admin/index.html';
+    }
+  </script>
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <img data-brand-logo src="" alt="Company Logo" style="height: 40px; filter: brightness(0) invert(1); display: none;">
+      </div>
+      <nav>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Deals Pipeline</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html?view=calendar" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/vendors.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Vendors</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/payments.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Payments</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/punch-list.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Punch List</a></li>
+        </ul>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Bookkeeping</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/banking.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v3"/><path d="M12 14v3"/><path d="M16 14v3"/></svg>Banking</a></li>
+            <li class="sidebar-nav-item"><a href="/admin/reports.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg>Reports</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Lead Capture</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/booking-forms.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Booking Forms</a></li>
+            <li class="sidebar-nav-item"><a href="/schedule" target="_blank" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Online Scheduling</a></li>
+            <li class="sidebar-nav-item"><a href="/admin/bulk-email.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/><line x1="2" y1="20" x2="8" y2="14"/><line x1="22" y1="20" x2="16" y2="14"/></svg>Bulk Email</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Catalog</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/catalog.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Custom Library</a></li>
+          </ul>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">Settings</div>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/email-templates.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Templates</a></li>
+          </ul>
+          <ul class="sidebar-nav">
+            <li class="sidebar-nav-item"><a href="/admin/settings.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="app-main">
+      <header class="app-header">
+        <h2>Banking</h2>
+        <div class="flex gap-md">
+          <button class="btn btn-secondary" id="rules-btn">Rules</button>
+          <button class="btn btn-secondary" id="add-account-btn">+ Add Account</button>
+          <button class="btn btn-secondary" id="add-txn-btn">+ Add Transaction</button>
+          <button class="btn btn-primary" id="import-btn">Import Statement</button>
+        </div>
+      </header>
+
+      <div class="app-content">
+        <div class="account-cards" id="account-cards"></div>
+
+        <div class="card mb-xl">
+          <div class="card-body">
+            <div class="flex gap-md items-center" style="flex-wrap: wrap;">
+              <select id="status-filter" class="form-select" style="max-width: 180px;">
+                <option value="uncategorized" selected>For Review</option>
+                <option value="categorized">Categorized</option>
+                <option value="">All</option>
+                <option value="excluded">Excluded</option>
+              </select>
+              <input type="text" id="search-input" class="form-input" placeholder="Search description, payee, memo..." style="max-width: 280px;">
+              <input type="date" id="date-from" class="form-input" style="max-width: 160px;">
+              <input type="date" id="date-to" class="form-input" style="max-width: 160px;">
+              <div id="bulk-actions" class="flex gap-md items-center" style="display:none; margin-left:auto;">
+                <span id="bulk-count" class="text-sm text-muted"></span>
+                <select id="bulk-category" class="form-select cat-select"></select>
+                <button class="btn btn-secondary btn-sm" id="bulk-apply-btn">Apply</button>
+                <button class="btn btn-ghost btn-sm" id="bulk-exclude-btn">Exclude</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="width:30px;"><input type="checkbox" id="check-all"></th>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Account</th>
+                  <th>Category</th>
+                  <th style="text-align:right;">Amount</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="txn-tbody">
+                <tr><td colspan="8" style="text-align:center; padding:40px;"><div class="loading-spinner" style="margin:0 auto;"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="text-align:center; padding: 12px;">
+            <button class="btn btn-ghost" id="load-more-btn" style="display:none;">Load More</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    let accounts = [];
+    let balances = {};
+    let categories = [];
+    let rules = [];
+    let transactions = [];
+    let selectedAccountId = '';
+    let pageSize = 200;
+    let hasMore = false;
+    let unmatchedPayments = null; // lazy-loaded
+
+    const sysCat = key => categories.find(c => c.system_key === key);
+    const catById = id => categories.find(c => c.id === id);
+
+    // ---------- Load ----------
+    async function loadData() {
+      const supabase = await app.waitForSupabase();
+      const [acctRes, balRes, catRes, ruleRes] = await Promise.all([
+        supabase.from('ledger_accounts').select('*').order('sort_order').order('created_at'),
+        supabase.from('ledger_account_balances').select('*'),
+        supabase.from('coa_categories').select('*').eq('is_active', true).order('sort_order'),
+        supabase.from('ledger_rules').select('*').eq('is_active', true).order('priority', { ascending: false })
+      ]);
+      if (acctRes.error) throw acctRes.error;
+      accounts = acctRes.data || [];
+      balances = {};
+      (balRes.data || []).forEach(b => balances[b.id] = b);
+      categories = catRes.data || [];
+      rules = ruleRes.data || [];
+      renderAccounts();
+      populateBulkCategory();
+      await loadTransactions(true);
+    }
+
+    async function loadTransactions(reset = false) {
+      const supabase = await app.waitForSupabase();
+      if (reset) transactions = [];
+      let q = supabase.from('ledger_transactions')
+        .select('*, ledger_splits(id, category_id, amount, memo)')
+        .order('txn_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(transactions.length, transactions.length + pageSize - 1);
+      if (selectedAccountId) q = q.eq('account_id', selectedAccountId);
+      const status = $('#status-filter').value;
+      if (status) q = q.eq('status', status);
+      const from = $('#date-from').value, to = $('#date-to').value;
+      if (from) q = q.gte('txn_date', from);
+      if (to) q = q.lte('txn_date', to);
+      const search = $('#search-input').value.trim();
+      if (search) q = q.or(`description.ilike.%${search}%,payee.ilike.%${search}%,memo.ilike.%${search}%`);
+      const { data, error } = await q;
+      if (error) { showToast('Load error: ' + error.message, 'error'); return; }
+      transactions = transactions.concat(data || []);
+      hasMore = (data || []).length === pageSize;
+      renderTransactions();
+    }
+
+    // ---------- Render ----------
+    function renderAccounts() {
+      const wrap = $('#account-cards');
+      clearElement(wrap);
+      const allCard = createElement('div', { className: 'account-card' + (selectedAccountId === '' ? ' selected' : ''), onClick: () => { selectedAccountId = ''; renderAccounts(); loadTransactions(true); } });
+      const totalCash = accounts.filter(a => a.account_type !== 'credit_card').reduce((s, a) => s + parseFloat(balances[a.id]?.balance ?? a.opening_balance), 0);
+      allCard.innerHTML = `<div class="acct-name">All Accounts</div><div class="acct-type">cash on hand</div><div class="acct-balance">${formatCurrency(totalCash)}</div>`;
+      wrap.appendChild(allCard);
+      accounts.filter(a => a.is_active).forEach(a => {
+        const bal = parseFloat(balances[a.id]?.balance ?? a.opening_balance);
+        const review = balances[a.id]?.uncategorized_count || 0;
+        const isCC = a.account_type === 'credit_card';
+        const card = createElement('div', { className: 'account-card' + (selectedAccountId === a.id ? ' selected' : ''), onClick: () => { selectedAccountId = a.id; renderAccounts(); loadTransactions(true); } });
+        card.innerHTML = `
+          <div class="flex" style="justify-content:space-between; align-items:flex-start;">
+            <div class="acct-name">${escapeHtml(a.name)}</div>
+            <button class="btn btn-ghost btn-sm" style="padding:0 6px;" onclick="event.stopPropagation(); openAccountModal('${a.id}')">✎</button>
+          </div>
+          <div class="acct-type">${a.account_type.replace('_',' ')}${a.last4 ? ' ••' + escapeHtml(a.last4) : ''}</div>
+          <div class="acct-balance ${isCC && bal < 0 ? 'amount-neg' : ''}">${isCC ? formatCurrency(Math.abs(bal)) + (bal < 0 ? ' owed' : '') : formatCurrency(bal)}</div>
+          ${review > 0 ? `<div class="acct-review">${review} to review</div>` : ''}`;
+        wrap.appendChild(card);
+      });
+      if (accounts.length === 0) {
+        wrap.appendChild(createElement('div', { className: 'text-muted', textContent: 'No accounts yet — click "+ Add Account" to set up your checking, savings, and credit cards.' }));
+      }
+    }
+
+    function categoryOptionsHtml(selectedId) {
+      const groups = [
+        ['Income', ['income']], ['Cost of Goods Sold', ['cogs']], ['Expenses', ['expense']],
+        ['Transfers', ['transfer']], ['Owner / Equity', ['equity']], ['Liabilities', ['liability']]
+      ];
+      let html = '<option value="">— Choose category —</option>';
+      groups.forEach(([label, types]) => {
+        const cats = categories.filter(c => types.includes(c.cat_type));
+        if (!cats.length) return;
+        html += `<optgroup label="${label}">` + cats.map(c => `<option value="${c.id}"${c.id === selectedId ? ' selected' : ''}>${escapeHtml(c.name)}</option>`).join('') + '</optgroup>';
+      });
+      return html;
+    }
+
+    function populateBulkCategory() { $('#bulk-category').innerHTML = categoryOptionsHtml(''); }
+
+    function acctName(id) { return accounts.find(a => a.id === id)?.name || '—'; }
+
+    function renderTransactions() {
+      const tbody = $('#txn-tbody');
+      clearElement(tbody);
+      if (!transactions.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted p-xl">No transactions. Import a statement to get started.</td></tr>';
+        $('#load-more-btn').style.display = 'none';
+        updateBulkBar();
+        return;
+      }
+      transactions.forEach(t => {
+        const amt = parseFloat(t.amount);
+        const isDeposit = amt > 0;
+        const cat = catById(t.category_id);
+        const acct = accounts.find(a => a.id === t.account_id);
+        const canMatch = isDeposit && acct && acct.account_type !== 'credit_card' && !t.payment_id;
+        let catCell;
+        if (t.is_split) {
+          const splitDesc = (t.ledger_splits || []).map(s => `${escapeHtml(catById(s.category_id)?.name || '?')}: ${formatCurrency(s.amount)}`).join('<br>');
+          catCell = `<span class="badge" style="background:#ede9fe;color:#5b21b6;">SPLIT</span><div class="text-sm text-muted">${splitDesc}</div>`;
+        } else {
+          catCell = `<select class="form-select cat-select" onchange="setCategory('${t.id}', this.value)">${categoryOptionsHtml(t.category_id)}</select>`;
+        }
+        const statusBadge = t.status === 'uncategorized' ? '<span class="badge badge-review">review</span>'
+          : t.status === 'excluded' ? '<span class="badge badge-excluded">excluded</span>'
+          : t.payment_id ? '<span class="badge badge-matched">matched</span>'
+          : '<span class="badge badge-categorized">done</span>';
+        const row = createElement('tr', { className: t.status === 'uncategorized' ? 'txn-uncat' : '' });
+        row.innerHTML = `
+          <td><input type="checkbox" class="txn-check" data-id="${t.id}"></td>
+          <td style="white-space:nowrap;">${formatDate(t.txn_date)}</td>
+          <td>
+            <div>${escapeHtml(t.payee || t.description)}</div>
+            ${t.payee && t.payee !== t.description ? `<div class="text-sm text-muted">${escapeHtml(t.description)}</div>` : ''}
+            ${t.memo ? `<div class="text-sm text-muted">📝 ${escapeHtml(t.memo)}</div>` : ''}
+          </td>
+          <td class="text-sm">${escapeHtml(acctName(t.account_id))}</td>
+          <td>${catCell}</td>
+          <td style="text-align:right;" class="${isDeposit ? 'amount-pos' : 'amount-neg'}">${formatCurrency(amt)}</td>
+          <td>${statusBadge}</td>
+          <td class="table-actions" style="white-space:nowrap;">
+            ${canMatch ? `<button class="btn btn-ghost btn-sm" title="Match to invoice payment" onclick="openMatchModal('${t.id}')">Match</button>` : ''}
+            <button class="btn btn-ghost btn-sm" title="Split across categories" onclick="openSplitModal('${t.id}')">Split</button>
+            <button class="btn btn-ghost btn-sm" title="More" onclick="openTxnMenu('${t.id}')">⋯</button>
+          </td>`;
+        tbody.appendChild(row);
+      });
+      tbody.querySelectorAll('.txn-check').forEach(cb => cb.addEventListener('change', updateBulkBar));
+      $('#load-more-btn').style.display = hasMore ? '' : 'none';
+      updateBulkBar();
+    }
+
+    function selectedIds() { return [...document.querySelectorAll('.txn-check:checked')].map(cb => cb.dataset.id); }
+    function updateBulkBar() {
+      const n = selectedIds().length;
+      $('#bulk-actions').style.display = n ? 'flex' : 'none';
+      $('#bulk-count').textContent = n + ' selected';
+    }
+
+    // ---------- Categorize ----------
+    async function setCategory(txnId, categoryId) {
+      if (!categoryId) return;
+      const supabase = await app.waitForSupabase();
+      const { error } = await supabase.from('ledger_transactions')
+        .update({ category_id: categoryId, status: 'categorized', is_split: false })
+        .eq('id', txnId);
+      if (error) { showToast(error.message, 'error'); return; }
+      const t = transactions.find(x => x.id === txnId);
+      if (t) { t.category_id = categoryId; t.status = 'categorized'; }
+      showToast('Categorized', 'success');
+      offerRule(t, categoryId);
+      refreshBalancesSoft();
+    }
+
+    function offerRule(t, categoryId) {
+      if (!t || t._ruleOffered) return;
+      t._ruleOffered = true;
+      const vendor = (t.description || '').replace(/[0-9#*]/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, 2).join(' ');
+      if (vendor.length < 4) return;
+      const cat = catById(categoryId);
+      const modal = createModal({
+        title: 'Create auto-rule?',
+        content: `<p>Always categorize transactions containing:</p>
+          <input id="rule-text" class="form-input" value="${escapeHtml(vendor)}" style="margin:8px 0;">
+          <p>as <strong>${escapeHtml(cat?.name || '')}</strong>?</p>
+          <p class="text-sm text-muted">Applies automatically on future imports.</p>`,
+        footer: `<button class="btn btn-ghost" onclick="closeModal(this.closest('.modal-overlay'))">No thanks</button>
+                 <button class="btn btn-primary" id="rule-save-btn">Create Rule</button>`
+      });
+      modal.querySelector('#rule-save-btn').addEventListener('click', async () => {
+        const text = modal.querySelector('#rule-text').value.trim();
+        if (!text) return;
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('ledger_rules').insert({ match_text: text, category_id: categoryId });
+        if (error) showToast(error.message, 'error');
+        else { showToast('Rule created', 'success'); rules.push({ match_text: text, category_id: categoryId, is_active: true, priority: 0 }); }
+        closeModal(modal);
+      });
+    }
+
+    async function bulkApply() {
+      const catId = $('#bulk-category').value;
+      const ids = selectedIds();
+      if (!catId || !ids.length) return;
+      const supabase = await app.waitForSupabase();
+      const { error } = await supabase.from('ledger_transactions')
+        .update({ category_id: catId, status: 'categorized', is_split: false }).in('id', ids);
+      if (error) { showToast(error.message, 'error'); return; }
+      showToast(`${ids.length} categorized`, 'success');
+      await loadTransactions(true); refreshBalancesSoft();
+    }
+
+    async function bulkExclude() {
+      const ids = selectedIds();
+      if (!ids.length) return;
+      if (!await confirm(`Exclude ${ids.length} transaction(s)? Excluded items don't count toward balances or reports.`)) return;
+      const supabase = await app.waitForSupabase();
+      const { error } = await supabase.from('ledger_transactions').update({ status: 'excluded' }).in('id', ids);
+      if (error) { showToast(error.message, 'error'); return; }
+      await loadTransactions(true); refreshBalancesSoft();
+    }
+
+    async function refreshBalancesSoft() {
+      const supabase = await app.waitForSupabase();
+      const { data } = await supabase.from('ledger_account_balances').select('*');
+      (data || []).forEach(b => balances[b.id] = b);
+      renderAccounts();
+    }
+
+    // ---------- Txn menu (edit/exclude/delete) ----------
+    function openTxnMenu(txnId) {
+      const t = transactions.find(x => x.id === txnId);
+      if (!t) return;
+      const modal = createModal({
+        title: 'Transaction',
+        content: `
+          <div class="form-group"><label class="form-label">Payee</label><input id="tm-payee" class="form-input" value="${escapeHtml(t.payee || '')}"></div>
+          <div class="form-group"><label class="form-label">Memo</label><input id="tm-memo" class="form-input" value="${escapeHtml(t.memo || '')}"></div>
+          <div class="form-group"><label class="form-label">Date</label><input id="tm-date" type="date" class="form-input" value="${t.txn_date}"></div>
+          <div class="form-group"><label class="form-label">Amount</label><input id="tm-amount" type="number" step="0.01" class="form-input" value="${t.amount}" ${t.source === 'import' ? 'disabled title="Imported amounts are locked"' : ''}></div>`,
+        footer: `
+          <button class="btn btn-ghost text-danger" id="tm-delete">Delete</button>
+          <button class="btn btn-ghost" id="tm-exclude">${t.status === 'excluded' ? 'Un-exclude' : 'Exclude'}</button>
+          <button class="btn btn-primary" id="tm-save">Save</button>`
+      });
+      modal.querySelector('#tm-save').addEventListener('click', async () => {
+        const upd = { payee: modal.querySelector('#tm-payee').value.trim() || null, memo: modal.querySelector('#tm-memo').value.trim() || null, txn_date: modal.querySelector('#tm-date').value };
+        if (t.source !== 'import') upd.amount = parseFloat(modal.querySelector('#tm-amount').value) || t.amount;
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('ledger_transactions').update(upd).eq('id', t.id);
+        if (error) { showToast(error.message, 'error'); return; }
+        closeModal(modal); await loadTransactions(true); refreshBalancesSoft();
+      });
+      modal.querySelector('#tm-exclude').addEventListener('click', async () => {
+        const supabase = await app.waitForSupabase();
+        const newStatus = t.status === 'excluded' ? (t.category_id ? 'categorized' : 'uncategorized') : 'excluded';
+        const { error } = await supabase.from('ledger_transactions').update({ status: newStatus }).eq('id', t.id);
+        if (error) { showToast(error.message, 'error'); return; }
+        closeModal(modal); await loadTransactions(true); refreshBalancesSoft();
+      });
+      modal.querySelector('#tm-delete').addEventListener('click', async () => {
+        if (!await confirm('Permanently delete this transaction?', { danger: true })) return;
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('ledger_transactions').delete().eq('id', t.id);
+        if (error) { showToast(error.message, 'error'); return; }
+        closeModal(modal); await loadTransactions(true); refreshBalancesSoft();
+      });
+    }
+
+    // ---------- Accounts ----------
+    function openAccountModal(accountId) {
+      const a = accounts.find(x => x.id === accountId) || {};
+      const isNew = !a.id;
+      const modal = createModal({
+        title: isNew ? 'Add Account' : 'Edit Account',
+        content: `
+          <div class="form-group"><label class="form-label">Account Name *</label><input id="am-name" class="form-input" placeholder="Business Checking" value="${escapeHtml(a.name || '')}"></div>
+          <div class="form-group"><label class="form-label">Type *</label>
+            <select id="am-type" class="form-select">
+              ${['checking','savings','credit_card','cash'].map(t => `<option value="${t}"${a.account_type === t ? ' selected' : ''}>${t.replace('_',' ')}</option>`).join('')}
+            </select></div>
+          <div class="form-group"><label class="form-label">Bank / Institution</label><input id="am-inst" class="form-input" value="${escapeHtml(a.institution || '')}"></div>
+          <div class="form-group"><label class="form-label">Last 4 digits</label><input id="am-last4" class="form-input" maxlength="4" value="${escapeHtml(a.last4 || '')}"></div>
+          <div class="form-group"><label class="form-label">Opening Balance</label><input id="am-open" type="number" step="0.01" class="form-input" value="${a.opening_balance ?? 0}">
+            <div class="text-sm text-muted">Balance on the opening date, before any imported transactions. For credit cards, enter the amount owed as a negative number.</div></div>
+          <div class="form-group"><label class="form-label">Opening Date</label><input id="am-date" type="date" class="form-input" value="${a.opening_date || new Date().toISOString().slice(0,10)}"></div>`,
+        footer: `${isNew ? '' : '<button class="btn btn-ghost text-danger" id="am-deactivate">Deactivate</button>'}
+                 <button class="btn btn-primary" id="am-save">${isNew ? 'Add Account' : 'Save'}</button>`
+      });
+      modal.querySelector('#am-save').addEventListener('click', async () => {
+        const row = {
+          name: modal.querySelector('#am-name').value.trim(),
+          account_type: modal.querySelector('#am-type').value,
+          institution: modal.querySelector('#am-inst').value.trim() || null,
+          last4: modal.querySelector('#am-last4').value.trim() || null,
+          opening_balance: parseFloat(modal.querySelector('#am-open').value) || 0,
+          opening_date: modal.querySelector('#am-date').value
+        };
+        if (!row.name) { showToast('Name required', 'error'); return; }
+        const supabase = await app.waitForSupabase();
+        const { error } = isNew
+          ? await supabase.from('ledger_accounts').insert(row)
+          : await supabase.from('ledger_accounts').update(row).eq('id', a.id);
+        if (error) { showToast(error.message, 'error'); return; }
+        closeModal(modal); showToast('Saved', 'success'); await loadData();
+      });
+      if (!isNew) modal.querySelector('#am-deactivate').addEventListener('click', async () => {
+        if (!await confirm('Deactivate this account? Its transactions are kept but the account is hidden.', { danger: true })) return;
+        const supabase = await app.waitForSupabase();
+        await supabase.from('ledger_accounts').update({ is_active: false }).eq('id', a.id);
+        closeModal(modal); await loadData();
+      });
+    }
+
+    // ---------- Manual transaction ----------
+    function openAddTxnModal() {
+      if (!accounts.length) { showToast('Add an account first', 'error'); return; }
+      const modal = createModal({
+        title: 'Add Transaction',
+        content: `
+          <div class="form-group"><label class="form-label">Account *</label>
+            <select id="at-account" class="form-select">${accounts.filter(a=>a.is_active).map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}</select></div>
+          <div class="form-group"><label class="form-label">Date *</label><input id="at-date" type="date" class="form-input" value="${new Date().toISOString().slice(0,10)}"></div>
+          <div class="form-group"><label class="form-label">Description *</label><input id="at-desc" class="form-input" placeholder="Vendor / what it was"></div>
+          <div class="form-group"><label class="form-label">Amount * <span class="text-sm text-muted">(negative = money out, positive = money in)</span></label>
+            <input id="at-amount" type="number" step="0.01" class="form-input" placeholder="-125.00"></div>
+          <div class="form-group"><label class="form-label">Category</label><select id="at-cat" class="form-select">${categoryOptionsHtml('')}</select></div>
+          <div class="form-group"><label class="form-label">Memo</label><input id="at-memo" class="form-input"></div>`,
+        footer: `<button class="btn btn-primary" id="at-save">Add</button>`
+      });
+      modal.querySelector('#at-save').addEventListener('click', async () => {
+        const amount = parseFloat(modal.querySelector('#at-amount').value);
+        const desc = modal.querySelector('#at-desc').value.trim();
+        if (!desc || isNaN(amount)) { showToast('Description and amount required', 'error'); return; }
+        const catId = modal.querySelector('#at-cat').value || null;
+        const row = {
+          account_id: modal.querySelector('#at-account').value,
+          txn_date: modal.querySelector('#at-date').value,
+          description: desc, amount,
+          category_id: catId,
+          status: catId ? 'categorized' : 'uncategorized',
+          memo: modal.querySelector('#at-memo').value.trim() || null,
+          source: 'manual',
+          fingerprint: 'manual-' + crypto.randomUUID()
+        };
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('ledger_transactions').insert(row);
+        if (error) { showToast(error.message, 'error'); return; }
+        closeModal(modal); showToast('Added', 'success');
+        await loadTransactions(true); refreshBalancesSoft();
+      });
+    }
+
+    // ---------- Split ----------
+    function openSplitModal(txnId) {
+      const t = transactions.find(x => x.id === txnId);
+      if (!t) return;
+      const total = parseFloat(t.amount);
+      let splits = (t.ledger_splits && t.ledger_splits.length) ? t.ledger_splits.map(s => ({ category_id: s.category_id, amount: s.amount, memo: s.memo })) : [{ category_id: t.category_id || '', amount: total, memo: '' }, { category_id: '', amount: 0, memo: '' }];
+      const modal = createModal({
+        title: `Split: ${escapeHtml(t.payee || t.description)} (${formatCurrency(total)})`, size: 'lg',
+        content: `<div id="split-rows"></div>
+          <button class="btn btn-ghost btn-sm" id="split-add">+ Add line</button>
+          <div style="margin-top:10px;font-weight:600;">Remaining: <span id="split-remaining"></span></div>`,
+        footer: `<button class="btn btn-primary" id="split-save">Save Split</button>`
+      });
+      const rowsEl = modal.querySelector('#split-rows');
+      function draw() {
+        rowsEl.innerHTML = '';
+        splits.forEach((s, i) => {
+          const div = createElement('div', { className: 'split-row' });
+          div.innerHTML = `
+            <select class="form-select cat-select" data-i="${i}" data-f="category_id">${categoryOptionsHtml(s.category_id)}</select>
+            <input type="number" step="0.01" class="form-input" style="max-width:130px;" value="${s.amount}" data-i="${i}" data-f="amount">
+            <input class="form-input" placeholder="memo" value="${escapeHtml(s.memo || '')}" data-i="${i}" data-f="memo">
+            <button class="btn btn-ghost btn-sm text-danger" data-del="${i}">✕</button>`;
+          rowsEl.appendChild(div);
+        });
+        updateRemaining();
+      }
+      function updateRemaining() {
+        const sum = splits.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+        const rem = Math.round((total - sum) * 100) / 100;
+        const el = modal.querySelector('#split-remaining');
+        el.textContent = formatCurrency(rem);
+        el.className = Math.abs(rem) < 0.005 ? 'amount-pos' : 'amount-neg';
+      }
+      rowsEl.addEventListener('input', e => {
+        const i = e.target.dataset.i, f = e.target.dataset.f;
+        if (i === undefined) return;
+        splits[i][f] = f === 'amount' ? e.target.value : e.target.value;
+        updateRemaining();
+      });
+      rowsEl.addEventListener('click', e => {
+        const del = e.target.dataset.del;
+        if (del !== undefined) { splits.splice(del, 1); draw(); }
+      });
+      modal.querySelector('#split-add').addEventListener('click', () => { splits.push({ category_id: '', amount: 0, memo: '' }); draw(); });
+      modal.querySelector('#split-save').addEventListener('click', async () => {
+        const clean = splits.filter(s => s.category_id && parseFloat(s.amount)).map(s => ({ transaction_id: t.id, category_id: s.category_id, amount: parseFloat(s.amount), memo: s.memo || null }));
+        const sum = clean.reduce((s, x) => s + x.amount, 0);
+        if (Math.abs(sum - total) > 0.005) { showToast('Split lines must add up to ' + formatCurrency(total), 'error'); return; }
+        if (clean.length < 2) { showToast('Need at least 2 lines — or just pick a single category instead', 'error'); return; }
+        const supabase = await app.waitForSupabase();
+        await supabase.from('ledger_splits').delete().eq('transaction_id', t.id);
+        const { error } = await supabase.from('ledger_splits').insert(clean);
+        if (error) { showToast(error.message, 'error'); return; }
+        await supabase.from('ledger_transactions').update({ is_split: true, category_id: null, status: 'categorized' }).eq('id', t.id);
+        closeModal(modal); showToast('Split saved', 'success');
+        await loadTransactions(true); refreshBalancesSoft();
+      });
+      draw();
+    }
+
+    // ---------- Match deposit to invoice payment ----------
+    async function openMatchModal(txnId) {
+      const t = transactions.find(x => x.id === txnId);
+      if (!t) return;
+      const supabase = await app.waitForSupabase();
+      if (!unmatchedPayments) {
+        const [payRes, linkedRes] = await Promise.all([
+          supabase.from('payments').select('id, amount, payment_date, payment_method, reference_number, customers(name), payment_allocations(invoices(invoice_number))').eq('status', 'succeeded').order('payment_date', { ascending: false }).limit(400),
+          supabase.from('ledger_transactions').select('payment_id').not('payment_id', 'is', null)
+        ]);
+        const linked = new Set((linkedRes.data || []).map(r => r.payment_id));
+        unmatchedPayments = (payRes.data || []).filter(p => !linked.has(p.id));
+      }
+      const amt = parseFloat(t.amount);
+      const scored = unmatchedPayments.map(p => {
+        const dDays = Math.abs((new Date(t.txn_date) - new Date(p.payment_date)) / 86400000);
+        const amtMatch = Math.abs(parseFloat(p.amount) - amt) < 0.005;
+        return { p, score: (amtMatch ? 100 : 0) - Math.min(dDays, 60) };
+      }).sort((a, b) => b.score - a.score).slice(0, 15);
+      const modal = createModal({
+        title: `Match deposit ${formatCurrency(amt)} on ${formatDate(t.txn_date)}`, size: 'lg',
+        content: scored.length ? `<table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Invoice</th><th>Method</th><th style="text-align:right;">Amount</th><th></th></tr></thead><tbody>
+          ${scored.map(({ p }) => `<tr>
+            <td>${formatDate(p.payment_date)}</td>
+            <td>${escapeHtml(p.customers?.name || '—')}</td>
+            <td>${escapeHtml((p.payment_allocations || []).map(a => a.invoices?.invoice_number).filter(Boolean).join(', ') || '—')}</td>
+            <td>${escapeHtml(p.payment_method || '')}</td>
+            <td style="text-align:right;${Math.abs(parseFloat(p.amount) - amt) < 0.005 ? 'font-weight:700;color:#15803d;' : ''}">${formatCurrency(p.amount)}</td>
+            <td><button class="btn btn-primary btn-sm" data-match="${p.id}">Match</button></td>
+          </tr>`).join('')}</tbody></table>
+          <p class="text-sm text-muted" style="margin-top:8px;">Matching links this bank deposit to the recorded customer payment and categorizes it as Sales Income — so income is never double-counted.</p>`
+          : '<p class="text-muted">No unmatched customer payments found. You can categorize this deposit directly as Sales Income or Other Income.</p>'
+      });
+      modal.addEventListener('click', async e => {
+        const pid = e.target.dataset?.match;
+        if (!pid) return;
+        const sales = sysCat('sales_income');
+        const { error } = await supabase.from('ledger_transactions')
+          .update({ payment_id: pid, category_id: sales?.id || null, status: 'categorized' }).eq('id', t.id);
+        if (error) { showToast(error.message, 'error'); return; }
+        unmatchedPayments = unmatchedPayments.filter(p => p.id !== pid);
+        closeModal(modal); showToast('Matched to customer payment', 'success');
+        await loadTransactions(true); refreshBalancesSoft();
+      });
+    }
+
+    // ---------- Rules manager ----------
+    async function openRulesModal() {
+      const supabase = await app.waitForSupabase();
+      const { data } = await supabase.from('ledger_rules').select('*').order('created_at', { ascending: false });
+      const all = data || [];
+      const modal = createModal({
+        title: 'Auto-Categorization Rules', size: 'lg',
+        content: `
+          <div class="flex gap-md" style="margin-bottom:14px;">
+            <input id="nr-text" class="form-input" placeholder='Description contains... e.g. "HOME DEPOT"'>
+            <select id="nr-cat" class="form-select cat-select">${categoryOptionsHtml('')}</select>
+            <button class="btn btn-primary" id="nr-add">Add</button>
+          </div>
+          <table class="table"><thead><tr><th>If description contains</th><th>Category</th><th>Active</th><th></th></tr></thead>
+          <tbody id="rules-tbody">${all.map(r => `<tr>
+            <td>${escapeHtml(r.match_text)}</td>
+            <td>${escapeHtml(catById(r.category_id)?.name || '?')}</td>
+            <td>${r.is_active ? 'Yes' : 'No'}</td>
+            <td><button class="btn btn-ghost btn-sm text-danger" data-rdel="${r.id}">Delete</button></td>
+          </tr>`).join('') || '<tr><td colspan="4" class="text-muted text-center">No rules yet</td></tr>'}</tbody></table>
+          <p class="text-sm text-muted">Rules run automatically on every import, top to bottom.</p>`
+      });
+      modal.querySelector('#nr-add').addEventListener('click', async () => {
+        const text = modal.querySelector('#nr-text').value.trim();
+        const cat = modal.querySelector('#nr-cat').value;
+        if (!text || !cat) { showToast('Text and category required', 'error'); return; }
+        const { error } = await supabase.from('ledger_rules').insert({ match_text: text, category_id: cat });
+        if (error) { showToast(error.message, 'error'); return; }
+        closeModal(modal); showToast('Rule added', 'success');
+        rules = (await supabase.from('ledger_rules').select('*').eq('is_active', true)).data || [];
+        openRulesModal();
+      });
+      modal.addEventListener('click', async e => {
+        const rid = e.target.dataset?.rdel;
+        if (!rid) return;
+        await supabase.from('ledger_rules').delete().eq('id', rid);
+        closeModal(modal); openRulesModal();
+      });
+    }
+
+    // ---------- CSV Import ----------
+    function parseCSV(text) {
+      const rows = [];
+      let row = [], field = '', inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQuotes) {
+          if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQuotes = false; }
+          else field += c;
+        } else if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\n' || c === '\r') {
+          if (c === '\r' && text[i + 1] === '\n') i++;
+          row.push(field); field = '';
+          if (row.some(f => f.trim() !== '')) rows.push(row);
+          row = [];
+        } else field += c;
+      }
+      if (field !== '' || row.length) { row.push(field); if (row.some(f => f.trim() !== '')) rows.push(row); }
+      return rows;
+    }
+
+    function parseAmount(s) {
+      if (s === undefined || s === null) return NaN;
+      s = String(s).trim();
+      if (!s) return NaN;
+      let neg = false;
+      if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+      s = s.replace(/[$,\s]/g, '');
+      const v = parseFloat(s);
+      return neg ? -v : v;
+    }
+
+    function parseDateStr(s) {
+      s = String(s || '').trim();
+      let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+      m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+      if (m) {
+        let y = m[3]; if (y.length === 2) y = '20' + y;
+        return `${y}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+      }
+      const d = new Date(s);
+      return isNaN(d) ? null : d.toISOString().slice(0, 10);
+    }
+
+    function hashStr(s) {
+      let h = 5381;
+      for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+      return h.toString(36);
+    }
+
+    function openImportModal() {
+      if (!accounts.length) { showToast('Add an account first', 'error'); return; }
+      const modal = createModal({
+        title: 'Import Bank Statement (CSV)', size: 'xl',
+        content: `
+          <div class="form-group"><label class="form-label">Account *</label>
+            <select id="im-account" class="form-select">${accounts.filter(a=>a.is_active).map(a => `<option value="${a.id}"${a.id === selectedAccountId ? ' selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}</select></div>
+          <div class="form-group"><label class="form-label">CSV File *</label><input type="file" id="im-file" accept=".csv,.txt" class="form-input">
+            <div class="text-sm text-muted">Download from your bank's website: Transactions → Export/Download → CSV. Overlapping date ranges are fine — duplicates are skipped automatically.</div></div>
+          <div id="im-mapping" style="display:none;">
+            <hr style="margin:14px 0;">
+            <div class="flex gap-md" style="flex-wrap:wrap;">
+              <div class="form-group"><label class="form-label">Date column</label><select id="mc-date" class="form-select"></select></div>
+              <div class="form-group"><label class="form-label">Description column</label><select id="mc-desc" class="form-select"></select></div>
+              <div class="form-group"><label class="form-label">Amount column</label><select id="mc-amount" class="form-select"></select></div>
+              <div class="form-group"><label class="form-label">…or Debit / Credit columns</label>
+                <div class="flex gap-md"><select id="mc-debit" class="form-select"></select><select id="mc-credit" class="form-select"></select></div></div>
+            </div>
+            <label class="flex gap-md items-center" style="margin-bottom:10px;"><input type="checkbox" id="mc-flip"> Flip signs <span class="text-sm text-muted">(check this if charges show as positive numbers — common for credit cards)</span></label>
+            <div id="im-preview"></div>
+          </div>`,
+        footer: `<button class="btn btn-primary" id="im-go" disabled>Import</button>`
+      });
+      let rawRows = [], header = [], startIdx = 0;
+
+      function colOptions(sel) {
+        return '<option value="">—</option>' + header.map((h, i) => `<option value="${i}"${sel === i ? ' selected' : ''}>${escapeHtml(h || 'Column ' + (i + 1))}</option>`).join('');
+      }
+      function guessCol(patterns) {
+        return header.findIndex(h => patterns.some(p => (h || '').toLowerCase().includes(p)));
+      }
+      function currentMapping() {
+        const gv = id => { const v = modal.querySelector(id).value; return v === '' ? null : parseInt(v); };
+        return { date: gv('#mc-date'), desc: gv('#mc-desc'), amount: gv('#mc-amount'), debit: gv('#mc-debit'), credit: gv('#mc-credit'), flip: modal.querySelector('#mc-flip').checked };
+      }
+      function buildTxns() {
+        const m = currentMapping();
+        const acctId = modal.querySelector('#im-account').value;
+        const out = [], seen = {};
+        for (let r = startIdx; r < rawRows.length; r++) {
+          const row = rawRows[r];
+          const date = m.date != null ? parseDateStr(row[m.date]) : null;
+          const desc = m.desc != null ? String(row[m.desc] || '').trim() : '';
+          let amt = NaN;
+          if (m.amount != null) amt = parseAmount(row[m.amount]);
+          else if (m.debit != null || m.credit != null) {
+            const d = m.debit != null ? parseAmount(row[m.debit]) : NaN;
+            const c = m.credit != null ? parseAmount(row[m.credit]) : NaN;
+            amt = !isNaN(d) && d !== 0 ? -Math.abs(d) : (!isNaN(c) ? Math.abs(c) : NaN);
+          }
+          if (!date || !desc || isNaN(amt)) continue;
+          if (m.flip) amt = -amt;
+          amt = Math.round(amt * 100) / 100;
+          const base = `${date}|${amt.toFixed(2)}|${desc.toUpperCase().replace(/\s+/g, ' ').trim()}`;
+          seen[base] = (seen[base] || 0) + 1;
+          const fp = hashStr(base) + '-' + seen[base];
+          // apply rules
+          let category_id = null, payee = null;
+          const descU = desc.toUpperCase();
+          for (const rule of rules) {
+            if (descU.includes(rule.match_text.toUpperCase())) { category_id = rule.category_id; payee = rule.rename_payee || null; break; }
+          }
+          out.push({ account_id: acctId, txn_date: date, description: desc, payee, amount: amt, category_id, status: category_id ? 'categorized' : 'uncategorized', fingerprint: fp, source: 'import' });
+        }
+        return out;
+      }
+      function preview() {
+        const txns = buildTxns();
+        const el = modal.querySelector('#im-preview');
+        if (!txns.length) { el.innerHTML = '<p class="text-danger">No valid rows parsed — check the column mapping.</p>'; modal.querySelector('#im-go').disabled = true; return; }
+        const inSum = txns.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+        const outSum = txns.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0);
+        el.innerHTML = `
+          <p><strong>${txns.length}</strong> transactions parsed · Money in: <span class="amount-pos">${formatCurrency(inSum)}</span> · Money out: <span class="amount-neg">${formatCurrency(outSum)}</span></p>
+          <table class="import-preview-table"><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Auto-category</th></tr></thead><tbody>
+          ${txns.slice(0, 8).map(t => `<tr><td>${t.txn_date}</td><td>${escapeHtml(t.description.slice(0, 60))}</td><td class="${t.amount > 0 ? 'amount-pos' : 'amount-neg'}">${formatCurrency(t.amount)}</td><td>${escapeHtml(catById(t.category_id)?.name || '')}</td></tr>`).join('')}
+          </tbody></table>
+          ${txns.length > 8 ? `<p class="text-sm text-muted">…and ${txns.length - 8} more</p>` : ''}
+          <p class="text-sm text-muted">If "Money in/out" looks backwards, check the Flip signs box above.</p>`;
+        modal.querySelector('#im-go').disabled = false;
+      }
+
+      modal.querySelector('#im-file').addEventListener('change', async e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const text = await file.text();
+        rawRows = parseCSV(text);
+        if (rawRows.length < 2) { showToast('File appears empty', 'error'); return; }
+        header = rawRows[0].map(h => String(h).trim());
+        startIdx = 1;
+        const acct = accounts.find(a => a.id === modal.querySelector('#im-account').value);
+        const saved = acct?.csv_mapping;
+        modal.querySelector('#mc-date').innerHTML = colOptions(saved?.date ?? guessCol(['date', 'posted']));
+        modal.querySelector('#mc-desc').innerHTML = colOptions(saved?.desc ?? guessCol(['description', 'memo', 'payee', 'merchant', 'name']));
+        modal.querySelector('#mc-amount').innerHTML = colOptions(saved?.amount ?? guessCol(['amount']));
+        modal.querySelector('#mc-debit').innerHTML = colOptions(saved?.debit ?? guessCol(['debit', 'withdrawal']));
+        modal.querySelector('#mc-credit').innerHTML = colOptions(saved?.credit ?? guessCol(['credit', 'deposit']));
+        modal.querySelector('#mc-flip').checked = saved?.flip ?? (acct?.account_type === 'credit_card');
+        modal.querySelector('#im-mapping').style.display = '';
+        preview();
+      });
+      ['#mc-date', '#mc-desc', '#mc-amount', '#mc-debit', '#mc-credit', '#mc-flip'].forEach(id =>
+        modal.querySelector(id).addEventListener('change', preview));
+      modal.querySelector('#im-account').addEventListener('change', () => { if (rawRows.length) preview(); });
+
+      modal.querySelector('#im-go').addEventListener('click', async () => {
+        const btn = modal.querySelector('#im-go');
+        btn.disabled = true; btn.textContent = 'Importing…';
+        try {
+          const txns = buildTxns();
+          const acctId = modal.querySelector('#im-account').value;
+          const supabase = await app.waitForSupabase();
+          const { data: batch, error: bErr } = await supabase.from('ledger_import_batches')
+            .insert({ account_id: acctId, filename: modal.querySelector('#im-file').files[0]?.name || null, row_count: txns.length }).select().single();
+          if (bErr) throw bErr;
+          txns.forEach(t => t.import_batch_id = batch.id);
+          let inserted = 0;
+          for (let i = 0; i < txns.length; i += 500) {
+            const chunk = txns.slice(i, i + 500);
+            const { data, error } = await supabase.from('ledger_transactions')
+              .upsert(chunk, { onConflict: 'account_id,fingerprint', ignoreDuplicates: true }).select('id');
+            if (error) throw error;
+            inserted += (data || []).length;
+          }
+          const dupes = txns.length - inserted;
+          await supabase.from('ledger_import_batches').update({ imported_count: inserted, duplicate_count: dupes }).eq('id', batch.id);
+          // save mapping for next time
+          await supabase.from('ledger_accounts').update({ csv_mapping: currentMapping() }).eq('id', acctId);
+          closeModal(modal);
+          showToast(`Imported ${inserted} transactions${dupes ? ` (${dupes} duplicates skipped)` : ''}`, 'success');
+          unmatchedPayments = null;
+          await loadData();
+        } catch (err) {
+          showToast('Import failed: ' + err.message, 'error');
+          btn.disabled = false; btn.textContent = 'Import';
+        }
+      });
+    }
+
+    // ---------- Wire up ----------
+    document.addEventListener('DOMContentLoaded', () => {
+      $('#add-account-btn').addEventListener('click', () => openAccountModal());
+      $('#add-txn-btn').addEventListener('click', openAddTxnModal);
+      $('#import-btn').addEventListener('click', openImportModal);
+      $('#rules-btn').addEventListener('click', openRulesModal);
+      $('#status-filter').addEventListener('change', () => loadTransactions(true));
+      $('#date-from').addEventListener('change', () => loadTransactions(true));
+      $('#date-to').addEventListener('change', () => loadTransactions(true));
+      $('#search-input').addEventListener('input', debounce(() => loadTransactions(true), 400));
+      $('#load-more-btn').addEventListener('click', () => loadTransactions(false));
+      $('#bulk-apply-btn').addEventListener('click', bulkApply);
+      $('#bulk-exclude-btn').addEventListener('click', bulkExclude);
+      $('#check-all').addEventListener('change', e => {
+        document.querySelectorAll('.txn-check').forEach(cb => cb.checked = e.target.checked);
+        updateBulkBar();
+      });
+      loadData().catch(err => showToast('Failed to load: ' + err.message, 'error'));
+    });
+  </script>
+</body>
+</html>
