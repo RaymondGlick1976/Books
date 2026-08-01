@@ -20,7 +20,10 @@
       "Bash(npx:*)",
       "WebFetch(domain:hcdbooks.netlify.app)",
       "Bash(gh api:*)",
-      "mcp__claude_ai_Supabase__get_logs"
+      "mcp__claude_ai_Supabase__get_logs",
+      "Bash(npm install *)",
+      "Bash(cp /tmp/ws-test.js ./ws-test.tmp.js)",
+      "Bash(rm -f ws-test.tmp.js)"
     ]
   }
 }
