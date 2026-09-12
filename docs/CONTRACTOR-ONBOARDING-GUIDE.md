@@ -14,6 +14,7 @@ Collect this information from the contractor before starting:
 - [ ] Company address (street, city, state, zip)
 - [ ] Website URL (if any)
 - [ ] Logo image file (PNG or GIF, ideally 200px wide)
+- [ ] GitHub username (their own account — free to create if they don't have one; needed for Step 1)
 - [ ] Desired subdomain (e.g., `smithcabinets` → `smithcabinets-books.netlify.app`)
 - [ ] Custom domain (optional, e.g., `portal.smithcabinets.com`)
 - [ ] Admin user's name and email (for first login)
@@ -22,7 +23,31 @@ Collect this information from the contractor before starting:
 
 ---
 
-## Step 1: Create Supabase Project
+## Step 1: Fork the Template on GitHub
+
+**Time: ~5 minutes**
+
+Everything the contractor uses should live under accounts *they* own — GitHub included. This step hands them a private copy of the codebase that's fully theirs, while keeping you able to push updates to it later.
+
+**One-time setup (only needs doing once, ever — not per contractor):**
+
+1. [ ] Confirm the template repo (`quote-app-template`) is private, owned by your GitHub account
+2. [ ] Go to the repo's **Settings → General → Features** and check **"Allow forking"** — skip this if it's already been done for a previous contractor
+
+**Per contractor:**
+
+1. [ ] Go to the template repo → **Settings → Collaborators** → **Add people** → invite their GitHub username
+2. [ ] Have them accept the invite (check their email or GitHub notifications)
+3. [ ] On a screen-share, have them log into their own GitHub account, open the template repo, and click **Fork** (top right)
+4. [ ] They choose their own account as the destination — this creates a private repo fully owned by them (e.g. `their-username/quote-app-template`)
+5. [ ] Confirm you have access to their new fork — GitHub usually auto-grants the template's collaborators access to new forks. If you only land with read access, ask them to add you as a collaborator with **Write** permission so you can push updates later
+6. [ ] Note their fork's repo URL — you'll connect it to Netlify in Step 5
+
+**Alternative:** if you'd rather not share commit history with contractors, mark the template as a **Template repository** (Settings → check "Template repository") and have them click **Use this template** instead of Fork. Same access requirements, but it creates a fresh repo with no shared git history. If you use this method, you'll need to manually add the template as a remote later (see *Maintenance Notes* below) since GitHub won't track a fork relationship automatically.
+
+---
+
+## Step 2: Create Supabase Project
 
 **Time: ~10 minutes**
 
@@ -40,7 +65,7 @@ Collect this information from the contractor before starting:
 
 ---
 
-## Step 2: Run Database Migrations
+## Step 3: Run Database Migrations
 
 **Time: ~5 minutes**
 
@@ -64,7 +89,7 @@ Collect this information from the contractor before starting:
 
 ---
 
-## Step 3: Set Up Supabase Storage
+## Step 4: Set Up Supabase Storage
 
 **Time: ~2 minutes**
 
@@ -76,11 +101,23 @@ Collect this information from the contractor before starting:
 
 ---
 
-## Step 4: Deploy to Netlify
+## Step 5: Deploy to Netlify
 
 **Time: ~5 minutes**
 
-### Option A: From ZIP file
+### Option A: From their GitHub fork (recommended)
+
+1. [ ] Go to [netlify.com](https://netlify.com) and log in with the contractor's own account
+2. [ ] Click **"Add new site"** → **"Import an existing project"**
+3. [ ] Connect to GitHub and authorize Netlify to access their account
+4. [ ] Select their forked repo from Step 1
+5. [ ] Confirm build settings and deploy
+6. [ ] Click **"Site settings"** → **"Change site name"**
+7. [ ] Set name to `[contractor-name]-books` (e.g., `smith-cabinets-books`)
+
+This connects hosting entirely to the contractor's own accounts (GitHub + Netlify) — no dependency on you for uptime or deploys going forward, and pushes to their fork auto-deploy.
+
+### Option B: From ZIP file (only if not using the GitHub fork workflow)
 
 1. [ ] Go to [netlify.com](https://netlify.com) and log in
 2. [ ] Click **"Add new site"** → **"Deploy manually"**
@@ -89,16 +126,11 @@ Collect this information from the contractor before starting:
 5. [ ] Click **"Site settings"** → **"Change site name"**
 6. [ ] Set name to `[contractor-name]-books` (e.g., `smith-cabinets-books`)
 
-### Option B: From Git repository (if using)
-
-1. [ ] Fork or clone the repository for this contractor
-2. [ ] In Netlify, click **"Add new site"** → **"Import an existing project"**
-3. [ ] Connect to the Git repo
-4. [ ] Deploy
+Note: ZIP deploys don't auto-update from git pushes — if you use this option, future updates have to be manually re-uploaded rather than pushed.
 
 ---
 
-## Step 5: Configure Environment Variables
+## Step 6: Configure Environment Variables
 
 **Time: ~5 minutes**
 
@@ -109,9 +141,9 @@ Collect this information from the contractor before starting:
 
 | Variable | Value | Notes |
 |----------|-------|-------|
-| `SUPABASE_URL` | `https://xxxxx.supabase.co` | From Step 1 |
-| `SUPABASE_ANON_KEY` | `eyJhbGc...` | From Step 1 |
-| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGc...` | From Step 1 (keep secret!) |
+| `SUPABASE_URL` | `https://xxxxx.supabase.co` | From Step 2 |
+| `SUPABASE_ANON_KEY` | `eyJhbGc...` | From Step 2 |
+| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGc...` | From Step 2 (keep secret!) |
 
 ### Email (Required for notifications)
 
@@ -141,7 +173,7 @@ Collect this information from the contractor before starting:
 
 ---
 
-## Step 6: Customize Branding (Optional)
+## Step 7: Customize Branding (Optional)
 
 **Time: ~5 minutes**
 
@@ -161,7 +193,7 @@ Collect this information from the contractor before starting:
 
 ---
 
-## Step 7: Create Admin User
+## Step 8: Create Admin User
 
 **Time: ~2 minutes**
 
@@ -172,7 +204,7 @@ Collect this information from the contractor before starting:
 
 ---
 
-## Step 8: Configure App Settings
+## Step 9: Configure App Settings
 
 **Time: ~10 minutes**
 
@@ -213,30 +245,30 @@ Log into the admin panel and configure:
 
 ---
 
-## Step 9: Set Up Email (Resend)
+## Step 10: Set Up Email (Resend)
 
 **Time: ~10 minutes**
 
 If contractor needs email notifications:
 
-1. [ ] Go to [resend.com](https://resend.com) and create account (or use your master account)
+1. [ ] Go to [resend.com](https://resend.com) and create account (contractor's own account)
 2. [ ] **Add domain** (recommended) or use Resend's test domain
 3. [ ] If adding domain:
    - Add the contractor's domain
-   - Add DNS records (MX, TXT for SPF/DKIM)
+   - Add DNS records (MX, TXT for SPF/DKIM) — contractor does this themselves or grants temporary DNS access
    - Verify domain
 4. [ ] Create API key and add to Netlify environment variables
 5. [ ] Test by submitting a booking form
 
 ---
 
-## Step 10: Set Up Stripe (If Using Payments)
+## Step 11: Set Up Stripe (If Using Payments)
 
 **Time: ~15 minutes**
 
-1. [ ] Contractor creates Stripe account at [stripe.com](https://stripe.com)
+1. [ ] Contractor creates Stripe account at [stripe.com](https://stripe.com) — always their own account, never yours
 2. [ ] Complete Stripe onboarding/verification
-3. [ ] Get API keys from **Developers → API Keys**
+3. [ ] Contractor gets API keys from **Developers → API Keys** and shares just the keys with you — you should never need their Stripe login
 4. [ ] Set up webhook:
    - Go to **Developers → Webhooks**
    - Add endpoint: `https://[site].netlify.app/.netlify/functions/stripe-webhook`
@@ -248,7 +280,7 @@ If contractor needs email notifications:
 
 ---
 
-## Step 11: Custom Domain (Optional)
+## Step 12: Custom Domain (Optional)
 
 **Time: ~10 minutes**
 
@@ -264,7 +296,7 @@ If contractor wants their own domain (e.g., `portal.smithcabinets.com`):
 
 ---
 
-## Step 12: Final Testing Checklist
+## Step 13: Final Testing Checklist
 
 Test these features before handing off:
 
@@ -295,7 +327,7 @@ Test these features before handing off:
 
 ---
 
-## Step 13: Handoff to Contractor
+## Step 14: Handoff to Contractor
 
 Provide the contractor with:
 
@@ -305,6 +337,7 @@ Provide the contractor with:
 4. [ ] **Booking form embed code** (from Booking Forms settings)
 5. [ ] **Quick start guide** (create a simple PDF or doc)
 6. [ ] **Support contact** (your email/phone for questions)
+7. [ ] **Confirmation of what they own vs. what's paid separately** — remind them their GitHub fork, Supabase project, Netlify site, and any Resend/Stripe accounts are fully theirs; updates and ongoing support are a separate purchase if they haven't already added it
 
 ---
 
@@ -330,15 +363,37 @@ Provide the contractor with:
 - Check webhook is configured with correct URL
 - Look at Stripe dashboard for error details
 
+### Can't fork the template repo / "Fork" button missing
+- Confirm "Allow forking" is checked in the template repo's Settings → General → Features
+- Confirm the contractor actually accepted the collaborator invite before trying to fork — a pending invite doesn't grant access
+
+### You don't have push access to a contractor's fork
+- Ask them to add you as a collaborator on their fork with **Write** permission (Settings → Collaborators, on their repo, not the template)
+- This can happen if the auto-granted access from the fork only came through as read-only
+
 ---
 
 ## Maintenance Notes
 
 ### Updating the App
-When you release updates:
-1. Download latest version
-2. Deploy to each contractor's Netlify (or push to their Git repo)
-3. Run any new database migrations in their Supabase
+
+Because each contractor has their own fork (Step 1), updates are pushed per-fork rather than redeployed centrally:
+
+1. [ ] Make and test the fix/feature in the template repo (`quote-app-template`), push to its `main` branch
+2. [ ] For each contractor's fork (you should have write access from Step 1):
+   ```
+   git clone <their-fork-url>
+   cd <repo-folder>
+   git remote add upstream <template-repo-url>   # only needed the first time for this fork
+   git fetch upstream
+   git merge upstream/main
+   git push origin main
+   ```
+3. [ ] Netlify auto-deploys on push — no manual redeploy needed if they're on the GitHub-connected setup from Step 5, Option A
+4. [ ] If the update includes a schema change, run the new migration file in each contractor's Supabase SQL Editor manually (schema changes don't travel through git)
+5. [ ] For contractors on the ZIP-deploy path (Step 5, Option B), you'll need to manually re-zip and re-upload instead of steps 2–3
+
+This is the deliverable behind a paid "updates" plan — batch it across contractors on a schedule (e.g., monthly) rather than doing it ad hoc per request.
 
 ### Monitoring
 - Set up Netlify email notifications for deploy failures
@@ -351,12 +406,12 @@ When you release updates:
 
 Use this table to track onboarding progress:
 
-| Contractor | Supabase | Netlify | Env Vars | Settings | Email | Stripe | Handed Off |
-|------------|----------|---------|----------|----------|-------|--------|------------|
-| Example Co | ✅ | ✅ | ✅ | ✅ | ✅ | N/A | ✅ |
-| | | | | | | | |
-| | | | | | | | |
+| Contractor | GitHub | Supabase | Netlify | Env Vars | Settings | Email | Stripe | Handed Off |
+|------------|--------|----------|---------|----------|----------|-------|--------|------------|
+| Example Co | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | N/A | ✅ |
+| | | | | | | | | |
+| | | | | | | | | |
 
 ---
 
-*Last updated: January 2025*
+*Last updated: August 2026*
