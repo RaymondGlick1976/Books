@@ -1025,6 +1025,13 @@
     
     function closeDealModal() { $('#deal-modal').classList.remove('active'); }
 
+    function fmtDateTime(value) {
+      if (!value) return '—';
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
+
     function openDealView(deal) {
       currentDeal = deal;
 
@@ -1049,6 +1056,7 @@
       if (deal.job_number) {
         infoHtml += `<div class="deal-view-field"><label>Job Number</label><p>${deal.job_number}</p></div>`;
       }
+      infoHtml += `<div class="deal-view-field" id="deal-view-submitted"><label>Created</label><p>${deal.created_at ? fmtDateTime(deal.created_at) : '<span class="text-muted">—</span>'}</p></div>`;
       infoHtml += `<div class="deal-view-field"><label>Customer</label><p>${customer ? `<a href="javascript:void(0)" onclick="viewCustomerDetail('${deal.customer_id}')" style="color:var(--color-primary);text-decoration:none;font-weight:500;">${customer.name}</a>` : '<span class="text-muted">—</span>'}</p></div>`;
       if (customer?.phone) {
         infoHtml += `<div class="deal-view-field"><label>Phone</label><p>${phoneLink(customer.phone)}</p></div>`;
@@ -1179,6 +1187,9 @@
         if (submission.form?.name) {
           html += `<div class="submission-field"><label>Form</label><p>${submission.form.name}</p></div>`;
         }
+        if (submission.created_at) {
+          html += `<div class="submission-field"><label>Submitted</label><p>${fmtDateTime(submission.created_at)}</p></div>`;
+        }
         if (submission.how_heard) {
           html += `<div class="submission-field"><label>Lead Source</label><p>${submission.how_heard}</p></div>`;
         }
@@ -1219,6 +1230,10 @@
 
         $(contentSel).innerHTML = html;
         $(sectionSel).style.display = '';
+        if (contentSel === '#view-submission-content' && submission.created_at) {
+          const topField = $('#deal-view-submitted');
+          if (topField) topField.innerHTML = `<label>Submitted</label><p>${fmtDateTime(submission.created_at)}</p>`;
+        }
       } catch (err) {
         // No submission for this deal — that's fine, keep section hidden
       }
