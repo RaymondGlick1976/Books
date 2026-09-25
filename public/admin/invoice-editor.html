@@ -143,6 +143,7 @@
             <span class="save-status-text">Saved</span>
           </div>
           <a href="/admin/invoices.html" class="btn btn-secondary">← Back to Invoices</a>
+          <button class="btn btn-secondary" id="text-link-btn" onclick="textInvoiceLink()" title="Text or copy the customer link">💬 Text Link</button>
           <button class="btn btn-primary" id="save-btn" onclick="saveNow()">Save</button>
         </div>
       </div>
@@ -306,6 +307,7 @@
   </div>
 
   <script src="/js/utils.js"></script>
+  <script src="/js/share-link.js"></script>
   <script>
     let invoiceId = null;
     let invoice = null;
@@ -339,6 +341,16 @@
     function scheduleAutosave() {
       if (autosaveTimer) clearTimeout(autosaveTimer);
       autosaveTimer = setTimeout(() => save(), AUTOSAVE_DELAY);
+    }
+
+    // Text / copy customer link (saves pending edits first)
+    async function textInvoiceLink() {
+      if (!invoice) return;
+      if (isDirty) {
+        if (autosaveTimer) clearTimeout(autosaveTimer);
+        await save(true);
+      }
+      await ShareLink.open({ table: 'invoices', record: invoice });
     }
 
     async function saveNow() {

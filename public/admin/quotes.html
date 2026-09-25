@@ -135,6 +135,7 @@
   </div>
   
   <script src="/js/utils.js"></script>
+  <script src="/js/share-link.js"></script>
   <script>
     let quotes = [];
     
@@ -237,6 +238,7 @@
             <a href="/admin/quote-detail.html?id=${quote.id}" class="btn btn-ghost btn-sm">View</a>
             <a href="/admin/quote-builder.html?id=${quote.id}" class="btn btn-ghost btn-sm">Edit</a>
             ${quote.access_token ? `<a href="/portal/quote.html?token=${quote.access_token}" target="_blank" class="btn btn-ghost btn-sm" title="View as customer">👁️</a>` : `<button class="btn btn-ghost btn-sm" onclick="generateToken('${quote.id}')" title="Generate customer link">🔗</button>`}
+            <button class="btn btn-ghost btn-sm" onclick="textQuoteLink('${quote.id}')" title="Text or copy customer link">💬</button>
             <button class="btn btn-ghost btn-sm" onclick="duplicateQuote('${quote.id}')">Duplicate</button>
             ${['draft', 'sent', 'viewed'].includes(quote.status) ? `<button class="btn btn-ghost btn-sm" onclick="markAccepted('${quote.id}')">✓ Accept</button>` : ''}
             ${quote.status === 'accepted' ? `<button class="btn btn-ghost btn-sm" onclick="createInvoice('${quote.id}')">→ Invoice</button>` : ''}
@@ -582,6 +584,14 @@
       }
     };
     
+    window.textQuoteLink = async (quoteId) => {
+      const q = quotes.find(x => x.id === quoteId);
+      if (!q) return;
+      const hadToken = !!q.access_token;
+      await ShareLink.open({ table: 'quotes', record: q, customer: q.customers, onSent: () => loadQuotes() });
+      if (!hadToken && q.access_token) loadQuotes();
+    };
+
     window.generateToken = async (quoteId) => {
       try {
         const supabase = await app.waitForSupabase();

@@ -144,6 +144,7 @@
             <a href="#" id="edit-quote-btn" class="btn btn-secondary">Edit Quote</a>
             <button id="unlock-quote-btn" class="btn btn-secondary" style="display:none;" onclick="unlockQuote()">🔓 Unlock to Edit</button>
             <button id="send-quote-btn" class="btn btn-secondary" onclick="showSendEmailModal()">📧 Send</button>
+            <button id="text-link-btn" class="btn btn-secondary" onclick="textQuoteLink()" title="Text or copy the customer link">💬 Text Link</button>
             <button id="convert-invoice-btn" class="btn btn-secondary" style="display:none;" onclick="convertToInvoice()">→ Invoice</button>
             <a href="#" id="view-invoice-btn" class="btn btn-secondary" style="display:none;">View Invoice</a>
             <button id="qb-estimate-btn" class="btn btn-secondary" style="display:none;" onclick="syncEstimateToQB()">📤 QB Estimate</button>
@@ -371,6 +372,7 @@
   </div>
   
   <script src="/js/utils.js"></script>
+  <script src="/js/share-link.js"></script>
   <script>
     let quote = null;
     let customer = null;
@@ -1652,6 +1654,20 @@
       });
     }
     
+    // Text / copy customer link
+    async function textQuoteLink() {
+      if (!quote) return;
+      const hadToken = !!quote.access_token;
+      await ShareLink.open({ table: 'quotes', record: quote, customer: customer || quote.customers });
+      if (!hadToken && quote.access_token) {
+        const t = quote.access_token;
+        $('#customer-view-newtab').href = `/portal/quote.html?token=${t}`;
+        $('#customer-view-newtab').onclick = null;
+        $('#print-estimate-btn').href = `/portal/quote.html?token=${t}&print=1&hideUnselected=1`;
+        $('#print-estimate-btn').onclick = null;
+      }
+    }
+
     // Send Email Modal
     async function showSendEmailModal() {
       if (!customer || !customer.email) {

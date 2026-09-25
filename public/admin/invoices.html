@@ -130,6 +130,7 @@
   </div>
   
   <script src="/js/utils.js"></script>
+  <script src="/js/share-link.js"></script>
   <script>
     
     let invoices = [];
@@ -180,6 +181,7 @@
             <button class="btn btn-ghost btn-sm" onclick="viewInvoice('${invoice.id}')">View</button>
             <a class="btn btn-ghost btn-sm" href="/admin/invoice-editor.html?id=${invoice.id}">Edit</a>
             <button class="btn btn-ghost btn-sm" onclick="printInvoiceById('${invoice.id}')" title="Print">🖨️</button>
+            ${invoice.status !== 'cancelled' ? `<button class="btn btn-ghost btn-sm" onclick="textInvoiceLink('${invoice.id}')" title="Text or copy customer link">💬</button>` : ''}
             ${invoice.status !== 'paid' && invoice.status !== 'cancelled' && invoice.status !== 'archived' ? `<button class="btn btn-ghost btn-sm" onclick="sendInvoice('${invoice.id}')">${invoice.sent_at ? 'Resend' : 'Send'}</button>` : ''}
             ${invoice.amount_due > 0 ? `<button class="btn btn-ghost btn-sm" onclick="recordPayment('${invoice.id}')">Record Payment</button>` : ''}
             ${!invoice.qb_invoice_id
@@ -232,6 +234,12 @@
     statusFilter.addEventListener('change', applyFilters);
     hideArchivedCheckbox.addEventListener('change', applyFilters);
     
+    window.textInvoiceLink = async (id) => {
+      const inv = invoices.find(x => x.id === id);
+      if (!inv) return;
+      await ShareLink.open({ table: 'invoices', record: inv, customer: inv.customers, onSent: () => loadInvoices() });
+    };
+
     window.viewInvoice = async (id) => {
       // Fetch fresh invoice data from DB to avoid stale cached totals
       const supabase = await app.waitForSupabase();
@@ -457,6 +465,12 @@
         customerViewBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Customer View';
       });
       leftBtns.appendChild(customerViewBtn);
+
+      const textLinkBtn = createElement('button', { className: 'btn btn-secondary', textContent: '💬 Text Link' });
+      textLinkBtn.addEventListener('click', () => {
+        ShareLink.open({ table: 'invoices', record: invoice, customer: invoice.customers, onSent: () => loadInvoices() });
+      });
+      leftBtns.appendChild(textLinkBtn);
       footer.appendChild(leftBtns);
 
       const rightBtns = createElement('div', { className: 'btn-group' });
