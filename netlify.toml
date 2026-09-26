@@ -54,6 +54,10 @@
 [functions."retry-failed-emails"]
   schedule = "*/15 * * * *"
 
+# Daily 7am ET (11:00 UTC): move deals with expired, unaccepted quotes to Job Lost
+[functions."expire-quote-deals"]
+  schedule = "0 11 * * *"
+
 # Environment variables (set these in Netlify dashboard)
 # SUPABASE_URL
 # SUPABASE_ANON_KEY

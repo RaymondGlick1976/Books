@@ -1949,8 +1949,8 @@
     
     function addLineItem(catalogItem = null) {
       // Use item-specific attributes if available, otherwise all attributes for custom items
-      const itemAttrs = catalogItem && catalogItemAttributes[catalogItem.id]
-        ? catalogItemAttributes[catalogItem.id]
+      const itemAttrs = catalogItem
+        ? (catalogItemAttributes[catalogItem.id] || [])
         : pricingAttributes;
       if (itemAttrs.length > 0) {
         showAttributeConfigModal(catalogItem, itemAttrs);
@@ -2621,10 +2621,11 @@
 
       // Only show attributes that are checked/assigned for this catalog item.
       // For custom items (no catalogItem) fall back to all pricing attributes.
-      const itemAttrs = catalogItem && catalogItemAttributes[catalogItem.id]
-        ? catalogItemAttributes[catalogItem.id]
+      const itemAttrs = catalogItem
+        ? (catalogItemAttributes[catalogItem.id] || [])
         : pricingAttributes;
-      const itemAttrIds = new Set(itemAttrs.map(a => a.id));
+      // Keep attributes already applied to this line visible so saved pricing isn't hidden or lost
+      const itemAttrIds = new Set([...itemAttrs.map(a => a.id), ...attributeInstances.map(i => i.attrId)]);
 
       const PRICING_LABELS = {
         sqft: 'Sq. Ft.',
@@ -5191,6 +5192,13 @@
         }).filter(inst => inst.attr);
       }
       
+      // Only offer attributes checked for this item in the catalog (package items are matched to the
+      // catalog by name, since they don't store a catalog id). Custom items still get all attributes.
+      const pkgCatalogItem = item ? catalogItems.find(c => c.name === item.name) : null;
+      const pkgItemAttrs = pkgCatalogItem
+        ? (catalogItemAttributes[pkgCatalogItem.id] || [])
+        : pricingAttributes;
+
       const PRICING_LABELS = {
         sqft: 'Sq. Ft.',
         linft: 'Lin. Ft.',
@@ -5320,12 +5328,12 @@
           `;
         }).join('') : '<p class="text-muted text-center" style="padding: var(--space-md);">No attributes. Click a button below to add pricing attributes.</p>';
         
-        const addButtonsHtml = pricingAttributes.length > 0 ? pricingAttributes.map(attr => `
+        const addButtonsHtml = pkgItemAttrs.length > 0 ? pkgItemAttrs.map(attr => `
           <button type="button" class="btn btn-secondary btn-sm pkg-add-attr-btn" data-attr-id="${attr.id}" style="margin-right: var(--space-sm); margin-bottom: var(--space-sm);">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             ${attr.name}
           </button>
-        `).join('') : '<p class="text-muted text-sm">No pricing attributes configured. Add them in Catalog → Pricing Attributes.</p>';
+        `).join('') : (pkgCatalogItem ? '' : '<p class="text-muted text-sm">No pricing attributes configured. Add them in Catalog → Pricing Attributes.</p>');
         
         content.querySelector('#pkg-attr-instances').innerHTML = instancesHtml;
         content.querySelector('#pkg-add-buttons').innerHTML = addButtonsHtml;

@@ -65,7 +65,7 @@
       const num = record.invoice_number ? ` #${record.invoice_number}` : '';
       return `${hi}here's your invoice${num} from ${BUSINESS_NAME}. You can view and pay it here: ${url}`;
     }
-    return `${hi}here's your quote from ${BUSINESS_NAME}. You can review it here: ${url}`;
+    return `${hi}here's your quote from ${BUSINESS_NAME}. Optional items aren't in the total until you tap "Add" next to them. Review it here:\n${url}\n\nQuestions? Call or text 413-450-0028.`;
   }
 
   // Digits only, keep a leading + ; add +1 for 10-digit US numbers
