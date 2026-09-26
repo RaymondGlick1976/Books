@@ -2,7 +2,7 @@
 // PUBLIC QUOTE SELECTION - Save optional item and package selections (no login required)
 // =============================================
 
-const { getSupabase, success, error, handleCors, parseBody, advanceDealStage } = require('./utils');
+const { getSupabase, success, error, handleCors, parseBody, advanceDealStage, notifyQuoteAccepted } = require('./utils');
 
 exports.handler = async (event) => {
   const corsResponse = handleCors(event);
@@ -83,6 +83,9 @@ exports.handler = async (event) => {
         console.error('Update error:', updateError);
         throw updateError;
       }
+
+      // Email the owner that the quote was accepted (non-blocking)
+      await notifyQuoteAccepted(supabase, quote.id, { paymentMethod: 'check' });
 
       // Advance deal to "Quote Accepted" stage
       try {

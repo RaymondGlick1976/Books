@@ -2,7 +2,7 @@
 // PORTAL QUOTE SELECTION - Save optional item and package selections
 // =============================================
 
-const { getSupabase, success, error, handleCors, validateSession, parseBody, advanceDealStage } = require('./utils');
+const { getSupabase, success, error, handleCors, validateSession, parseBody, advanceDealStage, notifyQuoteAccepted } = require('./utils');
 
 exports.handler = async (event) => {
   const corsResponse = handleCors(event);
@@ -81,6 +81,9 @@ exports.handler = async (event) => {
         .eq('id', quote_id);
       
       if (updateError) throw updateError;
+
+      // Email the owner that the quote was accepted (non-blocking)
+      await notifyQuoteAccepted(supabase, quote_id, { paymentMethod: 'check' });
 
       // Advance deal to "Quote Accepted" stage
       try {

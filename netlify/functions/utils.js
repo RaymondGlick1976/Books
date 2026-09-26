@@ -180,7 +180,169 @@ async function advanceDealStage(supabase, { quoteId, customerId, targetStageId }
   }
 }
 
+// Email the business owner when a customer accepts a quote (same style as the
+// new-lead and new-appointment notifications). Never throws — acceptance must
+// not fail because of an email problem. Skips if a notification was already
+// sent for this quote (Stripe webhook + verify-checkout can both fire).
+async function notifyQuoteAccepted(supabase, quoteId, { paymentMethod, amountPaid } = {}) {
+  try {
+    const [{ data: companySettings }, { data: notifSettings }] = await Promise.all([
+      supabase.from('settings').select('value').eq('key', 'company').maybeSingle(),
+      supabase.from('settings').select('value').eq('key', 'notifications').maybeSingle()
+    ]);
+    const company = companySettings?.value || {};
+    const notifications = notifSettings?.value || {};
+    if (notifications.quote_accepted === false) {
+      console.log('[notifyQuoteAccepted] Quote accepted notifications disabled');
+      return;
+    }
+    const notificationEmail = company.notification_email || company.email || process.env.ADMIN_EMAIL;
+    if (!notificationEmail) {
+      console.log('[notifyQuoteAccepted] No notification email configured');
+      return;
+    }
+
+    const { data: quote } = await supabase
+      .from('quotes')
+      .select('id, quote_number, title, total, customer_id, selected_package_id, accepted_at')
+      .eq('id', quoteId)
+      .single();
+    if (!quote) return;
+
+    const quoteLabel = quote.quote_number ? `#${quote.quote_number}` : quote.id;
+
+    // Don't send twice for the same quote
+    const { data: already } = await supabase
+      .from('email_logs')
+      .select('id')
+      .eq('email_type', 'quote_accepted_notification')
+      .eq('status', 'sent')
+      .ilike('subject', `%${quoteLabel}%`)
+      .limit(1);
+    if (already && already.length > 0) {
+      console.log('[notifyQuoteAccepted] Already notified for quote', quoteLabel);
+      return;
+    }
+
+    const [{ data: customer }, { data: optionalItems }, pkgRes] = await Promise.all([
+      supabase.from('customers').select('name, email, phone, address, city, state, zip').eq('id', quote.customer_id).maybeSingle(),
+      supabase.from('quote_line_items').select('description, line_total, is_selected')
+        .eq('quote_id', quote.id).eq('is_optional', true).order('sort_order'),
+      quote.selected_package_id
+        ? supabase.from('quote_packages').select('name').eq('id', quote.selected_package_id).maybeSingle()
+        : Promise.resolve({ data: null })
+    ]);
+
+    const money = (n) => `$${(parseFloat(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const customerName = customer?.name || 'Customer';
+    const fromEmail = company.from_email || company.email || process.env.FROM_EMAIL || 'noreply@homesteadcabinetdesign.com';
+    const companyName = company.name || 'Homestead Cabinet Design';
+    const siteUrl = (process.env.SITE_URL || 'https://hcdbooks.netlify.app').replace(/\/+$/, '');
+
+    const emailSubject = `✅ Quote Accepted: ${customerName} - ${quoteLabel}${quote.title ? ' ' + quote.title : ''}`;
+
+    let emailBody = `Good news! A customer accepted a quote.\n\n`;
+    emailBody += `=== Quote ===\n`;
+    emailBody += `Quote: ${quoteLabel}${quote.title ? ' - ' + quote.title : ''}\n`;
+    emailBody += `Total: ${money(quote.total)}\n`;
+    if (pkgRes?.data?.name) emailBody += `Package Selected: ${pkgRes.data.name}\n`;
+    if (paymentMethod === 'card') {
+      emailBody += `Payment: Paid by card online${amountPaid ? ` (${money(amountPaid)} deposit received)` : ''}\n`;
+    } else if (paymentMethod === 'check') {
+      emailBody += `Payment: Will pay by check (deposit not yet received)\n`;
+    }
+
+    const opts = optionalItems || [];
+    if (opts.length > 0) {
+      const added = opts.filter(i => i.is_selected);
+      const declined = opts.filter(i => !i.is_selected);
+      emailBody += `\n=== Optional Items ===\n`;
+      emailBody += added.length
+        ? added.map(i => `Added: ${i.description} (${money(i.line_total)})`).join('\n') + '\n'
+        : `None added\n`;
+      if (declined.length) {
+        emailBody += declined.map(i => `Not added: ${i.description}`).join('\n') + '\n';
+      }
+    }
+
+    emailBody += `\n=== Customer ===\n`;
+    emailBody += `Name: ${customerName}\n`;
+    emailBody += `Email: ${customer?.email || 'Not provided'}\n`;
+    emailBody += `Phone: ${customer?.phone || 'Not provided'}\n`;
+    if (customer?.address) {
+      emailBody += `Address: ${customer.address}${customer.city ? ', ' + customer.city : ''}${customer.state ? ', ' + customer.state : ''} ${customer.zip || ''}\n`;
+    }
+
+    emailBody += `\nAccepted: ${new Date(quote.accepted_at || Date.now()).toLocaleString('en-US', { timeZone: 'America/New_York' })}\n`;
+    emailBody += `\n---\nView the quote: ${siteUrl}/admin/quote-detail.html?id=${quote.id}`;
+
+    let emailStatus = 'sent';
+    let emailError = null;
+
+    if (process.env.RESEND_API_KEY) {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: `${companyName} <${fromEmail}>`,
+          to: [notificationEmail],
+          subject: emailSubject,
+          text: emailBody
+        })
+      });
+      if (!res.ok) {
+        emailError = await res.text();
+        emailStatus = 'failed';
+        console.error('[notifyQuoteAccepted] Resend error:', emailError);
+      }
+    } else if (process.env.SENDGRID_API_KEY) {
+      const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: notificationEmail }] }],
+          from: { email: fromEmail, name: companyName },
+          subject: emailSubject,
+          content: [{ type: 'text/plain', value: emailBody }]
+        })
+      });
+      if (!(res.ok || res.status === 202)) {
+        emailError = await res.text();
+        emailStatus = 'failed';
+        console.error('[notifyQuoteAccepted] SendGrid error:', emailError);
+      }
+    } else {
+      console.log('[notifyQuoteAccepted] No email provider configured. Would send to:', notificationEmail);
+      emailStatus = 'failed';
+      emailError = 'No email provider configured';
+    }
+
+    try {
+      await supabase.from('email_logs').insert({
+        customer_id: quote.customer_id,
+        to_email: notificationEmail,
+        subject: emailSubject,
+        body: emailBody,
+        status: emailStatus,
+        error_message: emailError,
+        email_type: 'quote_accepted_notification'
+      });
+    } catch (logErr) {
+      console.error('[notifyQuoteAccepted] Failed to log email:', logErr);
+    }
+  } catch (err) {
+    console.error('[notifyQuoteAccepted] Error:', err);
+  }
+}
+
 module.exports = {
+  notifyQuoteAccepted,
   getSupabase,
   success,
   error,

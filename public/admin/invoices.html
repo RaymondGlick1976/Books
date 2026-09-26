@@ -430,9 +430,9 @@
         ` : ''}
       `;
 
-      const footer = createElement('div', { style: 'display:flex;justify-content:space-between;width:100%;' });
+      const footer = createElement('div', { style: 'display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--space-sm);width:100%;' });
 
-      const leftBtns = createElement('div', { style: 'display:flex;gap:var(--space-sm);' });
+      const leftBtns = createElement('div', { style: 'display:flex;flex-wrap:wrap;gap:var(--space-sm);' });
 
       const editBtn = createElement('a', { className: 'btn btn-secondary', href: `/admin/invoice-editor.html?id=${id}` });
       editBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit';

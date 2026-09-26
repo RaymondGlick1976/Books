@@ -4,7 +4,7 @@
 
 const Stripe = require('stripe');
 const { Resend } = require('resend');
-const { getSupabase, success, error } = require('./utils');
+const { getSupabase, success, error, notifyQuoteAccepted } = require('./utils');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -172,6 +172,9 @@ async function handleCheckoutComplete(supabase, session) {
   } catch (payErr) {
     console.error('Payment recording error (non-fatal):', payErr);
   }
+
+  // Email the owner that the quote was accepted (non-blocking, skips if already sent)
+  await notifyQuoteAccepted(supabase, quote_id, { paymentMethod: 'card', amountPaid: session.amount_total / 100 });
 
   // Queue notifications (non-critical)
   try {

@@ -4,7 +4,7 @@
 // =============================================
 
 const Stripe = require('stripe');
-const { getSupabase, success, error, handleCors, parseBody } = require('./utils');
+const { getSupabase, success, error, handleCors, parseBody, notifyQuoteAccepted } = require('./utils');
 
 exports.handler = async (event) => {
   const corsResponse = handleCors(event);
@@ -68,6 +68,9 @@ exports.handler = async (event) => {
     }
 
     console.log('verify-checkout: Quote marked as accepted:', quote_id);
+
+    // Email the owner (skips if the webhook already sent it)
+    await notifyQuoteAccepted(supabase, quote_id, { paymentMethod: 'card', amountPaid: session.amount_total / 100 });
     return success({ verified: true, updated: true });
 
   } catch (err) {
