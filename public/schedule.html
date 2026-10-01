@@ -57,6 +57,15 @@
     .type-card.selected { border-color: #38571a; background: #f0f5eb; box-shadow: 0 2px 12px rgba(56,87,26,0.2); }
     .type-card-icon { font-size: 2.2rem; line-height: 1; }
     .type-card-name { font-size: 0.95rem; font-weight: 500; color: #374151; }
+    .type-card-later { border-style: dashed; }
+    .type-card-later .type-card-name { color: #6b7280; }
+    .later-panel { text-align: center; padding: 8px 4px 4px; }
+    .later-panel h2 { font-size: 1.3rem; font-weight: 600; color: #111827; margin: 12px 0 8px; }
+    .later-panel p { color: #4b5563; font-size: 0.97rem; line-height: 1.55; max-width: 460px; margin: 0 auto 18px; }
+    .later-links { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 22px; }
+    .later-links a { display: inline-block; padding: 10px 16px; border: 1px solid #d1d5db; border-radius: 8px;
+      color: #38571a; font-weight: 500; font-size: 0.92rem; text-decoration: none; }
+    .later-links a:hover { border-color: #38571a; background: #f0f5eb; }
 
     /* Calendar */
     .calendar-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
@@ -227,6 +236,21 @@
         <div class="step-content active" id="step-1">
           <h2 class="section-title">Click here to book an appointment now</h2>
           <div class="type-grid" id="type-grid"></div>
+        </div>
+
+        <!-- Not ready yet (no booking) -->
+        <div class="step-content" id="step-later">
+          <div class="later-panel">
+            <div class="type-card-icon">&#128075;</div>
+            <h2>No problem &mdash; take your time</h2>
+            <p id="later-message"></p>
+            <div class="later-links">
+              <a href="https://www.homesteadcabinetdesign.com/gallery/" target="_top">See our projects</a>
+              <a href="https://www.homesteadcabinetdesign.com/door-styles/" target="_top">Browse door styles</a>
+              <a href="tel:4134500028">Call (413) 450-0028</a>
+            </div>
+            <button class="btn-back" onclick="backFromLater()">&larr; Book an appointment instead</button>
+          </div>
         </div>
 
         <!-- Step 2: Pick Date -->
@@ -477,7 +501,29 @@
           <div class="type-card-icon">${t.icon || '📅'}</div>
           <div class="type-card-name">${t.name}</div>
         </div>
-      `).join('');
+      `).join('') + `
+        <div class="type-card type-card-later" onclick="showLater()">
+          <div class="type-card-icon">&#128172;</div>
+          <div class="type-card-name">Not ready yet? Just browsing</div>
+        </div>
+      `;
+    }
+
+    function showLater() {
+      const known = !!(leadData && (leadData.customer || leadData.form));
+      document.getElementById('later-message').textContent = known
+        ? "Thanks for reaching out. Raymond will get back to you by phone or email to answer your questions. You can book a time whenever you're ready."
+        : "Have a question first? Call or text Raymond, or look through some recent projects. You can book a time whenever you're ready.";
+      document.getElementById('step-indicators').style.display = 'none';
+      document.querySelectorAll('.lead-banner-cta').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+      document.getElementById('step-later').classList.add('active');
+    }
+
+    function backFromLater() {
+      document.getElementById('step-indicators').style.display = '';
+      document.querySelectorAll('.lead-banner-cta').forEach(el => el.style.display = '');
+      goToStep(1);
     }
 
     async function selectType(id) {
