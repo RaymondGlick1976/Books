@@ -1496,7 +1496,10 @@
         
         if (isPublicAccess) {
           // Use public API with token
-          response = await fetch(`/.netlify/functions/public-quote?token=${accessToken}`);
+          // Admin views (preview=1 or admin=1) shouldn't mark the quote as viewed
+          const _qp = new URLSearchParams(window.location.search);
+          const _skipTracking = _qp.get('preview') === '1' || _qp.get('admin') === '1';
+          response = await fetch(`/.netlify/functions/public-quote?token=${accessToken}${_skipTracking ? '&preview=1' : ''}`);
           if (!response.ok) {
             const error = await response.json();
             throw new Error(error.error || 'Failed to load quote');

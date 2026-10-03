@@ -545,8 +545,8 @@
       const newTabLink = $('#customer-view-newtab');
       const printBtn = $('#print-estimate-btn');
       if (quote.access_token) {
-        newTabLink.href = `/portal/quote.html?token=${quote.access_token}`;
-        printBtn.href = `/portal/quote.html?token=${quote.access_token}&print=1&hideUnselected=1`;
+        newTabLink.href = `/portal/quote.html?token=${quote.access_token}&admin=1`;
+        printBtn.href = `/portal/quote.html?token=${quote.access_token}&admin=1&print=1&hideUnselected=1`;
       } else {
         newTabLink.href = '#';
         printBtn.href = '#';
@@ -557,9 +557,9 @@
             const token = crypto.randomUUID();
             await supabase.from('quotes').update({ access_token: token }).eq('id', quote.id);
             quote.access_token = token;
-            newTabLink.href = `/portal/quote.html?token=${token}`;
+            newTabLink.href = `/portal/quote.html?token=${token}&admin=1`;
             newTabLink.onclick = null;
-            printBtn.href = `/portal/quote.html?token=${token}&print=1&hideUnselected=1`;
+            printBtn.href = `/portal/quote.html?token=${token}&admin=1&print=1&hideUnselected=1`;
             printBtn.onclick = null;
             showToast('Customer link generated! Click again to proceed.', 'success');
           } catch (err) {
@@ -1661,9 +1661,9 @@
       await ShareLink.open({ table: 'quotes', record: quote, customer: customer || quote.customers });
       if (!hadToken && quote.access_token) {
         const t = quote.access_token;
-        $('#customer-view-newtab').href = `/portal/quote.html?token=${t}`;
+        $('#customer-view-newtab').href = `/portal/quote.html?token=${t}&admin=1`;
         $('#customer-view-newtab').onclick = null;
-        $('#print-estimate-btn').href = `/portal/quote.html?token=${t}&print=1&hideUnselected=1`;
+        $('#print-estimate-btn').href = `/portal/quote.html?token=${t}&admin=1&print=1&hideUnselected=1`;
         $('#print-estimate-btn').onclick = null;
       }
     }
@@ -2067,7 +2067,7 @@
           const token = crypto.randomUUID();
           await supabase.from('quotes').update({ access_token: token }).eq('id', quote.id);
           quote.access_token = token;
-          $('#customer-view-newtab').href = `/portal/quote.html?token=${token}`;
+          $('#customer-view-newtab').href = `/portal/quote.html?token=${token}&admin=1`;
         } catch (err) {
           showToast('Failed to generate preview link', 'error');
           return;

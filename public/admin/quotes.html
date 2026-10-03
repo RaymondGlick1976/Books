@@ -237,7 +237,7 @@
           <td class="table-actions">
             <a href="/admin/quote-detail.html?id=${quote.id}" class="btn btn-ghost btn-sm">View</a>
             <a href="/admin/quote-builder.html?id=${quote.id}" class="btn btn-ghost btn-sm">Edit</a>
-            ${quote.access_token ? `<a href="/portal/quote.html?token=${quote.access_token}" target="_blank" class="btn btn-ghost btn-sm" title="View as customer">👁️</a>` : `<button class="btn btn-ghost btn-sm" onclick="generateToken('${quote.id}')" title="Generate customer link">🔗</button>`}
+            ${quote.access_token ? `<a href="/portal/quote.html?token=${quote.access_token}&admin=1" target="_blank" class="btn btn-ghost btn-sm" title="View as customer">👁️</a>` : `<button class="btn btn-ghost btn-sm" onclick="generateToken('${quote.id}')" title="Generate customer link">🔗</button>`}
             <button class="btn btn-ghost btn-sm" onclick="textQuoteLink('${quote.id}')" title="Text or copy customer link">💬</button>
             <button class="btn btn-ghost btn-sm" onclick="duplicateQuote('${quote.id}')">Duplicate</button>
             ${['draft', 'sent', 'viewed'].includes(quote.status) ? `<button class="btn btn-ghost btn-sm" onclick="markAccepted('${quote.id}')">✓ Accept</button>` : ''}
@@ -606,7 +606,7 @@
         if (error) throw error;
         
         // Open the customer view
-        window.open(`/portal/quote.html?token=${token}`, '_blank');
+        window.open(`/portal/quote.html?token=${token}&admin=1`, '_blank');
         
         // Refresh the list
         loadQuotes();
