@@ -492,6 +492,25 @@
       margin-bottom: var(--space-xl);
     }
     
+    /* Quote Footer Link Buttons */
+    .quote-footer-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: var(--space-md);
+    }
+    .quote-footer-buttons .btn {
+      min-width: 180px;
+      justify-content: center;
+      text-decoration: none;
+    }
+    @media (max-width: 600px) {
+      .quote-footer-buttons .btn { flex: 1 1 100%; }
+    }
+    @media print {
+      .quote-footer-buttons .btn::after { content: " (" attr(href) ")"; font-size: 0.75em; font-weight: normal; }
+    }
+
     /* Quote Footer Banner */
     #quote-footer-banner-link:hover img {
       transform: scale(1.02);
@@ -1404,6 +1423,14 @@
           </div>
         </div>
         
+        <!-- Footer Link Buttons -->
+        <div id="quote-footer-buttons" class="quote-section" style="display: none;">
+          <div class="quote-section-header">Helpful Links</div>
+          <div class="quote-section-body">
+            <div id="quote-footer-buttons-list" class="quote-footer-buttons"></div>
+          </div>
+        </div>
+
         <!-- Promotional Footer Banner -->
         <div id="quote-footer-banner" class="quote-section" style="display: none;">
           <div class="quote-section-body" style="text-align: center; padding: var(--space-xl);">
@@ -2003,6 +2030,24 @@
         }
       }
       
+      // Footer link buttons (per-quote selection; null = buttons marked "on by default")
+      const allButtons = (globalFooter && Array.isArray(globalFooter.buttons))
+        ? globalFooter.buttons.filter(b => b && b.id && b.label && /^https?:\/\//i.test(b.url || ''))
+        : [];
+      const chosenIds = Array.isArray(quote && quote.footer_button_ids) ? quote.footer_button_ids : null;
+      const shownButtons = chosenIds === null
+        ? allButtons.filter(b => b.default_on)
+        : allButtons.filter(b => chosenIds.includes(b.id));
+      if (shownButtons.length) {
+        const list = $('#quote-footer-buttons-list');
+        list.innerHTML = shownButtons.map(b =>
+          `<a class="btn btn-primary" href="${escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(b.label)}</a>`
+        ).join('');
+        $('#quote-footer-buttons').style.display = 'block';
+      } else {
+        $('#quote-footer-buttons').style.display = 'none';
+      }
+
       // Display global banner if enabled and has image
       if (globalFooter && globalFooter.enabled && globalFooter.image_url) {
         const banner = $('#quote-footer-banner');

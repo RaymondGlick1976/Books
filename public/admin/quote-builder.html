@@ -844,6 +844,17 @@
               </div>
             </div>
             
+            <!-- Quote Footer Link Buttons -->
+            <div class="card mb-xl" id="footer-buttons-card">
+              <div class="card-header">
+                <h3 class="card-title">Footer Link Buttons</h3>
+              </div>
+              <div class="card-body">
+                <div class="form-help" style="margin-bottom: var(--space-md);">Choose which buttons appear at the bottom of this quote. Manage the button list in <a href="/admin/settings.html">Settings &rarr; Quote Footer</a>.</div>
+                <div id="footer-buttons-picker"><div class="text-sm text-muted">Loading...</div></div>
+              </div>
+            </div>
+
             <!-- Attachments -->
             <div class="card">
               <div class="card-header">
@@ -1086,6 +1097,7 @@
           payment_schedule: paymentSchedule,
           terms_and_conditions: $('#show-terms').checked ? $('#quote-terms-text').value.trim() : null,
           video_url: $('#video-url').value.trim() || null,
+          footer_button_ids: getFooterButtonIdsForSave(),
           notes: $('#customer-notes').value.trim() || null,
           internal_notes: $('#internal-notes').value.trim() || null,
           tax_rate: taxRate,
@@ -1348,6 +1360,9 @@
         
         // Load default terms
         await loadDefaultTerms();
+
+        // Footer link buttons for new quotes (existing quotes load after loadQuote)
+        if (!quoteId) loadFooterButtonDefs();
         
         // Set up payment template selection listener
         const paymentSelect = $('#payment-template-select');
@@ -1393,6 +1408,7 @@
         // If editing, load quote
         if (quoteId) {
           await loadQuote(supabase);
+          loadFooterButtonDefs();
         } else if (dealId || presetCustomerId) {
           // New quote from deal - pre-fill customer and title
           if (presetCustomerId) {
@@ -1482,6 +1498,7 @@
         if ($('#discount-type')) $('#discount-type').value = quote.discount_type || 'percentage';
         if ($('#discount-value')) $('#discount-value').value = quote.discount_value || 0;
         $('#video-url').value = quote.video_url || '';
+        selectedFooterButtonIds = Array.isArray(quote.footer_button_ids) ? quote.footer_button_ids : null;
         $('#customer-notes').value = quote.notes || '';
         $('#internal-notes').value = quote.internal_notes || '';
         
@@ -3690,6 +3707,58 @@
       }
     }
     
+    // ---- Footer link buttons (per quote) ----
+    let footerButtonDefs = [];        // from settings.quote_footer.buttons
+    let selectedFooterButtonIds = null; // null until set; array of ids
+
+    async function loadFooterButtonDefs() {
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'quote_footer')
+          .maybeSingle();
+        footerButtonDefs = Array.isArray(data?.value?.buttons)
+          ? data.value.buttons.filter(b => b && b.id && b.label && b.url)
+          : [];
+      } catch (e) {
+        footerButtonDefs = [];
+      }
+      if (selectedFooterButtonIds === null) {
+        selectedFooterButtonIds = footerButtonDefs.filter(b => b.default_on).map(b => b.id);
+      }
+      renderFooterButtonPicker();
+    }
+
+    function renderFooterButtonPicker() {
+      const box = $('#footer-buttons-picker');
+      if (!box) return;
+      if (!footerButtonDefs.length) {
+        box.innerHTML = '<div class="text-sm text-muted">No footer buttons set up yet. Add them in <a href="/admin/settings.html">Settings</a>.</div>';
+        return;
+      }
+      const sel = new Set(selectedFooterButtonIds || []);
+      box.innerHTML = '<div style="display: flex; flex-wrap: wrap; gap: var(--space-sm) var(--space-lg);">' +
+        footerButtonDefs.map(b => `
+          <label class="form-check" style="margin: 0;" title="${escapeHtml(b.url)}">
+            <input type="checkbox" class="footer-btn-toggle" value="${escapeHtml(b.id)}" ${sel.has(b.id) ? 'checked' : ''}>
+            <span class="form-check-label">${escapeHtml(b.label)}</span>
+          </label>`).join('') +
+        '</div>';
+      box.querySelectorAll('.footer-btn-toggle').forEach(cb => {
+        cb.addEventListener('change', () => {
+          selectedFooterButtonIds = Array.from(box.querySelectorAll('.footer-btn-toggle:checked')).map(x => x.value);
+          markDirty();
+        });
+      });
+    }
+
+    function getFooterButtonIdsForSave() {
+      // null = "use defaults" (only if nothing has been decided yet)
+      return Array.isArray(selectedFooterButtonIds) ? selectedFooterButtonIds : null;
+    }
+
     // Load default terms
     async function loadDefaultTerms() {
       try {
@@ -4369,6 +4438,7 @@
           payment_schedule: paymentSchedule,
           terms_and_conditions: $('#show-terms').checked ? $('#quote-terms-text').value.trim() : null,
           video_url: $('#video-url').value.trim() || null,
+          footer_button_ids: getFooterButtonIdsForSave(),
           notes: $('#customer-notes').value.trim() || null,
           internal_notes: $('#internal-notes').value.trim() || null,
           tax_rate: taxRate,

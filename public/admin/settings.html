@@ -252,9 +252,19 @@
           </div>
           <div class="card-body">
             <p style="color: var(--color-text-light); margin-bottom: var(--space-lg);">
-              Add a promotional banner image/link at the bottom of every customer quote.
+              Add link buttons (hardware, paint colors, door styles, etc.) and an optional promotional banner to the bottom of customer quotes. Pick which buttons show on each quote in the Quote Builder.
             </p>
             <form id="quote-footer-form">
+
+              <!-- Link Buttons Section -->
+              <div style="background: var(--color-bg-soft); padding: var(--space-lg); border-radius: var(--radius-lg); margin-bottom: var(--space-xl);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
+                  <h4 style="margin: 0; font-size: 1rem;">Link Buttons</h4>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="addFooterButton()">+ Add Button</button>
+                </div>
+                <div class="form-help" style="margin-bottom: var(--space-md);">"On by default" buttons are pre-checked on new quotes. You can turn any button on or off per quote.</div>
+                <div id="footer-buttons-list"></div>
+              </div>
               
               <!-- Banner Section -->
               <div style="background: var(--color-bg-soft); padding: var(--space-lg); border-radius: var(--radius-lg); margin-bottom: var(--space-xl);">
@@ -283,7 +293,7 @@
               
               <div style="display: flex; gap: var(--space-md);">
                 <button type="submit" class="btn btn-primary">Save Quote Footer</button>
-                <button type="button" class="btn btn-secondary" onclick="previewQuoteFooter()">Preview Banner</button>
+                <button type="button" class="btn btn-secondary" onclick="previewQuoteFooter()">Preview Footer</button>
               </div>
             </form>
             
@@ -1237,10 +1247,98 @@
         image_url: $('#quote-footer-image').value.trim(),
         link_url: $('#quote-footer-link').value.trim(),
         title: $('#quote-footer-title').value.trim(),
+        // Link buttons
+        buttons: collectFooterButtons(),
       };
+      const bad = value.buttons.find(b => !b.label || !b.url);
+      if (bad) {
+        showToast('Each button needs a name and a link', 'error');
+        return;
+      }
       await saveSetting('quote_footer', value);
     });
     
+    // ---- Quote footer link buttons ----
+    let footerButtons = [];
+
+    document.addEventListener('DOMContentLoaded', () => renderFooterButtons());
+
+    function newFooterButtonId() {
+      return 'btn_' + Math.random().toString(36).slice(2, 10);
+    }
+
+    function renderFooterButtons() {
+      const list = $('#footer-buttons-list');
+      if (!list) return;
+      if (footerButtons.length === 0) {
+        list.innerHTML = '<div class="text-sm text-muted" style="padding: var(--space-sm) 0;">No buttons yet. Click "+ Add Button" to create one.</div>';
+        return;
+      }
+      list.innerHTML = footerButtons.map((b, i) => `
+        <div class="footer-btn-row" data-id="${escapeHtml(b.id)}" style="display: grid; grid-template-columns: minmax(140px, 1fr) minmax(200px, 2fr) auto auto; gap: var(--space-sm); align-items: center; margin-bottom: var(--space-sm);">
+          <input type="text" class="form-input fb-label" placeholder="Button name (e.g., Cabinet Hardware)" value="${escapeHtml(b.label)}">
+          <input type="url" class="form-input fb-url" placeholder="https://..." value="${escapeHtml(b.url)}">
+          <label class="form-check" style="margin: 0; white-space: nowrap;">
+            <input type="checkbox" class="fb-default" ${b.default_on ? 'checked' : ''}>
+            <span class="form-check-label">On by default</span>
+          </label>
+          <div style="display: flex; gap: 4px;">
+            <button type="button" class="btn btn-ghost btn-sm" title="Move up" onclick="moveFooterButton(${i}, -1)" ${i === 0 ? 'disabled' : ''}>&uarr;</button>
+            <button type="button" class="btn btn-ghost btn-sm" title="Move down" onclick="moveFooterButton(${i}, 1)" ${i === footerButtons.length - 1 ? 'disabled' : ''}>&darr;</button>
+            <button type="button" class="btn btn-ghost btn-sm" title="Remove" onclick="removeFooterButton(${i})" style="color: var(--color-danger, #dc2626);">&times;</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Pull current values out of the inputs (keeps edits when re-rendering)
+    function syncFooterButtonsFromDom() {
+      const rows = document.querySelectorAll('#footer-buttons-list .footer-btn-row');
+      if (!rows.length) return;
+      footerButtons = Array.from(rows).map(row => ({
+        id: row.dataset.id,
+        label: row.querySelector('.fb-label').value.trim(),
+        url: row.querySelector('.fb-url').value.trim(),
+        default_on: row.querySelector('.fb-default').checked
+      }));
+    }
+
+    function collectFooterButtons() {
+      syncFooterButtonsFromDom();
+      // Drop completely empty rows
+      return footerButtons.filter(b => b.label || b.url);
+    }
+
+    function addFooterButton() {
+      syncFooterButtonsFromDom();
+      footerButtons.push({ id: newFooterButtonId(), label: '', url: '', default_on: true });
+      renderFooterButtons();
+      const rows = document.querySelectorAll('#footer-buttons-list .fb-label');
+      if (rows.length) rows[rows.length - 1].focus();
+    }
+
+    function removeFooterButton(index) {
+      syncFooterButtonsFromDom();
+      footerButtons.splice(index, 1);
+      renderFooterButtons();
+    }
+
+    function moveFooterButton(index, dir) {
+      syncFooterButtonsFromDom();
+      const j = index + dir;
+      if (j < 0 || j >= footerButtons.length) return;
+      [footerButtons[index], footerButtons[j]] = [footerButtons[j], footerButtons[index]];
+      renderFooterButtons();
+    }
+
+    function footerButtonsPreviewHtml() {
+      const btns = collectFooterButtons().filter(b => b.label && b.url);
+      if (!btns.length) return '';
+      return '<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-sm); margin-bottom: var(--space-lg);">' +
+        btns.map(b => `<a href="${escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer" class="btn ${b.default_on ? 'btn-primary' : 'btn-secondary'}" title="${b.default_on ? 'On by default' : 'Off by default'}">${escapeHtml(b.label)}</a>`).join('') +
+        '</div>';
+    }
+
     function previewQuoteFooter() {
       const imageUrl = $('#quote-footer-image').value.trim();
       const linkUrl = $('#quote-footer-link').value.trim();
@@ -1250,17 +1348,19 @@
       const preview = $('#quote-footer-preview');
       const content = $('#quote-footer-preview-content');
       
+      let html = footerButtonsPreviewHtml();
+
       if (!enabled || !imageUrl) {
-        preview.style.display = 'none';
-        if (!enabled) {
-          showToast('Banner is disabled', 'info');
-        } else {
-          showToast('Please enter a banner image URL', 'error');
+        if (!html) {
+          preview.style.display = 'none';
+          showToast('Nothing to preview — add a button or enable the banner', 'info');
+          return;
         }
+        content.innerHTML = html;
+        preview.style.display = 'block';
         return;
       }
-      
-      let html = '';
+
       if (title) {
         html += `<p style="font-weight: 600; margin-bottom: var(--space-sm); color: var(--color-text);">${title}</p>`;
       }
@@ -3700,6 +3800,8 @@
             $('#quote-footer-image').value = footer.image_url || '';
             $('#quote-footer-link').value = footer.link_url || '';
             $('#quote-footer-title').value = footer.title || '';
+            footerButtons = Array.isArray(footer.buttons) ? footer.buttons : [];
+            renderFooterButtons();
             return;
           }
           // Handle terms_and_conditions specially
