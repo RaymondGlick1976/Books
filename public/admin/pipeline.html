@@ -27,6 +27,7 @@
     .deal-card-dates { font-size: 0.75rem; color: var(--color-text-muted); }
     .deal-card-date { margin-top: 4px; display: flex; flex-direction: column; }
     .deal-card-date-label { font-weight: 600; color: var(--color-text); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
+    .deal-card-auto-off { display: inline-block; margin-top: 6px; font-size: 0.7rem; font-weight: 600; color: #b45309; background: #fef3c7; border-radius: 10px; padding: 1px 8px; }
     .deal-card-value { font-size: 0.8125rem; font-weight: 600; color: var(--color-primary); margin-top: var(--space-sm); }
     .empty-column { text-align: center; padding: var(--space-xl); color: var(--color-text-muted); font-size: 0.8125rem; }
     .drop-zone { min-height: 100px; border: 2px dashed transparent; border-radius: var(--radius-md); transition: all 0.2s; }
@@ -190,6 +191,7 @@
             <li class="sidebar-nav-item"><a href="/admin/booking-forms.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Booking Forms</a></li>
             <li class="sidebar-nav-item"><a href="/schedule" target="_blank" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Online Scheduling</a></li>
             <li class="sidebar-nav-item"><a href="/admin/bulk-email.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/><line x1="2" y1="20" x2="8" y2="14"/><line x1="22" y1="20" x2="16" y2="14"/></svg>Bulk Email</a></li>
+            <li class="sidebar-nav-item"><a href="/admin/sequences.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/><polyline points="16 17 18 19 22 15"/></svg>Email Sequences</a></li>
           </ul>
         </div>
         <div class="sidebar-section">
@@ -542,6 +544,7 @@
     let deals = [], stages = [], customers = [], quotes = [], invoices = [], appointments = [], appointmentTypes = [], eventTypes = [], dealEvents = [], emailTemplates = [], dealItemTypes = [], finishTypes = [];
     let currentDealEvents = [], currentDealItems = [], currentDealFinishes = [], currentPunchItems = [], draggedDeal = null;
     let selectedStages = new Set(); // For stage filtering
+    let activeSequenceStages = new Set(); // stages with an active email sequence (sequences.html)
     
     async function init() { 
       await loadData(); 
@@ -584,6 +587,10 @@
           return true;
         });
         emailTemplates = templatesRes.data || [];
+        try {
+          const { data: seqs } = await supabase.from('email_sequences').select('stage_id').eq('is_active', true);
+          activeSequenceStages = new Set((seqs || []).map(s => s.stage_id));
+        } catch (e) { activeSequenceStages = new Set(); }
         
         // Process settings
         const settingsData = settingsRes.data || [];
@@ -845,6 +852,7 @@
         html += '</div>'; 
       }
       if (deal.estimated_value) html += `<div class="deal-card-value">${formatCurrency(deal.estimated_value)}</div>`;
+      if (deal.automations_off) html += '<div class="deal-card-auto-off" title="Automated emails are off for this deal">⏸ Auto emails off</div>';
       card.innerHTML = html;
       
       // Desktop drag events
@@ -956,14 +964,67 @@
       return card;
     }
     
+    // When a deal moves into a stage that has automated emails, ask whether this deal should get them.
+    // Resolves to {} (send emails), { automations_off: true } (move quietly), or null (cancel the move).
+    function askAutomations(deal, newStage) {
+      if (!deal || deal.automations_off || !activeSequenceStages.has(newStage)) return Promise.resolve({});
+      const stageName = (stages.find(s => s.stage_id === newStage) || {}).label || newStage;
+      return new Promise(resolve => {
+        let done = false;
+        const finish = (val, modal) => { if (done) return; done = true; resolve(val); if (modal) closeModal(modal); };
+        const cancelBtn = createElement('button', { className: 'btn btn-ghost', textContent: 'Cancel' });
+        const quietBtn = createElement('button', { className: 'btn btn-secondary', textContent: 'Move, no emails' });
+        const sendBtn = createElement('button', { className: 'btn btn-primary', textContent: 'Move & send emails' });
+        const content = createElement('div');
+        content.innerHTML = `<p style="margin:0 0 10px;"><strong>${escapeHtml(stageName)}</strong> has automated emails. Should <strong>${escapeHtml(deal.name || 'this deal')}</strong> get them?</p>
+          <p class="text-sm text-muted" style="margin:0;">“Move, no emails” turns automations off for this deal. It won't get any automated emails or automatic stage moves until you turn them back on from the deal.</p>`;
+        const modal = createModal({ title: 'Automated emails', content, footer: createElement('div', { className: 'btn-group' }, [cancelBtn, quietBtn, sendBtn]), onClose: () => finish(null) });
+        cancelBtn.addEventListener('click', () => finish(null, modal));
+        quietBtn.addEventListener('click', () => finish({ automations_off: true }, modal));
+        sendBtn.addEventListener('click', () => finish({}, modal));
+      });
+    }
     async function updateDealStage(dealId, newStage) {
-      try { const supabase = await app.waitForSupabase(); await supabase.from('jobs').update({ stage: newStage, updated_at: new Date().toISOString() }).eq('id', dealId); const deal = deals.find(d => d.id === dealId); if (deal) deal.stage = newStage; renderPipeline(); showToast('Deal moved', 'success'); }
-      catch (err) { console.error(err); showToast('Failed to move deal', 'error'); }
+      const deal = deals.find(d => d.id === dealId);
+      const choice = await askAutomations(deal, newStage);
+      if (!choice) { renderPipeline(); return false; }
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('jobs').update({ stage: newStage, ...choice, updated_at: new Date().toISOString() }).eq('id', dealId);
+        if (error) throw error;
+        if (deal) Object.assign(deal, { stage: newStage }, choice);
+        renderPipeline();
+        showToast(choice.automations_off ? 'Deal moved, automated emails off' : 'Deal moved', 'success');
+        return true;
+      }
+      catch (err) { console.error(err); showToast('Failed to move deal', 'error'); return false; }
     }
     async function changeViewStage(dealId, newStage) {
       await updateDealStage(dealId, newStage);
       const deal = deals.find(d => d.id === dealId);
-      if (deal && currentDeal && currentDeal.id === dealId) { currentDeal.stage = newStage; openDealView(deal); }
+      if (deal && currentDeal && currentDeal.id === dealId) { currentDeal = deal; openDealView(deal); }
+    }
+    // Turn automated emails on/off for one deal (jobs.automations_off)
+    async function setDealAutomations(dealId, off) {
+      const deal = deals.find(d => d.id === dealId);
+      if (!deal) return;
+      if (off && !await confirm('Turn off automated emails for this deal? Anything scheduled for it will be cancelled, and it won\'t get emails or automatic stage moves until you turn them back on.', { title: 'Turn off automations', confirmText: 'Turn off', danger: true })) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('jobs').update({ automations_off: off, updated_at: new Date().toISOString() }).eq('id', dealId);
+        if (error) throw error;
+        deal.automations_off = off;
+        if (!off && activeSequenceStages.has(deal.stage)) {
+          const stageName = (stages.find(s => s.stage_id === deal.stage) || {}).label || deal.stage;
+          if (await confirm(`Start the “${stageName}” emails for this deal now? Timing counts from today.`, { title: 'Automations on', confirmText: 'Start emails', cancelText: 'Not now' })) {
+            const { error: rpcErr } = await supabase.rpc('enroll_deal_in_sequence', { p_deal_id: dealId });
+            if (rpcErr) throw rpcErr;
+          }
+        }
+        showToast(off ? 'Automated emails off for this deal' : 'Automated emails on for this deal', 'success');
+        renderPipeline();
+        if (currentDeal && currentDeal.id === dealId) openDealView(deal);
+      } catch (err) { console.error(err); showToast('Failed to update automations: ' + err.message, 'error'); }
     }
     
     let currentDeal = null; // Track the current deal for email
@@ -1067,6 +1128,9 @@
         infoHtml += `<div class="deal-view-field"><label>Address</label><p><a href="${mapsUrl}" target="_blank" style="color:var(--color-primary);text-decoration:none;">${addrParts}</a></p></div>`;
       }
       infoHtml += `<div class="deal-view-field"><label>Stage</label><p><select onchange="changeViewStage('${deal.id}', this.value)" style="padding:4px 8px;border-radius:var(--radius-md);border:1px solid var(--color-border);font-size:0.8rem;font-weight:600;color:white;background:${stage?.color || '#666'};cursor:pointer;">${stages.map(s => `<option value="${s.stage_id}" ${s.stage_id === deal.stage ? 'selected' : ''} style="background:${s.color || '#666'};color:white;">${s.label}</option>`).join('')}</select></p></div>`;
+      infoHtml += `<div class="deal-view-field"><label>Automated Emails</label><p>${deal.automations_off
+        ? `<span style="color:#b45309;font-weight:600;">Off</span> · <a href="javascript:void(0)" onclick="setDealAutomations('${deal.id}', false)" style="color:var(--color-primary);">Turn on</a>`
+        : `<span style="color:var(--color-primary);font-weight:600;">On</span> · <a href="javascript:void(0)" onclick="setDealAutomations('${deal.id}', true)" style="color:var(--color-text-muted);">Turn off</a>`}</p></div>`;
       if (deal.estimated_value) {
         infoHtml += `<div class="deal-view-field"><label>Estimated Value</label><p style="font-weight:600;color:var(--color-primary);">${formatCurrency(deal.estimated_value)}</p></div>`;
       }
@@ -1544,6 +1608,12 @@
       const id = $('#deal-id').value;
       const data = { name: $('#deal-name').value, customer_id: $('#deal-customer').value || null, stage: $('#deal-stage').value, estimated_value: parseFloat($('#deal-value').value) || null, quote_id: $('#deal-quote').value || null, notes: $('#deal-notes').value, job_items: currentDealItems, job_finishes: currentDealFinishes, updated_at: new Date().toISOString() };
       if (!data.name) { showToast('Deal name is required', 'error'); return; }
+      const prevDeal = id ? deals.find(d => d.id === id) : null;
+      if (prevDeal && prevDeal.stage !== data.stage) {
+        const choice = await askAutomations(prevDeal, data.stage);
+        if (!choice) return;
+        Object.assign(data, choice);
+      }
       try {
         const supabase = await app.waitForSupabase(); let dealId = id;
         if (id) await supabase.from('jobs').update(data).eq('id', id);

@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HCD Books">
+  <title>Email Sequences | Admin | Homestead Cabinet Design</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .seq-tabs { display: flex; gap: var(--space-sm); margin-bottom: var(--space-lg); }
+    .seq-tab { padding: var(--space-sm) var(--space-lg); background: var(--color-bg-soft); border: 1px solid var(--color-border); border-radius: var(--radius-md); cursor: pointer; font-size: 0.875rem; font-weight: 500; }
+    .seq-tab.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+    .seq-layout { display: grid; grid-template-columns: 260px 1fr; gap: var(--space-lg); align-items: start; }
+    .stage-list { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .stage-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--color-border-light); cursor: pointer; }
+    .stage-item:last-child { border-bottom: 0; }
+    .stage-item:hover { background: var(--color-bg-alt); }
+    .stage-item.active { background: #eef3e8; box-shadow: inset 3px 0 0 var(--color-primary); }
+    .stage-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .stage-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
+    .stage-meta { font-size: 0.72rem; color: var(--color-text-muted); white-space: nowrap; }
+    .stage-meta.on { color: var(--color-primary); font-weight: 600; }
+
+    .panel { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-lg); }
+    .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-md); flex-wrap: wrap; margin-bottom: var(--space-md); }
+    .settings-row { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: center; padding: var(--space-md); background: var(--color-bg-alt); border-radius: var(--radius-md); margin-bottom: var(--space-lg); font-size: 0.875rem; }
+    .settings-row .form-select, .settings-row .form-input { width: auto; padding: 6px 10px; font-size: 0.85rem; }
+
+    .switch { position: relative; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; user-select: none; }
+    .switch input { display: none; }
+    .switch .track { width: 40px; height: 22px; background: #cbd5e1; border-radius: 11px; position: relative; transition: background .15s; }
+    .switch .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: left .15s; }
+    .switch input:checked + .track { background: var(--color-primary); }
+    .switch input:checked + .track::after { left: 21px; }
+
+    .timeline { position: relative; padding-left: 28px; }
+    .timeline::before { content: ''; position: absolute; left: 9px; top: 8px; bottom: 8px; width: 2px; background: var(--color-border); }
+    .step-card { position: relative; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: var(--space-md); background: #fff; display: flex; gap: var(--space-md); align-items: center; }
+    .step-card::before { content: ''; position: absolute; left: -24px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--color-primary); border: 2px solid #fff; box-shadow: 0 0 0 2px var(--color-primary); }
+    .step-card.off { opacity: .55; }
+    .step-card.off::before { background: #cbd5e1; box-shadow: 0 0 0 2px #cbd5e1; }
+    .step-when { font-size: 0.75rem; font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: .03em; }
+    .step-subject { font-weight: 600; margin-top: 2px; }
+    .step-sub { font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px; }
+    .step-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .advance-card { border-style: dashed; background: var(--color-bg-alt); font-size: 0.875rem; }
+    .advance-card::before { background: #fff; }
+    .empty-state { text-align: center; padding: var(--space-2xl) var(--space-lg); color: var(--color-text-light); }
+
+    /* ---------- Editor ---------- */
+    .editor { position: fixed; inset: 0; z-index: 1000; background: #f1f3ee; display: none; flex-direction: column; }
+    .editor.open { display: flex; }
+    .editor-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: 10px 20px; background: #fff; border-bottom: 1px solid var(--color-border); }
+    .editor-top h3 { margin: 0; font-size: 1rem; }
+    .editor-body { flex: 1; display: grid; grid-template-columns: 440px 1fr; min-height: 0; }
+    .editor-left { overflow-y: auto; background: #fff; border-right: 1px solid var(--color-border); padding: 16px 20px 40px; }
+    .editor-right { display: flex; flex-direction: column; min-height: 0; }
+    .section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin: 20px 0 8px; }
+    .section-title:first-child { margin-top: 0; }
+    .ed-field { margin-bottom: 10px; }
+    .ed-field label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--color-text-light); margin-bottom: 4px; }
+    .ed-field .form-input, .ed-field .form-select, .ed-field .form-textarea { font-size: 0.875rem; padding: 7px 10px; }
+    .ed-field .form-textarea { min-height: 120px; resize: vertical; font-family: inherit; line-height: 1.5; }
+    .ed-inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.85rem; }
+    .ed-inline .form-input { width: 72px; }
+    .ed-inline input[type=time] { width: 120px; }
+    .seg { display: inline-flex; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
+    .seg button { border: 0; background: #fff; padding: 6px 12px; font-size: 0.8rem; cursor: pointer; }
+    .seg button + button { border-left: 1px solid var(--color-border); }
+    .seg button.active { background: var(--color-primary); color: #fff; }
+
+    .merge-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .merge-chip { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.7rem; padding: 3px 7px; background: #eef3e8; color: var(--color-primary-dark); border: 1px solid #d5e1c8; border-radius: 4px; cursor: pointer; }
+    .merge-chip:hover { background: #dfe9d3; }
+
+    .block { border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: 8px; background: #fff; }
+    .block.open { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
+    .block-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; }
+    .block-icon { width: 26px; height: 26px; border-radius: 6px; background: var(--color-bg-soft); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; flex-shrink: 0; }
+    .block-label { flex: 1; min-width: 0; font-size: 0.85rem; }
+    .block-label small { display: block; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .icon-btn { border: 0; background: none; padding: 4px 6px; border-radius: 4px; cursor: pointer; color: var(--color-text-light); font-size: 0.85rem; line-height: 1; }
+    .icon-btn:hover { background: var(--color-bg-soft); color: var(--color-text); }
+    .icon-btn.danger:hover { background: #fee2e2; color: var(--color-danger); }
+    .icon-btn:disabled { opacity: .3; cursor: default; background: none; }
+    .block-body { padding: 4px 12px 12px; border-top: 1px solid var(--color-border-light); }
+    .add-palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .add-palette button { border: 1px dashed var(--color-border); background: #fff; border-radius: var(--radius-md); padding: 8px 4px; font-size: 0.72rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--color-text-light); }
+    .add-palette button:hover { border-color: var(--color-primary); color: var(--color-primary); background: #f6f9f2; }
+    .add-palette b { font-size: 1rem; color: var(--color-text); }
+
+    .img-field { display: flex; gap: 8px; align-items: center; }
+    .img-field .form-input { flex: 1; }
+    .img-thumb { width: 44px; height: 44px; border-radius: 6px; background: var(--color-bg-soft) center/cover no-repeat; border: 1px solid var(--color-border); flex-shrink: 0; }
+
+    .preview-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: 10px 20px; flex-wrap: wrap; }
+    .preview-bar .form-select { width: auto; max-width: 280px; padding: 6px 10px; font-size: 0.85rem; }
+    .inbox-line { margin: 0 20px 10px; background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 10px 14px; font-size: 0.85rem; }
+    .inbox-line .subj { font-weight: 700; }
+    .inbox-line .pre { color: var(--color-text-muted); }
+    .preview-stage { flex: 1; overflow: auto; padding: 0 20px 20px; display: flex; justify-content: center; }
+    .preview-frame { border: 1px solid var(--color-border); border-radius: var(--radius-md); background: #fff; width: 680px; max-width: 100%; height: 100%; min-height: 500px; transition: width .2s; }
+    .preview-frame.mobile { width: 380px; }
+
+    .queue-table td, .queue-table th { font-size: 0.85rem; vertical-align: top; }
+    .q-status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+    .q-pending { background: #e0ecff; color: #1d4ed8; } .q-sent { background: #dcfce7; color: #15803d; }
+    .q-cancelled, .q-skipped { background: #f1f5f9; color: #64748b; } .q-failed { background: #fee2e2; color: #b91c1c; } .q-sending { background: #fef3c7; color: #b45309; }
+
+    @media (max-width: 1000px) {
+      .seq-layout { grid-template-columns: 1fr; }
+      .editor-body { grid-template-columns: 1fr; grid-template-rows: auto auto; overflow-y: auto; }
+      .editor-left { overflow: visible; border-right: 0; }
+      .preview-frame { min-height: 600px; }
+    }
+  </style>
+</head>
+<body>
+  <script>
+    const user = JSON.parse(localStorage.getItem('app_user') || 'null');
+    if (!user) window.location.href = '/admin/login.html';
+  </script>
+
+  <div class="app-layout">
+    <aside class="app-sidebar">
+      <div class="sidebar-logo">
+        <a href="/admin/index.html"><img data-brand-logo src="" alt="Company Logo" style="height: 40px; filter: brightness(0) invert(1); display: none;"></a>
+      </div>
+      <nav class="sidebar-nav-container">
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/index.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Deals Pipeline</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pipeline.html?view=calendar" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/customers.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Customers</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/vendors.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Vendors</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/quotes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>Quotes</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/invoices.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>Invoices</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/payments.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Payments</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/punch-list.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Punch List</a></li>
+        </ul>
+        <div class="sidebar-section-title">Bookkeeping</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/banking.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v3"/><path d="M12 14v3"/><path d="M16 14v3"/></svg>Banking</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/reports.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/></svg>Reports</a></li>
+        </ul>
+        <div class="sidebar-section-title">Marketing</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/booking-forms.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>Booking Forms</a></li>
+          <li class="sidebar-nav-item"><a href="/schedule" target="_blank" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Online Scheduling</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/bulk-email.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/><line x1="2" y1="20" x2="8" y2="14"/><line x1="22" y1="20" x2="16" y2="14"/></svg>Bulk Email</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/sequences.html" class="sidebar-nav-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/><polyline points="16 17 18 19 22 15"/></svg>Email Sequences</a></li>
+        </ul>
+        <div class="sidebar-section-title">Catalog</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/catalog.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Custom Library</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/pricing-attributes.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Pricing Attributes</a></li>
+        </ul>
+        <div class="sidebar-section-title">Settings</div>
+        <ul class="sidebar-nav">
+          <li class="sidebar-nav-item"><a href="/admin/email-templates.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Templates</a></li>
+          <li class="sidebar-nav-item"><a href="/admin/settings.html" class="sidebar-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="app-main">
+      <header class="app-header">
+        <div>
+          <h2 style="margin: 0;">Email Sequences</h2>
+          <p class="text-muted" style="margin: 0; font-size: 0.875rem;">Automated emails that go out when a deal enters a stage</p>
+        </div>
+      </header>
+
+      <div class="app-content">
+        <div class="seq-tabs">
+          <button class="seq-tab active" data-view="sequences" onclick="showView('sequences')">Sequences</button>
+          <button class="seq-tab" data-view="queue" onclick="showView('queue')">Scheduled &amp; Sent</button>
+        </div>
+
+        <div id="view-sequences">
+          <div class="seq-layout">
+            <div class="stage-list" id="stage-list"><div class="p-lg text-muted">Loading…</div></div>
+            <div id="stage-panel"></div>
+          </div>
+        </div>
+
+        <div id="view-queue" style="display:none;">
+          <div class="flex gap-sm items-center mb-md" style="flex-wrap:wrap;">
+            <select class="form-select" id="queue-filter" style="width:auto;" onchange="loadQueue()">
+              <option value="pending">Upcoming</option>
+              <option value="sent">Sent</option>
+              <option value="failed">Failed</option>
+              <option value="cancelled">Cancelled / skipped</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadQueue()">Refresh</button>
+            <span class="text-sm text-muted">The queue is checked every 15 minutes.</span>
+          </div>
+          <div class="table-container">
+            <table class="table queue-table">
+              <thead><tr><th>When</th><th>Deal</th><th>Email</th><th>Status</th><th></th></tr></thead>
+              <tbody id="queue-body"><tr><td colspan="5" class="text-muted">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ===== Email editor (full screen) ===== -->
+  <div class="editor" id="editor">
+    <div class="editor-top">
+      <div class="flex items-center gap-md">
+        <button class="icon-btn" onclick="closeEditor()" title="Close" style="font-size:1.2rem;">✕</button>
+        <h3 id="editor-title">Edit email</h3>
+      </div>
+      <div class="flex gap-sm">
+        <button class="btn btn-secondary btn-sm" onclick="sendTest()" id="test-btn">Send test to me</button>
+        <button class="btn btn-primary btn-sm" onclick="saveStep()" id="save-btn">Save email</button>
+      </div>
+    </div>
+    <div class="editor-body">
+      <div class="editor-left" id="editor-left">
+        <div class="section-title">Email</div>
+        <div class="ed-field"><label>Subject line</label><input class="form-input" id="ed-subject" data-top="subject" placeholder="e.g. {{first_name}}, a kitchen like yours"></div>
+        <div class="ed-field"><label>Preview text <span class="text-muted" style="font-weight:400;">(shown after the subject in the inbox)</span></label><input class="form-input" id="ed-preheader" data-top="preheader" placeholder="Optional"></div>
+        <div class="ed-field"><label>Internal name</label><input class="form-input" id="ed-name" data-top="name" placeholder="e.g. Day 2 – before/after photos"></div>
+        <div class="ed-field">
+          <label>Insert a merge field <span class="text-muted" style="font-weight:400;">(click to add at your cursor)</span></label>
+          <div class="merge-chips" id="merge-chips"></div>
+        </div>
+
+        <div class="section-title">When to send</div>
+        <div class="ed-field ed-inline">
+          <input class="form-input" type="number" min="0" max="365" id="ed-days"> days
+          <input class="form-input" type="number" min="0" max="23" id="ed-hours" style="width:64px;"> hours after entering the stage
+        </div>
+        <div class="ed-field ed-inline">
+          <label class="form-check" style="margin:0;"><input type="checkbox" class="form-check-input" id="ed-usetime"> <span>At a set time of day:</span></label>
+          <input class="form-input" type="time" id="ed-time" value="09:30">
+        </div>
+        <div class="ed-field ed-inline">
+          <label class="form-check" style="margin:0;"><input type="checkbox" class="form-check-input" id="ed-weekdays"> <span>Weekdays only (weekend sends move to Monday)</span></label>
+        </div>
+        <div class="text-sm text-muted" id="ed-timing-desc" style="margin-bottom:8px;"></div>
+
+        <div class="section-title">Look</div>
+        <div class="seg" id="ed-style">
+          <button type="button" data-style="branded">Branded</button>
+          <button type="button" data-style="plain">Personal (plain)</button>
+        </div>
+        <div class="text-sm text-muted mt-sm">Personal style looks like a regular email from you. Good for short check-ins.</div>
+
+        <div class="section-title">Content blocks</div>
+        <div id="blocks"></div>
+        <div class="add-palette" id="add-palette"></div>
+      </div>
+
+      <div class="editor-right">
+        <div class="preview-bar">
+          <div class="seg" id="device-seg">
+            <button type="button" data-device="desktop" class="active">Desktop</button>
+            <button type="button" data-device="mobile">Phone</button>
+          </div>
+          <div class="flex items-center gap-sm text-sm">
+            Preview as
+            <select class="form-select" id="preview-deal"><option value="">Sample customer</option></select>
+          </div>
+        </div>
+        <div class="inbox-line"><span class="subj" id="pv-subject"></span> <span class="pre" id="pv-pre"></span></div>
+        <div class="preview-stage"><iframe class="preview-frame" id="preview-frame" title="Email preview"></iframe></div>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="file-input" accept="image/*" style="display:none;">
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/email-blocks.js"></script>
+  <script>
+    const EB = window.EmailBlocks;
+    const esc = EB.esc;
+    const TZ = 'America/New_York';
+
+    let sb;                 // supabase client
+    let stages = [];
+    let sequences = {};     // stage_id -> sequence row
+    let steps = {};         // sequence_id -> [step rows]
+    let stageCounts = {};   // stage_id -> number of deals currently in it
+    let selectedStage = null;
+    let brand = EB.brandFromSettings({}, {});
+    let previewDeals = [];
+
+    // editor state
+    let draft = null;
+    let openBlock = -1;
+    let lastField = null;
+    let dirty = false;
+
+    // ---------------- Init ----------------
+    async function init() {
+      try {
+        sb = await app.waitForSupabase();
+        const [stRes, setRes] = await Promise.all([
+          sb.from('job_stages').select('*').eq('is_active', true).order('sort_order'),
+          sb.from('settings').select('key, value').in('key', ['company', 'branding'])
+        ]);
+        stages = stRes.data || [];
+        const map = Object.fromEntries((setRes.data || []).map(r => [r.key, r.value]));
+        brand = EB.brandFromSettings(map.company, map.branding);
+        await loadSequences();
+        const fromUrl = new URLSearchParams(location.search).get('stage');
+        selectStage(stages.find(s => s.stage_id === fromUrl) ? fromUrl : (stages[0] && stages[0].stage_id));
+        buildEditorChrome();
+        loadPreviewDeals();
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to load: ' + err.message, 'error');
+      }
+    }
+
+    async function loadSequences() {
+      const [seqRes, stepRes, jobsRes] = await Promise.all([
+        sb.from('email_sequences').select('*'),
+        sb.from('sequence_steps').select('*'),
+        sb.from('jobs').select('stage')
+      ]);
+      if (seqRes.error) {
+        if (/relation .* does not exist|email_sequences/.test(seqRes.error.message)) {
+          document.getElementById('stage-panel').innerHTML = `<div class="panel"><div class="alert alert-warning"><div class="alert-content"><div class="alert-title">Database not set up yet</div>Run <code>database/migration-email-sequences.sql</code> in the Supabase SQL editor, then reload this page.</div></div></div>`;
+        }
+        throw seqRes.error;
+      }
+      sequences = {};
+      (seqRes.data || []).forEach(s => { sequences[s.stage_id] = s; });
+      steps = {};
+      (stepRes.data || []).forEach(st => { (steps[st.sequence_id] = steps[st.sequence_id] || []).push(st); });
+      Object.values(steps).forEach(list => list.sort((a, b) => stepMinutes(a) - stepMinutes(b) || a.step_order - b.step_order));
+      stageCounts = {};
+      (jobsRes.data || []).forEach(j => { stageCounts[j.stage] = (stageCounts[j.stage] || 0) + 1; });
+    }
+
+    // ---------------- Timing helpers ----------------
+    function stepMinutes(s) {
+      const t = s.send_time ? s.send_time.slice(0, 5).split(':').map(Number) : null;
+      return s.delay_days * 1440 + (t ? t[0] * 60 + t[1] : (s.delay_hours || 0) * 60);
+    }
+    function fmtTime(t) {
+      if (!t) return '';
+      const [h, m] = t.slice(0, 5).split(':').map(Number);
+      return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+    }
+    function timingLabel(s) {
+      const d = s.delay_days || 0, h = s.delay_hours || 0;
+      if (s.send_time) return `${d === 0 ? 'Same day' : 'Day ' + d}${h ? ` (+${h}h)` : ''} at ${fmtTime(s.send_time)}`;
+      if (!d && !h) return 'Immediately';
+      return [d ? `${d} day${d === 1 ? '' : 's'}` : '', h ? `${h} hr${h === 1 ? '' : 's'}` : ''].filter(Boolean).join(' ') + ' after';
+    }
+    function timingSentence(s) {
+      const d = s.delay_days || 0, h = s.delay_hours || 0;
+      let out;
+      if (s.send_time) {
+        out = `Sends ${d === 0 ? 'the same day the deal enters the stage' : `${d} day${d === 1 ? '' : 's'} after the deal enters the stage`}${h ? ` (counting from ${h} hour${h === 1 ? '' : 's'} later)` : ''}, at ${fmtTime(s.send_time)} Eastern. If that time has already passed, it goes out the next day.`;
+      } else if (!d && !h) {
+        out = 'Sends right away (within 15 minutes) when the deal enters the stage.';
+      } else {
+        out = `Sends ${timingLabel(s).replace(' after', '')} after the deal enters the stage.`;
+      }
+      if (s.weekdays_only) out += ' Never on Saturday or Sunday.';
+      return out;
+    }
+    function fmtWhen(ts) {
+      return new Date(ts).toLocaleString('en-US', { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
+
+    // ---------------- Stage list + panel ----------------
+    function renderStageList() {
+      document.getElementById('stage-list').innerHTML = stages.map(st => {
+        const seq = sequences[st.stage_id];
+        const n = seq ? (steps[seq.id] || []).filter(s => s.is_active).length : 0;
+        const meta = !seq ? '<span class="stage-meta">Not set up</span>'
+          : seq.is_active ? `<span class="stage-meta on">On · ${n} email${n === 1 ? '' : 's'}</span>`
+          : `<span class="stage-meta">Off · ${n} email${n === 1 ? '' : 's'}</span>`;
+        return `<div class="stage-item ${st.stage_id === selectedStage ? 'active' : ''}" onclick="selectStage('${esc(st.stage_id)}')">
+          <span class="stage-dot" style="background:${esc(st.color || '#666')}"></span>
+          <span class="stage-name">${esc(st.label)}</span>${meta}</div>`;
+      }).join('');
+    }
+
+    function selectStage(stageId) {
+      selectedStage = stageId;
+      const url = new URL(location.href);
+      url.searchParams.set('stage', stageId);
+      history.replaceState(null, '', url);
+      renderStageList();
+      renderPanel();
+    }
+
+    function stageLabel(id) {
+      const s = stages.find(x => x.stage_id === id);
+      return s ? s.label : id;
+    }
+
+    function renderPanel() {
+      const panel = document.getElementById('stage-panel');
+      const stage = stages.find(s => s.stage_id === selectedStage);
+      if (!stage) { panel.innerHTML = ''; return; }
+      const seq = sequences[stage.stage_id];
+
+      if (!seq) {
+        panel.innerHTML = `<div class="panel"><div class="empty-state">
+          <div style="font-size:2rem;margin-bottom:8px;">✉️</div>
+          <h3 style="margin:0 0 6px;">No sequence for “${esc(stage.label)}” yet</h3>
+          <p class="text-muted" style="max-width:420px;margin:0 auto 16px;">Set up a series of emails that send automatically after a deal moves into this stage.</p>
+          <button class="btn btn-primary" onclick="createSequence()">Create sequence</button>
+        </div></div>`;
+        return;
+      }
+
+      const list = steps[seq.id] || [];
+      const stageOpts = stages.filter(s => s.stage_id !== stage.stage_id)
+        .map(s => `<option value="${esc(s.stage_id)}" ${seq.advance_to_stage === s.stage_id ? 'selected' : ''}>${esc(s.label)}</option>`).join('');
+      const inStage = stageCounts[stage.stage_id] || 0;
+
+      panel.innerHTML = `<div class="panel">
+        <div class="panel-head">
+          <div style="flex:1;min-width:220px;">
+            <input class="form-input" value="${esc(seq.name)}" style="font-size:1.1rem;font-weight:700;border-color:transparent;padding-left:0;" onchange="updateSequence({ name: this.value.trim() || 'Sequence' })" title="Rename sequence">
+            <div class="text-sm text-muted">Starts when a deal enters <strong>${esc(stage.label)}</strong>. Moving the deal to any other stage stops it.</div>
+          </div>
+          <label class="switch"><input type="checkbox" ${seq.is_active ? 'checked' : ''} onchange="toggleSequence(this.checked)"><span class="track"></span>${seq.is_active ? 'On' : 'Off'}</label>
+        </div>
+
+        <div class="settings-row">
+          <span>After the last email, move the deal to</span>
+          <select class="form-select" onchange="updateSequence({ advance_to_stage: this.value || null })">
+            <option value="">— don’t move it —</option>${stageOpts}
+          </select>
+          ${seq.advance_to_stage ? `<span><input class="form-input" type="number" min="0" max="90" value="${seq.advance_after_days}" style="width:64px;" onchange="updateSequence({ advance_after_days: Math.max(0, parseInt(this.value, 10) || 0) })"> day(s) later if nothing has changed</span>` : ''}
+        </div>
+
+        ${list.length ? `<div class="timeline">
+          ${list.map(s => `<div class="step-card ${s.is_active ? '' : 'off'}">
+            <div style="flex:1;min-width:0;cursor:pointer;" onclick="openEditor('${s.id}')">
+              <div class="step-when">${esc(timingLabel(s))}${s.weekdays_only ? ' · weekdays' : ''}</div>
+              <div class="step-subject">${esc(s.subject || '(no subject)')}</div>
+              <div class="step-sub">${esc(s.name || '')}${s.name ? ' · ' : ''}${s.style === 'plain' ? 'Personal style' : 'Branded'} · ${(s.blocks || []).length} blocks</div>
+            </div>
+            <div class="step-actions">
+              <label class="switch" title="${s.is_active ? 'Turn this email off' : 'Turn this email on'}"><input type="checkbox" ${s.is_active ? 'checked' : ''} onchange="toggleStep('${s.id}', this.checked)"><span class="track"></span></label>
+              <button class="icon-btn" title="Edit" onclick="openEditor('${s.id}')">✎</button>
+              <button class="icon-btn" title="Duplicate" onclick="duplicateStep('${s.id}')">⧉</button>
+              <button class="icon-btn danger" title="Delete" onclick="deleteStep('${s.id}')">🗑</button>
+            </div>
+          </div>`).join('')}
+          ${seq.advance_to_stage ? `<div class="step-card advance-card"><div>Then move the deal to <strong>${esc(stageLabel(seq.advance_to_stage))}</strong> ${seq.advance_after_days} day${seq.advance_after_days === 1 ? '' : 's'} after the last email</div></div>` : ''}
+        </div>` : `<div class="empty-state" style="padding:var(--space-xl);"><p class="text-muted" style="margin:0;">No emails in this sequence yet.</p></div>`}
+
+        <div class="flex gap-sm" style="flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="openEditor(null)">+ Add email</button>
+          ${seq.is_active && inStage ? `<button class="btn btn-secondary" onclick="enrollExisting()">Start for ${inStage} deal${inStage === 1 ? '' : 's'} already in this stage</button>` : ''}
+          <button class="btn btn-ghost" style="margin-left:auto;color:var(--color-danger);" onclick="deleteSequence()">Delete sequence</button>
+        </div>
+        <p class="text-sm text-muted mt-md mb-0">Edits to an email's content apply to every email that hasn't gone out yet. Timing changes apply to deals that enter the stage from now on.</p>
+      </div>`;
+    }
+
+    // ---------------- Sequence CRUD ----------------
+    async function createSequence() {
+      const stage = stages.find(s => s.stage_id === selectedStage);
+      const { data, error } = await sb.from('email_sequences')
+        .insert({ stage_id: stage.stage_id, name: `${stage.label} follow-up`, is_active: false })
+        .select().single();
+      if (error) return showToast('Could not create: ' + error.message, 'error');
+      sequences[stage.stage_id] = data;
+      steps[data.id] = [];
+      renderStageList();
+      renderPanel();
+      showToast('Sequence created. Add your first email, then turn it on.', 'success');
+    }
+
+    async function updateSequence(fields) {
+      const seq = sequences[selectedStage];
+      const { data, error } = await sb.from('email_sequences')
+        .update({ ...fields, updated_at: new Date().toISOString() }).eq('id', seq.id).select().single();
+      if (error) return showToast('Save failed: ' + error.message, 'error');
+      sequences[selectedStage] = data;
+      renderStageList();
+      renderPanel();
+    }
+
+    async function toggleSequence(on) {
+      const seq = sequences[selectedStage];
+      if (on && !(steps[seq.id] || []).some(s => s.is_active) && !seq.advance_to_stage) {
+        showToast('Add at least one email first', 'error');
+        return renderPanel();
+      }
+      if (!on && !await confirm('Turn this sequence off? Emails already scheduled for deals in this stage will be cancelled.', { danger: true })) {
+        return renderPanel();
+      }
+      await updateSequence({ is_active: on });
+      if (on) showToast('Sequence is on. Deals entering this stage from now on will get these emails.', 'success');
+    }
+
+    async function deleteSequence() {
+      const seq = sequences[selectedStage];
+      if (!await confirm('Delete this sequence and all of its emails? Scheduled emails will be cancelled. This cannot be undone.', { danger: true })) return;
+      // turn off first so the trigger cancels pending sends
+      await sb.from('email_sequences').update({ is_active: false }).eq('id', seq.id);
+      const { error } = await sb.from('email_sequences').delete().eq('id', seq.id);
+      if (error) return showToast('Delete failed: ' + error.message, 'error');
+      delete sequences[selectedStage];
+      delete steps[seq.id];
+      renderStageList();
+      renderPanel();
+      showToast('Sequence deleted', 'success');
+    }
+
+    async function enrollExisting() {
+      const seq = sequences[selectedStage];
+      const [{ data: deals }, { data: pending }] = await Promise.all([
+        sb.from('jobs').select('id').eq('stage', selectedStage),
+        sb.from('scheduled_emails').select('deal_id').eq('sequence_id', seq.id).eq('status', 'pending')
+      ]);
+      const already = new Set((pending || []).map(p => p.deal_id));
+      const todo = (deals || []).filter(d => !already.has(d.id));
+      if (!todo.length) return showToast('Every deal in this stage is already in the sequence', 'info');
+      if (!await confirm(`Start this sequence for ${todo.length} deal${todo.length === 1 ? '' : 's'} already in “${stageLabel(selectedStage)}”? Timing counts from today.`)) return;
+      let ok = 0;
+      for (const d of todo) {
+        const { error } = await sb.rpc('enroll_deal_in_sequence', { p_deal_id: d.id });
+        if (!error) ok++;
+      }
+      showToast(`Started for ${ok} deal${ok === 1 ? '' : 's'}`, 'success');
+    }
+
+    // ---------------- Step CRUD ----------------
+    function findStep(id) {
+      for (const list of Object.values(steps)) { const s = list.find(x => x.id === id); if (s) return s; }
+      return null;
+    }
+
+    async function toggleStep(id, on) {
+      const { error } = await sb.from('sequence_steps').update({ is_active: on, updated_at: new Date().toISOString() }).eq('id', id);
+      if (error) return showToast('Save failed: ' + error.message, 'error');
+      findStep(id).is_active = on;
+      renderStageList();
+      renderPanel();
+    }
+
+    async function duplicateStep(id) {
+      const s = findStep(id);
+      const copy = { ...s };
+      delete copy.id; delete copy.created_at; delete copy.updated_at;
+      copy.name = (s.name || 'Email') + ' (copy)';
+      copy.is_active = false;
+      const { data, error } = await sb.from('sequence_steps').insert(copy).select().single();
+      if (error) return showToast('Duplicate failed: ' + error.message, 'error');
+      await refresh();
+      showToast('Copied (turned off until you edit it)', 'success');
+      openEditor(data.id);
+    }
+
+    async function deleteStep(id) {
+      if (!await confirm('Delete this email? Any scheduled copies will be cancelled.', { danger: true })) return;
+      const { error } = await sb.from('sequence_steps').delete().eq('id', id);
+      if (error) return showToast('Delete failed: ' + error.message, 'error');
+      await refresh();
+    }
+
+    async function refresh() {
+      await loadSequences();
+      renderStageList();
+      renderPanel();
+    }
+
+    // ---------------- Editor ----------------
+    function buildEditorChrome() {
+      document.getElementById('merge-chips').innerHTML = EB.MERGE_FIELDS
+        .map(([k, label]) => `<span class="merge-chip" title="${esc(label)}" onmousedown="event.preventDefault()" onclick="insertMerge('${k}')">{{${k}}}</span>`).join('');
+      document.getElementById('add-palette').innerHTML = Object.entries(EB.BLOCK_TYPES)
+        .map(([type, def]) => `<button type="button" onclick="addBlock('${type}')"><b>${def.icon}</b>${esc(def.label)}</button>`).join('');
+
+      const left = document.getElementById('editor-left');
+      left.addEventListener('focusin', e => {
+        if (e.target.matches('input[type=text], input:not([type]), textarea')) lastField = e.target;
+      });
+      left.addEventListener('input', onEditorInput);
+      left.addEventListener('change', onEditorInput);
+
+      document.getElementById('ed-style').addEventListener('click', e => {
+        const b = e.target.closest('button[data-style]');
+        if (!b) return;
+        draft.style = b.dataset.style;
+        markDirty();
+        syncStyleSeg();
+        schedulePreview();
+      });
+      document.getElementById('device-seg').addEventListener('click', e => {
+        const b = e.target.closest('button[data-device]');
+        if (!b) return;
+        document.querySelectorAll('#device-seg button').forEach(x => x.classList.toggle('active', x === b));
+        document.getElementById('preview-frame').classList.toggle('mobile', b.dataset.device === 'mobile');
+      });
+      document.getElementById('preview-deal').addEventListener('change', schedulePreview);
+      document.getElementById('file-input').addEventListener('change', onFilePicked);
+      window.addEventListener('beforeunload', e => { if (dirty && draft) { e.preventDefault(); e.returnValue = ''; } });
+      document.addEventListener('keydown', e => {
+        if (!draft) return;
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveStep(); }
+      });
+    }
+
+    function defaultBlocks() {
+      return [
+        { type: 'text', text: 'Hi {{first_name}},\n\nThanks again for considering Homestead Cabinet Design for your kitchen.' },
+        { type: 'button', label: 'View your quote', url: '{{quote_link}}', color: '', align: 'left' },
+        { type: 'text', text: 'Questions? Just reply to this email or call {{company_phone}}.\n\nRaymond\n{{company_name}}' }
+      ];
+    }
+
+    function openEditor(stepId) {
+      const seq = sequences[selectedStage];
+      if (stepId) {
+        const s = findStep(stepId);
+        draft = JSON.parse(JSON.stringify(s));
+      } else {
+        const list = steps[seq.id] || [];
+        const last = list[list.length - 1];
+        draft = {
+          id: null, sequence_id: seq.id, name: '', subject: '', preheader: '', style: 'branded',
+          blocks: defaultBlocks(),
+          delay_days: last ? last.delay_days + 2 : 0, delay_hours: 0,
+          send_time: last ? '09:30:00' : null, weekdays_only: true, is_active: true
+        };
+      }
+      draft.blocks = Array.isArray(draft.blocks) ? draft.blocks : [];
+      openBlock = -1;
+      dirty = false;
+      document.getElementById('editor-title').textContent = (stepId ? 'Edit email' : 'New email') + ' — ' + stageLabel(selectedStage);
+      document.getElementById('ed-subject').value = draft.subject || '';
+      document.getElementById('ed-preheader').value = draft.preheader || '';
+      document.getElementById('ed-name').value = draft.name || '';
+      document.getElementById('ed-days').value = draft.delay_days || 0;
+      document.getElementById('ed-hours').value = draft.delay_hours || 0;
+      document.getElementById('ed-usetime').checked = !!draft.send_time;
+      document.getElementById('ed-time').value = (draft.send_time || '09:30').slice(0, 5);
+      document.getElementById('ed-time').disabled = !draft.send_time;
+      document.getElementById('ed-weekdays').checked = !!draft.weekdays_only;
+      syncStyleSeg();
+      updateTimingDesc();
+      renderBlocks();
+      renderPreview();
+      document.getElementById('editor').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => document.getElementById('ed-subject').focus(), 50);
+    }
+
+    async function closeEditor() {
+      if (dirty && !await confirm('Close without saving your changes?', { danger: true })) return;
+      draft = null;
+      dirty = false;
+      document.getElementById('editor').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function syncStyleSeg() {
+      document.querySelectorAll('#ed-style button').forEach(b => b.classList.toggle('active', b.dataset.style === draft.style));
+    }
+
+    function markDirty() { dirty = true; }
+
+    function updateTimingDesc() {
+      document.getElementById('ed-timing-desc').textContent = timingSentence(draft);
+    }
+
+    function onEditorInput(e) {
+      if (!draft) return;
+      const t = e.target;
+      if (t.dataset.top) {
+        draft[t.dataset.top] = t.value;
+      } else if (t.id === 'ed-days') {
+        draft.delay_days = Math.max(0, Math.min(365, parseInt(t.value, 10) || 0));
+      } else if (t.id === 'ed-hours') {
+        draft.delay_hours = Math.max(0, Math.min(23, parseInt(t.value, 10) || 0));
+      } else if (t.id === 'ed-usetime') {
+        document.getElementById('ed-time').disabled = !t.checked;
+        draft.send_time = t.checked ? document.getElementById('ed-time').value + ':00' : null;
+      } else if (t.id === 'ed-time') {
+        if (document.getElementById('ed-usetime').checked && t.value) draft.send_time = t.value + ':00';
+      } else if (t.id === 'ed-weekdays') {
+        draft.weekdays_only = t.checked;
+      } else if (t.dataset.bi != null) {
+        const blk = draft.blocks[+t.dataset.bi];
+        if (!blk) return;
+        blk[t.dataset.field] = t.type === 'number' ? (parseInt(t.value, 10) || 0) : t.value;
+        if (t.dataset.field.endsWith('url') && t.dataset.thumb) {
+          const th = document.getElementById(t.dataset.thumb);
+          if (th) th.style.backgroundImage = t.value ? `url("${t.value.replace(/"/g, '')}")` : '';
+        }
+        const sum = document.getElementById('bsum-' + t.dataset.bi);
+        if (sum) sum.textContent = blockSummary(blk);
+      } else {
+        return;
+      }
+      markDirty();
+      updateTimingDesc();
+      schedulePreview();
+    }
+
+    function insertMerge(key) {
+      const f = lastField && document.body.contains(lastField) ? lastField : document.getElementById('ed-subject');
+      const tag = `{{${key}}}`;
+      const start = f.selectionStart ?? f.value.length, end = f.selectionEnd ?? f.value.length;
+      f.value = f.value.slice(0, start) + tag + f.value.slice(end);
+      f.focus();
+      f.selectionStart = f.selectionEnd = start + tag.length;
+      f.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // ----- Blocks -----
+    function blockSummary(b) {
+      switch (b.type) {
+        case 'heading': case 'text': case 'quote': return (b.text || '').replace(/\s+/g, ' ').slice(0, 60);
+        case 'image': return b.url ? (b.caption || b.alt || 'Photo added') : 'No photo yet';
+        case 'two_images': return [b.left_url ? '✓' : '—', b.right_url ? '✓' : '—'].join(' / ') + `  ${b.left_caption || ''} / ${b.right_caption || ''}`;
+        case 'button': return `${b.label || ''} → ${b.url || ''}`;
+        case 'spacer': return `${b.height || 24}px`;
+        default: return '';
+      }
+    }
+
+    function f(bi, field, label, value, opts = {}) {
+      const id = `b${bi}-${field}`;
+      if (opts.textarea) return `<div class="ed-field"><label for="${id}">${label}</label><textarea class="form-textarea" id="${id}" data-bi="${bi}" data-field="${field}" rows="${opts.rows || 6}">${esc(value || '')}</textarea>${opts.help ? `<div class="form-help">${opts.help}</div>` : ''}</div>`;
+      if (opts.select) return `<div class="ed-field"><label for="${id}">${label}</label><select class="form-select" id="${id}" data-bi="${bi}" data-field="${field}">${opts.select.map(([v, l]) => `<option value="${v}" ${v === value ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
+      if (opts.number) return `<div class="ed-field"><label for="${id}">${label}</label><input class="form-input" type="number" id="${id}" data-bi="${bi}" data-field="${field}" value="${esc(value)}" min="${opts.min}" max="${opts.max}"></div>`;
+      if (opts.image) {
+        const th = `th-${bi}-${field}`;
+        return `<div class="ed-field"><label for="${id}">${label}</label><div class="img-field">
+          <span class="img-thumb" id="${th}" style="${value ? `background-image:url('${esc(value)}')` : ''}"></span>
+          <input class="form-input" type="text" id="${id}" data-bi="${bi}" data-field="${field}" data-thumb="${th}" value="${esc(value || '')}" placeholder="Paste an image URL or upload">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="pickImage(${bi}, '${field}')">Upload</button></div></div>`;
+      }
+      return `<div class="ed-field"><label for="${id}">${label}</label><input class="form-input" type="text" id="${id}" data-bi="${bi}" data-field="${field}" value="${esc(value || '')}" placeholder="${esc(opts.placeholder || '')}">${opts.help ? `<div class="form-help">${opts.help}</div>` : ''}</div>`;
+    }
+
+    const ALIGN = [['left', 'Left'], ['center', 'Center'], ['right', 'Right']];
+
+    function blockFields(b, i) {
+      switch (b.type) {
+        case 'heading': return f(i, 'text', 'Heading text', b.text) + `<div class="grid grid-cols-2 gap-sm">${f(i, 'size', 'Size', b.size, { select: [['lg', 'Large'], ['md', 'Medium']] })}${f(i, 'align', 'Align', b.align, { select: ALIGN })}</div>`;
+        case 'text': return f(i, 'text', 'Text', b.text, { textarea: true, rows: 8, help: 'Blank line = new paragraph. **bold**, *italic*, [link text](https://…)' }) + f(i, 'align', 'Align', b.align, { select: ALIGN });
+        case 'image': return f(i, 'url', 'Photo', b.url, { image: true }) + f(i, 'alt', 'Description (for screen readers & blocked images)', b.alt) + f(i, 'caption', 'Caption (optional)', b.caption) + f(i, 'link', 'Link when clicked (optional)', b.link, { placeholder: 'https://…' }) + f(i, 'width', 'Width', b.width, { select: [['full', 'Edge to edge'], ['padded', 'With margins']] });
+        case 'two_images': return f(i, 'left_url', 'Left photo', b.left_url, { image: true }) + f(i, 'left_caption', 'Left caption', b.left_caption) + f(i, 'right_url', 'Right photo', b.right_url, { image: true }) + f(i, 'right_caption', 'Right caption', b.right_caption);
+        case 'button': return f(i, 'label', 'Button text', b.label) + f(i, 'url', 'Link', b.url, { help: 'Use {{quote_link}} to open their quote, or any https:// address' }) + `<div class="grid grid-cols-2 gap-sm">${f(i, 'align', 'Align', b.align, { select: ALIGN })}<div class="ed-field"><label>Color</label><div class="flex gap-sm items-center"><input type="color" data-bi="${i}" data-field="color" value="${esc(b.color || brand.color)}" style="width:44px;height:34px;border:1px solid var(--color-border);border-radius:6px;padding:2px;"><button type="button" class="btn btn-ghost btn-sm" onclick="resetColor(${i})">Brand</button></div></div></div>`;
+        case 'quote': return f(i, 'text', 'Quote', b.text, { textarea: true, rows: 4 }) + f(i, 'author', 'Who said it', b.author);
+        case 'spacer': return f(i, 'height', 'Height (px)', b.height, { number: true, min: 4, max: 120 });
+        default: return '<div class="text-sm text-muted">No settings.</div>';
+      }
+    }
+
+    function renderBlocks() {
+      const n = draft.blocks.length;
+      document.getElementById('blocks').innerHTML = draft.blocks.map((b, i) => {
+        const def = EB.BLOCK_TYPES[b.type] || { label: b.type, icon: '?' };
+        const open = i === openBlock;
+        return `<div class="block ${open ? 'open' : ''}">
+          <div class="block-head" onclick="toggleBlock(${i})">
+            <span class="block-icon">${def.icon}</span>
+            <span class="block-label">${esc(def.label)}<small id="bsum-${i}">${esc(blockSummary(b))}</small></span>
+            <button class="icon-btn" title="Move up" ${i === 0 ? 'disabled' : ''} onclick="event.stopPropagation();moveBlock(${i},-1)">↑</button>
+            <button class="icon-btn" title="Move down" ${i === n - 1 ? 'disabled' : ''} onclick="event.stopPropagation();moveBlock(${i},1)">↓</button>
+            <button class="icon-btn" title="Duplicate" onclick="event.stopPropagation();dupBlock(${i})">⧉</button>
+            <button class="icon-btn danger" title="Remove" onclick="event.stopPropagation();removeBlock(${i})">✕</button>
+          </div>
+          ${open ? `<div class="block-body">${blockFields(b, i)}</div>` : ''}
+        </div>`;
+      }).join('') || '<div class="text-sm text-muted mb-sm">Add your first block below.</div>';
+    }
+
+    function toggleBlock(i) { openBlock = openBlock === i ? -1 : i; renderBlocks(); }
+    function addBlock(type) {
+      draft.blocks.push({ type, ...JSON.parse(JSON.stringify(EB.BLOCK_TYPES[type].defaults)) });
+      openBlock = draft.blocks.length - 1;
+      markDirty(); renderBlocks(); renderPreview();
+      const el = document.querySelectorAll('#blocks .block')[openBlock];
+      if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    function moveBlock(i, dir) {
+      const j = i + dir;
+      [draft.blocks[i], draft.blocks[j]] = [draft.blocks[j], draft.blocks[i]];
+      if (openBlock === i) openBlock = j; else if (openBlock === j) openBlock = i;
+      markDirty(); renderBlocks(); renderPreview();
+    }
+    function dupBlock(i) {
+      draft.blocks.splice(i + 1, 0, JSON.parse(JSON.stringify(draft.blocks[i])));
+      openBlock = i + 1;
+      markDirty(); renderBlocks(); renderPreview();
+    }
+    function removeBlock(i) {
+      draft.blocks.splice(i, 1);
+      if (openBlock === i) openBlock = -1; else if (openBlock > i) openBlock--;
+      markDirty(); renderBlocks(); renderPreview();
+    }
+    function resetColor(i) {
+      draft.blocks[i].color = '';
+      markDirty(); renderBlocks(); renderPreview();
+    }
+
+    // ----- Photo upload (resized to 1200px wide JPEG so emails stay light) -----
+    let pickTarget = null;
+    function pickImage(bi, field) {
+      pickTarget = { bi, field };
+      const input = document.getElementById('file-input');
+      input.value = '';
+      input.click();
+    }
+
+    async function resizeImage(file) {
+      if (!/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type)) return { blob: file, ext: (file.name.split('.').pop() || 'img').toLowerCase(), type: file.type };
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 1200 / bmp.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bmp.width * scale);
+      canvas.height = Math.round(bmp.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+      return { blob, ext: 'jpg', type: 'image/jpeg' };
+    }
+
+    async function onFilePicked(e) {
+      const file = e.target.files[0];
+      if (!file || !pickTarget || !draft) return;
+      const { bi, field } = pickTarget;
+      showToast('Uploading photo…', 'info', 2000);
+      try {
+        const { blob, ext, type } = await resizeImage(file);
+        const base = file.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40) || 'photo';
+        const path = `email-assets/${Date.now()}-${base}.${ext}`;
+        const { error } = await sb.storage.from('Uploads').upload(path, blob, { contentType: type, upsert: false });
+        if (error) throw error;
+        const { data } = sb.storage.from('Uploads').getPublicUrl(path);
+        draft.blocks[bi][field] = data.publicUrl;
+        if (draft.blocks[bi].type === 'image' && !draft.blocks[bi].alt) draft.blocks[bi].alt = base.replace(/-/g, ' ');
+        markDirty(); renderBlocks(); renderPreview();
+        showToast('Photo added', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Upload failed: ' + err.message, 'error');
+      }
+    }
+
+    // ----- Preview -----
+    let previewTimer = null;
+    function schedulePreview() {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(renderPreview, 150);
+    }
+
+    function previewVars() {
+      const id = document.getElementById('preview-deal').value;
+      const deal = id && previewDeals.find(d => d.id === id);
+      if (deal) return EB.buildVars(deal, brand, location.origin);
+      return { ...EB.SAMPLE_VARS, company_name: brand.name, company_phone: brand.phone, company_website: brand.website };
+    }
+
+    function renderPreview() {
+      if (!draft) return;
+      const out = EB.renderEmail(draft, { vars: previewVars(), brand, preview: true });
+      document.getElementById('pv-subject').textContent = out.subject || '(no subject)';
+      document.getElementById('pv-pre').textContent = EB.merge(draft.preheader || '', previewVars(), false) ? '— ' + EB.merge(draft.preheader, previewVars(), false) : '';
+      const frame = document.getElementById('preview-frame');
+      // links in the preview open in a new tab instead of navigating the frame
+      frame.srcdoc = out.html.replace('<head>', '<head><base target="_blank">');
+    }
+
+    async function loadPreviewDeals() {
+      const { data } = await sb.from('jobs')
+        .select(`id, name, stage, customer:customers(name, first_name, last_name, email), quote:quotes!jobs_quote_id_fkey(quote_number, title, total, total_low, total_high, access_token)`)
+        .order('updated_at', { ascending: false })
+        .limit(150);
+      previewDeals = data || [];
+      document.getElementById('preview-deal').innerHTML = '<option value="">Sample customer</option>' +
+        previewDeals.map(d => `<option value="${d.id}">${esc((d.customer && d.customer.name) || d.name || 'Deal')} — ${esc(stageLabel(d.stage))}</option>`).join('');
+    }
+
+    // ----- Save / test -----
+    function validateDraft() {
+      if (!draft.subject.trim()) { showToast('Add a subject line', 'error'); document.getElementById('ed-subject').focus(); return false; }
+      if (!draft.blocks.length) { showToast('Add at least one block', 'error'); return false; }
+      return true;
+    }
+
+    async function saveStep() {
+      if (!draft || !validateDraft()) return;
+      const btn = document.getElementById('save-btn');
+      btn.disabled = true;
+      const row = {
+        sequence_id: draft.sequence_id,
+        name: draft.name.trim() || null,
+        subject: draft.subject.trim(),
+        preheader: (draft.preheader || '').trim() || null,
+        style: draft.style,
+        blocks: draft.blocks,
+        delay_days: draft.delay_days || 0,
+        delay_hours: draft.delay_hours || 0,
+        send_time: draft.send_time,
+        weekdays_only: !!draft.weekdays_only,
+        is_active: draft.is_active !== false,
+        step_order: Math.round(stepMinutes(draft)),
+        updated_at: new Date().toISOString()
+      };
+      try {
+        const q = draft.id
+          ? sb.from('sequence_steps').update(row).eq('id', draft.id).select().single()
+          : sb.from('sequence_steps').insert(row).select().single();
+        const { data, error } = await q;
+        if (error) throw error;
+        draft.id = data.id;
+        dirty = false;
+        await refresh();
+        showToast('Email saved', 'success');
+        const seq = sequences[selectedStage];
+        if (seq && !seq.is_active) showToast('This sequence is off. Turn it on when you’re ready.', 'info', 5000);
+      } catch (err) {
+        showToast('Save failed: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function sendTest() {
+      if (!draft || !validateDraft()) return;
+      const btn = document.getElementById('test-btn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/.netlify/functions/sequence-test-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject: draft.subject, preheader: draft.preheader, style: draft.style, blocks: draft.blocks,
+            deal_id: document.getElementById('preview-deal').value || null
+          })
+        });
+        const out = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(out.error || res.statusText);
+        showToast(`Test sent to ${out.sent_to}`, 'success');
+      } catch (err) {
+        showToast('Test failed: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ---------------- Queue ----------------
+    function showView(v) {
+      document.querySelectorAll('.seq-tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
+      document.getElementById('view-sequences').style.display = v === 'sequences' ? '' : 'none';
+      document.getElementById('view-queue').style.display = v === 'queue' ? '' : 'none';
+      if (v === 'queue') loadQueue();
+    }
+
+    async function loadQueue() {
+      const filter = document.getElementById('queue-filter').value;
+      const body = document.getElementById('queue-body');
+      body.innerHTML = '<tr><td colspan="5" class="text-muted">Loading…</td></tr>';
+      let q = sb.from('scheduled_emails')
+        .select(`id, kind, status, status_reason, send_at, sent_at, stage_id, advance_to_stage, deal_id,
+                 deal:jobs(name, customer:customers(name, email)), step:sequence_steps(name, subject)`)
+        .limit(200);
+      if (filter === 'cancelled') q = q.in('status', ['cancelled', 'skipped']);
+      else if (filter === 'failed') q = q.in('status', ['failed', 'sending']);
+      else q = q.eq('status', filter);
+      q = filter === 'pending' ? q.order('send_at', { ascending: true }) : q.order('send_at', { ascending: false });
+      const { data, error } = await q;
+      if (error) { body.innerHTML = `<tr><td colspan="5" class="text-danger">${esc(error.message)}</td></tr>`; return; }
+      if (!data.length) { body.innerHTML = '<tr><td colspan="5" class="text-muted">Nothing here.</td></tr>'; return; }
+      body.innerHTML = data.map(r => {
+        const cust = r.deal && r.deal.customer;
+        const what = r.kind === 'advance'
+          ? `<em>Move deal to ${esc(stageLabel(r.advance_to_stage))}</em>`
+          : `<strong>${esc((r.step && r.step.subject) || '(email deleted)')}</strong>${r.step && r.step.name ? `<div class="text-sm text-muted">${esc(r.step.name)}</div>` : ''}`;
+        return `<tr>
+          <td style="white-space:nowrap;">${esc(fmtWhen(r.sent_at || r.send_at))}</td>
+          <td><a href="/admin/pipeline.html?deal=${r.deal_id}">${esc((r.deal && r.deal.name) || 'Deal')}</a><div class="text-sm text-muted">${esc(cust ? `${cust.name || ''} ${cust.email ? '· ' + cust.email : ''}` : '')}</div><div class="text-sm text-muted">${esc(stageLabel(r.stage_id))}</div></td>
+          <td>${what}</td>
+          <td><span class="q-status q-${r.status}">${esc(r.status)}</span>${r.status_reason ? `<div class="text-sm text-muted" style="max-width:220px;">${esc(r.status_reason)}</div>` : ''}</td>
+          <td style="white-space:nowrap;">${r.status === 'pending' ? `<button class="btn btn-ghost btn-sm" onclick="sendNow('${r.id}')">Send now</button><button class="btn btn-ghost btn-sm" style="color:var(--color-danger);" onclick="cancelScheduled('${r.id}')">Cancel</button>` : ''}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function cancelScheduled(id) {
+      const { error } = await sb.from('scheduled_emails').update({ status: 'cancelled', status_reason: 'Cancelled by ' + (user && user.name || 'admin') }).eq('id', id).eq('status', 'pending');
+      if (error) return showToast(error.message, 'error');
+      loadQueue();
+    }
+
+    async function sendNow(id) {
+      const { error } = await sb.from('scheduled_emails').update({ send_at: new Date().toISOString() }).eq('id', id).eq('status', 'pending');
+      if (error) return showToast(error.message, 'error');
+      showToast('Moved up. It will go out within 15 minutes.', 'success');
+      loadQueue();
+    }
+
+    init();
+  </script>
+</body>
+</html>

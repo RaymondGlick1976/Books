@@ -51,6 +51,10 @@
 [functions."schedule-reminders"]
   schedule = "@hourly"
 
+# Every 15 min: send due stage-sequence emails + auto stage moves
+[functions."send-sequence-emails"]
+  schedule = "*/15 * * * *"
+
 [functions."retry-failed-emails"]
   schedule = "*/15 * * * *"
 
