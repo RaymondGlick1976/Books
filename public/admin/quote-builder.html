@@ -4184,7 +4184,7 @@
           .single();
         
         if (template) {
-          const quoteNumber = currentQuoteId ? (window._quoteNumber || '') : 'NEW';
+          const quoteNumber = quoteId ? (window._quoteNumber || '') : 'NEW';
           const replaceVars = (text) => text
             .replace(/\{\{first_name\}\}/g, firstName)
             .replace(/\{\{customer_name\}\}/g, customer.name || '')
