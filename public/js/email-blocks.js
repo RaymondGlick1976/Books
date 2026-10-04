@@ -54,7 +54,7 @@
     quote_link: 'https://hcdbooks.netlify.app/portal/quote.html?token=sample',
     portal_link: 'https://hcdbooks.netlify.app/portal/login.html',
     company_name: 'Homestead Cabinet Design',
-    company_phone: '(413) 685-5743',
+    company_phone: '(413) 450-0028',
     company_website: 'https://homesteadcabinetdesign.com'
   };
 
