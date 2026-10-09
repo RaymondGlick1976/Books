@@ -51,7 +51,8 @@ exports.handler = async (event) => {
         .from('activity_log')
         .insert({
           customer_id: customer.id,
-          quote_id: quote_id,
+          reference_type: 'quote',
+          reference_id: quote_id,
           activity_type: 'quote_viewed',
           description: 'Customer viewed quote'
         });

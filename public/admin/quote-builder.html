@@ -4238,7 +4238,8 @@
         
         <div class="form-group">
           <label class="form-label">Personal Message <span style="color: var(--color-text-muted); font-weight: normal;">(optional - replaces template body)</span></label>
-          <textarea id="email-custom-message" class="form-textarea" rows="3" placeholder="Add a personal note to the customer..."></textarea>
+          <textarea id="email-custom-message" class="form-textarea" rows="3" placeholder="Short personal note (2-3 sentences). Leave prices and line items on the quote page so the customer clicks View Quote and you can see it was viewed."></textarea>
+          <div id="email-message-warning" style="display: none; margin-top: 6px; padding: 8px 10px; border-radius: var(--radius-md); background: #fef3c7; color: #92400e; font-size: 0.85rem; line-height: 1.4;"></div>
         </div>
         
         <div style="border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; margin-top: var(--space-lg);">
@@ -4297,8 +4298,27 @@
       const customMessagePreview = content.querySelector('#custom-message-preview');
       const templateBodyPreview = content.querySelector('#template-body-preview');
       
+      const messageWarning = content.querySelector('#email-message-warning');
       customMessageInput.addEventListener('input', () => {
         const msg = customMessageInput.value.trim();
+        // Nudge toward short emails: details belong on the quote page so the
+        // customer has to click through (which is what marks the quote Viewed)
+        if (messageWarning) {
+          const hasPrices = /\$\s?\d/.test(msg);
+          const bulletLines = (msg.match(/^\s*[-•*]\s+/gm) || []).length;
+          const tooLong = msg.length > 500;
+          if (hasPrices || bulletLines >= 3 || tooLong) {
+            const reasons = [];
+            if (hasPrices) reasons.push('prices');
+            if (bulletLines >= 3) reasons.push('a line-item list');
+            if (tooLong) reasons.push('a lot of detail');
+            messageWarning.textContent = 'Heads up: this message has ' + reasons.join(' and ') +
+              '. If the email answers everything, customers reply without opening the quote and it stays "Sent." Consider keeping details on the quote page.';
+            messageWarning.style.display = 'block';
+          } else {
+            messageWarning.style.display = 'none';
+          }
+        }
         if (msg) {
           customMessagePreview.textContent = msg;
           customMessagePreview.style.display = 'block';
