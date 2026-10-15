@@ -3,6 +3,7 @@
 // =============================================
 
 const Stripe = require('stripe');
+const { buildInvoiceLines, invoiceHeaderFromQuote, insertInvoiceLines } = require('./invoice-builder');
 const { Resend } = require('resend');
 const { getSupabase, success, error, notifyQuoteAccepted } = require('./utils');
 
@@ -114,6 +115,7 @@ async function handleCheckoutComplete(supabase, session) {
         amount_due: quote.total - (session.amount_total / 100),
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         sent_at: new Date().toISOString(),
+        ...invoiceHeaderFromQuote(quote),
       })
       .select()
       .single();
@@ -125,30 +127,10 @@ async function handleCheckoutComplete(supabase, session) {
       console.log('Invoice created:', invoice.invoice_number);
     }
 
-    // Copy line items to invoice
+    // Copy line items to invoice (selected bundle's items when the quote has bundles)
     if (invoice) {
-      const { data: quoteItems } = await supabase
-        .from('quote_line_items')
-        .select('*')
-        .eq('quote_id', quote_id)
-        .or('is_optional.eq.false,is_selected.eq.true');
-
-      if (quoteItems && quoteItems.length > 0) {
-        const invoiceItems = quoteItems.map(item => ({
-          invoice_id: invoice.id,
-          description: item.description,
-          details: item.details,
-          quantity: item.quantity,
-          unit: item.unit,
-          unit_price: item.unit_price,
-          line_total: item.line_total,
-          is_taxable: item.is_taxable,
-          sort_order: item.sort_order,
-          attribute_selections: item.attribute_selections || [],
-        }));
-
-        await supabase.from('invoice_line_items').insert(invoiceItems);
-      }
+      const { lineItems } = await buildInvoiceLines(supabase, quote);
+      await insertInvoiceLines(supabase, invoice.id, lineItems);
     }
   } catch (invoiceErr) {
     console.error('Invoice creation error (non-fatal):', invoiceErr);
