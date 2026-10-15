@@ -247,10 +247,13 @@
       const sched = Array.isArray(invoice.payment_schedule) ? invoice.payment_schedule : [];
       if (sched.length === 0) return '';
       const total = parseFloat(invoice.total) || 0;
+      // Fixed payments (e.g. the deposit) come off the total first; percentages apply to the remainder
+      const fixedTotal = sched.filter(p => p.amount_type === 'fixed').reduce((s, p) => s + (parseFloat(p.amount_value) || 0), 0);
+      const base = Math.max(0, total - fixedTotal);
       let sum = 0;
       const rows = sched.map(p => {
         const v = parseFloat(p.amount_value) || 0;
-        const amt = p.amount_type === 'percentage' ? total * (v / 100) : v;
+        const amt = p.amount_type === 'percentage' ? base * (v / 100) : v;
         sum += amt;
         return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;">
           <div><div style="font-weight:500;">${p.name || ''}</div>${p.due_description ? `<div style="font-size:12px;color:#666;">${p.due_description}</div>` : ''}</div>
