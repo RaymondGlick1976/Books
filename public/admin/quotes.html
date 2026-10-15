@@ -487,7 +487,8 @@
               quantity: item.quantity || 1,
               unit_price: item.unit_price || 0,
               line_total: lineTotal,
-              is_taxable: true
+              is_taxable: true,
+              change_order_id: co.id
             });
           });
         });
@@ -559,6 +560,7 @@
             unit_price: item.unit_price,
             line_total: item.line_total,
             is_taxable: item.is_taxable,
+            change_order_id: item.change_order_id || null,
             sort_order: selectedItems.length + index
           });
         });

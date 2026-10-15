@@ -266,6 +266,38 @@
         ${rows}${warn}</div>`;
     }
 
+    // Add accepted change orders to an existing invoice (one invoice line per change order item)
+    async function addChangeOrdersToInvoice(invoiceId, cos) {
+      const supabase = await app.waitForSupabase();
+      const { data: last } = await supabase
+        .from('invoice_line_items')
+        .select('sort_order')
+        .eq('invoice_id', invoiceId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      let sort = last && last.length ? (last[0].sort_order || 0) + 1 : 0;
+      const rows = [];
+      cos.forEach(co => (co.change_order_items || []).forEach(item => {
+        const qty = parseFloat(item.quantity) || 1;
+        const unit = parseFloat(item.unit_price) || 0;
+        rows.push({
+          invoice_id: invoiceId,
+          change_order_id: co.id,
+          description: item.description,
+          details: `Change Order #${co.change_order_number}`,
+          quantity: qty,
+          unit_price: unit,
+          line_total: Math.round(unit * qty * 100) / 100,
+          is_taxable: true,
+          apply_discount: true,
+          sort_order: sort++
+        });
+      }));
+      if (rows.length === 0) return;
+      const { error } = await supabase.from('invoice_line_items').insert(rows);
+      if (error) throw error;
+    }
+
     window.viewInvoice = async (id) => {
       // Fetch fresh invoice data from DB to avoid stale cached totals
       const supabase = await app.waitForSupabase();
@@ -514,6 +546,43 @@
           loadInvoices();
         });
         rightBtns.appendChild(qbBtn);
+      }
+
+      // Accepted change orders on this quote that are not yet on this invoice
+      let unbilledCOs = [];
+      if (invoice.quote_id) {
+        const { data: acceptedCOs } = await supabase
+          .from('change_orders')
+          .select('id, change_order_number, change_order_items(*)')
+          .eq('quote_id', invoice.quote_id)
+          .eq('status', 'accepted');
+        const { data: billedRows } = await supabase
+          .from('invoice_line_items')
+          .select('change_order_id')
+          .eq('invoice_id', id)
+          .not('change_order_id', 'is', null);
+        const billed = new Set((billedRows || []).map(r => r.change_order_id));
+        unbilledCOs = (acceptedCOs || []).filter(co => !billed.has(co.id) && (co.change_order_items || []).length > 0);
+      }
+      if (unbilledCOs.length > 0) {
+        const coLabel = unbilledCOs.map(co => `#${co.change_order_number}`).join(', ');
+        const addCoBtn = createElement('button', { className: 'btn btn-outline', textContent: `Add Change Order${unbilledCOs.length > 1 ? 's' : ''} ${coLabel}` });
+        addCoBtn.addEventListener('click', async () => {
+          if (!confirm(`Add accepted change order${unbilledCOs.length > 1 ? 's' : ''} ${coLabel} to invoice ${invoice.invoice_number}?`)) return;
+          addCoBtn.disabled = true;
+          try {
+            await addChangeOrdersToInvoice(id, unbilledCOs);
+            showToast('Change order added to invoice', 'success');
+            closeModal(modal);
+            loadInvoices();
+            viewInvoice(id);
+          } catch (err) {
+            console.error(err);
+            showToast('Failed to add change order: ' + err.message, 'error');
+            addCoBtn.disabled = false;
+          }
+        });
+        rightBtns.appendChild(addCoBtn);
       }
 
       if (invoice.amount_due > 0) {
