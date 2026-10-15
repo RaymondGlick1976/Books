@@ -2626,9 +2626,12 @@
       if (quote.payment_schedule && Array.isArray(quote.payment_schedule) && quote.payment_schedule.length > 0) {
         // Display payment schedule
         let scheduleHtml = '';
+        // Fixed payments (e.g. the deposit) come off the total first; percentages apply to the remainder
+        const schedFixed = quote.payment_schedule.filter(p => p.amount_type === 'fixed').reduce((s, p) => s + (parseFloat(p.amount_value) || 0), 0);
+        const schedBase = Math.max(0, (hasRange ? grandTotalLow : grandTotal) - schedFixed);
         quote.payment_schedule.forEach((payment, idx) => {
           const amount = payment.amount_type === 'percentage' 
-            ? (hasRange ? grandTotalLow : grandTotal) * (payment.amount_value / 100)
+            ? schedBase * (payment.amount_value / 100)
             : payment.amount_value;
           
           if (idx === 0) depositAmount = amount; // First payment is the deposit
