@@ -3526,10 +3526,13 @@
         return;
       }
       
+      // Fixed payments (e.g. the deposit) come off the total first; percentages apply to the remainder
+      const schedFixed = paymentSchedule.filter(p => p.amount_type === 'fixed').reduce((s, p) => s + (parseFloat(p.amount_value) || 0), 0);
+      const schedBase = Math.max(0, total - schedFixed);
       let html = '';
       paymentSchedule.forEach((payment, idx) => {
         const amount = payment.amount_type === 'percentage' 
-          ? total * (payment.amount_value / 100)
+          ? schedBase * (payment.amount_value / 100)
           : payment.amount_value;
         
         html += `

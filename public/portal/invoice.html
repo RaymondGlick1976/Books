@@ -320,6 +320,7 @@
             </div>
           </div>
 
+          <div id="invoice-payment-schedule"></div>
           <!-- Payment History -->
           <div id="payments-section" class="payment-history" style="display: none;">
             <h4>Payment History</h4>
@@ -453,8 +454,35 @@
       }
     }
 
+
+    const schedMoney = n => '$' + (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // Payment schedule block for an invoice (copied from the quote). Empty string when none.
+    function paymentScheduleBlock(invoice) {
+      const sched = Array.isArray(invoice.payment_schedule) ? invoice.payment_schedule : [];
+      if (sched.length === 0) return '';
+      const total = parseFloat(invoice.total) || 0;
+      // Fixed payments (e.g. the deposit) come off the total first; percentages apply to the remainder
+      const fixedTotal = sched.filter(p => p.amount_type === 'fixed').reduce((s, p) => s + (parseFloat(p.amount_value) || 0), 0);
+      const base = Math.max(0, total - fixedTotal);
+      let sum = 0;
+      const rows = sched.map(p => {
+        const v = parseFloat(p.amount_value) || 0;
+        const amt = p.amount_type === 'percentage' ? base * (v / 100) : v;
+        sum += amt;
+        return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;">
+          <div><div style="font-weight:500;">${p.name || ''}</div>${p.due_description ? `<div style="font-size:12px;color:#666;">${p.due_description}</div>` : ''}</div>
+          <div style="font-weight:500;white-space:nowrap;">${schedMoney(amt)}</div></div>`;
+      }).join('');
+      const warn = Math.abs(sum - total) > 0.005
+        ? `<div style="margin-top:6px;font-size:12px;color:#b45309;">Schedule totals ${schedMoney(sum)}; invoice total is ${schedMoney(total)}.</div>` : '';
+      return `<div style="margin-top:20px;">
+        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#666;border-bottom:1px solid #ddd;padding-bottom:6px;margin-bottom:6px;">Payment Schedule</div>
+        ${rows}${warn}</div>`;
+    }
+
     function renderInvoice() {
       document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('invoice-payment-schedule').innerHTML = paymentScheduleBlock(invoice);
       document.getElementById('invoice-content').style.display = 'block';
 
       // Company header

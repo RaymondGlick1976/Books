@@ -374,6 +374,51 @@
       }
     };
 
+
+    // Bundle-aware invoice lines: when a quote has bundles, use the selected bundle's included items
+    function bundleInvoiceLines(pkgs, quote) {
+      if (!pkgs || pkgs.length === 0) return null;
+      const pkg = pkgs.find(p => p.id === quote.selected_package_id) || pkgs.find(p => p.is_selected) || pkgs[0];
+      const taxable = pkg.apply_tax !== false;
+      const items = (pkg.quote_package_items || [])
+        .filter(i => i.is_included !== false)
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      const lines = items.map((i, idx) => {
+        const qty = parseFloat(i.quantity) || 1;
+        const unit = parseFloat(i.price) || 0;
+        const attrs = (i.attribute_selections || []).filter(s => s && s.option_name)
+          .map(s => `${s.attribute_name}: ${s.option_name}`).join('\n');
+        return {
+          description: i.name,
+          details: [i.description || '', attrs].filter(Boolean).join('\n'),
+          quantity: qty,
+          unit_price: unit,
+          line_total: Math.round(unit * qty * 100) / 100,
+          is_taxable: taxable,
+          apply_discount: true,
+          sort_order: idx
+        };
+      });
+      const itemsTotal = lines.reduce((s, l) => s + l.line_total, 0);
+      if (pkg.price !== null && pkg.price !== undefined && pkg.price !== '') {
+        const override = Math.round((parseFloat(pkg.price) || 0) * 100) / 100;
+        if (items.length === 0) {
+          lines.push({ description: pkg.name || quote.title, details: pkg.description || '', quantity: 1,
+            unit_price: override, line_total: override, is_taxable: taxable, apply_discount: true, sort_order: 0 });
+        } else {
+          const diff = Math.round((override - itemsTotal) * 100) / 100;
+          if (diff !== 0) lines.push({ description: `${pkg.name || 'Bundle'} - bundle price adjustment`, details: '',
+            quantity: 1, unit_price: diff, line_total: diff, is_taxable: taxable, apply_discount: true, sort_order: lines.length });
+        }
+      }
+      return lines;
+    }
+
+    // Payment schedule to store on the invoice (null when the quote has none)
+    function scheduleForInvoice(quote) {
+      return Array.isArray(quote.payment_schedule) && quote.payment_schedule.length > 0 ? quote.payment_schedule : null;
+    }
+
     window.createInvoice = async (quoteId) => {
       if (!confirm('Create an invoice from this quote?')) return;
 
@@ -412,8 +457,13 @@
         let taxableDiscountable = 0;
         const taxRate = quote.tax_rate || 0;
 
-        // Selected line items
-        const selectedItems = (lineItems || []).filter(i => !i.is_optional || i.is_selected);
+        // Bundles: use the selected bundle's items; otherwise the selected line items
+        const { data: quotePackages } = await supabase
+          .from('quote_packages')
+          .select('*, quote_package_items(*)')
+          .eq('quote_id', quoteId);
+        const selectedItems = bundleInvoiceLines(quotePackages, quote)
+          || (lineItems || []).filter(i => !i.is_optional || i.is_selected);
         selectedItems.forEach(item => {
           const lineTotal = (item.unit_price || item.price_range_low || 0) * item.quantity;
           subtotal += lineTotal;
@@ -437,7 +487,8 @@
               quantity: item.quantity || 1,
               unit_price: item.unit_price || 0,
               line_total: lineTotal,
-              is_taxable: true
+              is_taxable: true,
+              change_order_id: co.id
             });
           });
         });
@@ -464,6 +515,7 @@
           .insert({
             invoice_number: invoiceNumber,
             quote_id: quoteId,
+            payment_schedule: scheduleForInvoice(quote),
             customer_id: quote.customer_id,
             title: quote.title,
             status: 'draft',
@@ -508,6 +560,7 @@
             unit_price: item.unit_price,
             line_total: item.line_total,
             is_taxable: item.is_taxable,
+            change_order_id: item.change_order_id || null,
             sort_order: selectedItems.length + index
           });
         });
