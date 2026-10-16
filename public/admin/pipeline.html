@@ -149,6 +149,18 @@
     .deal-view-field p { font-size: 0.875rem; color: var(--color-text); margin: 2px 0 0; }
     .deal-view-section { margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: 1px solid var(--color-border); }
     .deal-view-section-title { font-weight: 600; font-size: 0.9rem; color: var(--color-text); margin-bottom: var(--space-md); }
+
+    /* Website chat transcripts */
+    .chat-transcript { background: var(--color-bg-soft); border-radius: var(--radius-md); padding: var(--space-sm); max-height: 420px; overflow-y: auto; }
+    .chat-msg { border-left: 3px solid var(--color-border); padding: 2px 0 2px var(--space-sm); margin-bottom: var(--space-sm); }
+    .chat-msg.chat-visitor { border-left-color: var(--color-text-muted); }
+    .chat-msg.chat-lisa { border-left-color: var(--color-primary); }
+    .chat-who { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+    .chat-visitor .chat-who { color: var(--color-text-muted); }
+    .chat-lisa .chat-who { color: var(--color-primary); }
+    .chat-text { white-space: pre-wrap; font-size: 0.875rem; line-height: 1.45; color: var(--color-text); }
+    .chat-row { padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-border); cursor: pointer; }
+    .chat-row:hover { background: var(--color-bg-soft); }
   </style>
 </head>
 <body>
@@ -225,6 +237,7 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               New Deal
             </button>
+            <button class="btn btn-secondary btn-sm" onclick="openWebsiteChats()">Website chats</button>
             
             <!-- New Appointment Dropdown -->
             <div class="dropdown" id="appt-dropdown">
@@ -414,6 +427,10 @@
           <div class="deal-view-section-title">Notes</div>
           <div id="deal-view-notes-content" style="white-space:pre-wrap;font-size:0.875rem;color:var(--color-text);"></div>
         </div>
+        <div id="deal-view-chat" class="deal-view-section" style="display:none;">
+          <div class="deal-view-section-title">Website chat</div>
+          <div id="deal-view-chat-content" class="chat-transcript"></div>
+        </div>
         <div id="view-submission-section" class="deal-view-section" style="display:none;">
           <div class="deal-view-section-title">Form Submission</div>
           <div id="view-submission-content"></div>
@@ -431,6 +448,25 @@
           </button>
         </div>
         <button type="button" class="btn btn-primary" onclick="editFromView()">Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Website Chats Modal (read-only) -->
+  <div id="chats-modal" class="modal-overlay">
+    <div class="modal" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Website Chats</h3>
+        <button class="modal-close" onclick="closeWebsiteChats()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div id="chats-list"></div>
+        <div id="chats-detail" style="display:none;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="showChatList()">← All chats</button>
+          <div id="chats-detail-meta" class="text-muted" style="margin:var(--space-sm) 0;font-size:0.8rem;"></div>
+          <div id="chats-detail-job"></div>
+          <div id="chats-detail-body" class="chat-transcript"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1206,6 +1242,9 @@
         $('#deal-view-notes').style.display = 'none';
       }
 
+      // Website chat (full transcript from internal_notes; hidden when empty)
+      renderWebsiteChatSection(deal);
+
       // Email button
       $('#view-email-btn').style.display = customer?.email ? 'block' : 'none';
 
@@ -1216,6 +1255,143 @@
 
       // Open modal
       $('#deal-view-modal').classList.add('active');
+    }
+
+    // ---- Website chat (read-only) ----
+    let chatRows = [];
+
+    // Splits a transcript ("Visitor: ..." / "Lisa: ..." lines) into {who, text} items.
+    // Lines without a speaker label continue the previous message; the header line is ignored.
+    function parseChatTranscript(text) {
+      const items = [];
+      String(text || '').split(/\r?\n/).forEach(raw => {
+        const m = raw.match(/^(Visitor|Lisa):\s?(.*)$/);
+        if (m) items.push({ who: m[1], text: m[2] });
+        else if (items.length && raw.trim()) items[items.length - 1].text += '\n' + raw;
+      });
+      return items;
+    }
+
+    // Renders chat bubbles with textContent only, so chat text is never parsed as HTML.
+    function renderChatItems(container, items) {
+      container.innerHTML = '';
+      items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'chat-msg ' + (item.who === 'Visitor' ? 'chat-visitor' : 'chat-lisa');
+        const who = document.createElement('div');
+        who.className = 'chat-who';
+        who.textContent = item.who;
+        const body = document.createElement('div');
+        body.className = 'chat-text';
+        body.textContent = item.text;
+        row.append(who, body);
+        container.appendChild(row);
+      });
+    }
+
+    function renderWebsiteChatSection(deal) {
+      const section = $('#deal-view-chat');
+      const container = $('#deal-view-chat-content');
+      const raw = (deal.internal_notes || '').trim();
+      if (!raw) {
+        section.style.display = 'none';
+        container.innerHTML = '';
+        return;
+      }
+      section.style.display = '';
+      const items = parseChatTranscript(raw);
+      if (items.length) {
+        renderChatItems(container, items);
+      } else {
+        // Text with no Visitor/Lisa labels: show it as-is rather than hiding it
+        container.innerHTML = '';
+        const p = document.createElement('div');
+        p.className = 'chat-text';
+        p.textContent = raw;
+        container.appendChild(p);
+      }
+    }
+
+    async function openWebsiteChats() {
+      $('#chats-modal').classList.add('active');
+      showChatList();
+      $('#chats-list').innerHTML = '<p class="text-muted">Loading…</p>';
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase.from('lisa_chats')
+          .select('id, created_at, page_url, messages, lead_job_id, lead_saved_at')
+          .order('created_at', { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        chatRows = data || [];
+        renderChatList();
+      } catch (err) {
+        console.error('Website chats failed to load:', err);
+        $('#chats-list').innerHTML = '<p class="text-muted">Could not load website chats.</p>';
+      }
+    }
+
+    function closeWebsiteChats() { $('#chats-modal').classList.remove('active'); }
+
+    function showChatList() {
+      $('#chats-detail').style.display = 'none';
+      $('#chats-list').style.display = '';
+    }
+
+    function pagePath(url) {
+      if (!url) return '—';
+      try { const u = new URL(url); return u.pathname + u.search; } catch (e) { return url; }
+    }
+
+    function renderChatList() {
+      const el = $('#chats-list');
+      if (!chatRows.length) {
+        el.innerHTML = '<p class="text-muted">No website chats yet.</p>';
+        return;
+      }
+      el.innerHTML = chatRows.map((c, i) => {
+        const job = c.lead_job_id ? deals.find(d => d.id === c.lead_job_id) : null;
+        const lead = c.lead_job_id
+          ? '<span class="badge" style="background:var(--color-success);color:white;font-size:0.65rem;">Lead</span>'
+          : '<span class="text-muted" style="font-size:0.8rem;">Not a lead</span>';
+        let jobLine = '';
+        if (c.lead_job_id) {
+          jobLine = job
+            ? `<div style="font-size:0.85rem;margin-top:4px;"><a href="javascript:void(0)" onclick="event.stopPropagation();openJobFromChat('${job.id}')" style="color:var(--color-primary);text-decoration:none;font-weight:500;">${escapeHtml(job.name || 'Open job')}</a></div>`
+            : '<div class="text-muted" style="font-size:0.8rem;margin-top:4px;">Linked job not in this list</div>';
+        }
+        return `<div class="chat-row" onclick="showChat(${i})">
+          <div style="display:flex;justify-content:space-between;gap:var(--space-sm);flex-wrap:wrap;">
+            <strong style="font-size:0.875rem;">${escapeHtml(formatDateTime(c.created_at))}</strong>
+            ${lead}
+          </div>
+          <div class="text-muted" style="font-size:0.8rem;margin-top:2px;">${escapeHtml(pagePath(c.page_url))}</div>
+          ${jobLine}
+        </div>`;
+      }).join('');
+    }
+
+    function showChat(i) {
+      const c = chatRows[i];
+      if (!c) return;
+      const job = c.lead_job_id ? deals.find(d => d.id === c.lead_job_id) : null;
+      $('#chats-list').style.display = 'none';
+      $('#chats-detail').style.display = '';
+      $('#chats-detail-meta').textContent = [formatDateTime(c.created_at), c.page_url].filter(Boolean).join(' · ');
+      $('#chats-detail-job').innerHTML = job
+        ? `<div style="margin-bottom:var(--space-sm);"><a href="javascript:void(0)" onclick="openJobFromChat('${job.id}')" style="color:var(--color-primary);text-decoration:none;font-weight:500;">Open job: ${escapeHtml(job.name || '')}</a></div>`
+        : '';
+      const items = (Array.isArray(c.messages) ? c.messages : [])
+        .filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
+        .map(m => ({ who: m.role === 'user' ? 'Visitor' : 'Lisa', text: m.content }));
+      renderChatItems($('#chats-detail-body'), items);
+    }
+
+    function openJobFromChat(jobId) {
+      const deal = deals.find(d => d.id === jobId);
+      if (!deal) return;
+      closeWebsiteChats();
+      openDealView(deal);
     }
 
     function closeDealView() { $('#deal-view-modal').classList.remove('active'); }
