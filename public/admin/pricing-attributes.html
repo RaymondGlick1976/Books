@@ -45,6 +45,7 @@
     .option-name { font-weight: 500; }
     .option-name.is-default::after { content: ' ✓'; color: var(--color-success); font-size: 0.875rem; }
     .option-actions { display: flex; gap: var(--space-xs); }
+    .option-actions .btn:disabled { opacity: 0.3; cursor: default; }
     .add-option-btn {
       width: 100%;
       padding: var(--space-sm);
@@ -393,13 +394,19 @@
         const usageCount = getUsageCount(attr.id);
         
         const optionsHtml = attr.options.length > 0 
-          ? attr.options.map(opt => `
+          ? attr.options.map((opt, idx) => `
               <div class="option-item">
                 <div class="option-info">
                   <span class="option-name ${opt.is_default ? 'is-default' : ''}">${escapeHtml(opt.name)}</span>
                   <span class="pricing-type-badge">${formatPrice(opt)}</span>
                 </div>
                 <div class="option-actions">
+                  <button class="btn btn-ghost btn-sm" onclick="moveOption('${attr.id}', '${opt.id}', -1)" title="Move up" ${idx === 0 ? 'disabled' : ''}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                  </button>
+                  <button class="btn btn-ghost btn-sm" onclick="moveOption('${attr.id}', '${opt.id}', 1)" title="Move down" ${idx === attr.options.length - 1 ? 'disabled' : ''}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
                   <button class="btn btn-ghost btn-sm" onclick="showOptionModal('${attr.id}', '${opt.id}')" title="Edit">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
@@ -443,6 +450,43 @@
       }).join('');
     }
     
+    let optionMoveBusy = false;
+
+    // Swap an option with its neighbour, then renumber sort_order 0..n-1 for the attribute
+    async function moveOption(attributeId, optionId, direction) {
+      if (optionMoveBusy) return;
+      const attr = attributes.find(a => a.id === attributeId);
+      if (!attr) return;
+
+      const from = attr.options.findIndex(o => o.id === optionId);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= attr.options.length) return;
+
+      const reordered = [...attr.options];
+      [reordered[from], reordered[to]] = [reordered[to], reordered[from]];
+      reordered.forEach((opt, i) => { opt.sort_order = i; });
+      attr.options = reordered;
+      renderAttributes();
+
+      optionMoveBusy = true;
+      try {
+        const supabase = await app.waitForSupabase();
+        const results = await Promise.all(
+          reordered.map((opt, i) =>
+            supabase.from('pricing_attribute_options').update({ sort_order: i }).eq('id', opt.id)
+          )
+        );
+        const failed = results.find(r => r.error);
+        if (failed) throw failed.error;
+      } catch (err) {
+        console.error('Error moving option:', err);
+        showToast('Failed to move option: ' + err.message, 'error');
+        await loadAttributes();
+      } finally {
+        optionMoveBusy = false;
+      }
+    }
+
     function openWorksheet(attributeId) {
       window.open(`/admin/print-worksheet.html?id=${attributeId}`, '_blank');
     }
