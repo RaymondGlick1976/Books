@@ -17,6 +17,7 @@
     .column-header { padding: var(--space-md); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: var(--space-sm); position: sticky; top: 0; background: var(--color-bg-soft); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
     .stage-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
     .column-title { font-weight: 600; font-size: 0.8rem; color: var(--color-text); flex: 1; }
+    .column-total { font-size: 0.75rem; font-weight: 600; color: var(--color-primary); white-space: nowrap; }
     .column-count { background: var(--color-bg); color: var(--color-text-muted); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
     .column-content { flex: 1; overflow-y: auto; padding: var(--space-sm); }
     .deal-card { background: white; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-md); margin-bottom: var(--space-sm); cursor: grab; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
@@ -857,7 +858,8 @@
       filteredStages.forEach(stage => {
         const stageDeals = deals.filter(d => d.stage === stage.stage_id);
         const column = createElement('div', { className: 'pipeline-column', dataset: { stage: stage.stage_id } });
-        column.innerHTML = `<div class="column-header"><span class="stage-dot" style="background-color:${stage.color}"></span><span class="column-title">${stage.label}</span><span class="column-count">${stageDeals.length}</span></div>`;
+        const stageTotal = stageDeals.reduce((sum, d) => sum + (parseFloat(d.estimated_value) || 0), 0);
+        column.innerHTML = `<div class="column-header"><span class="stage-dot" style="background-color:${stage.color}"></span><span class="column-title">${stage.label}</span>${stageTotal > 0 ? `<span class="column-total" title="Total estimated value">${formatCurrency(stageTotal)}</span>` : ''}<span class="column-count">${stageDeals.length}</span></div>`;
         const content = createElement('div', { className: 'column-content drop-zone' });
         if (stageDeals.length === 0) content.innerHTML = '<div class="empty-column">No deals</div>';
         else stageDeals.forEach(deal => content.appendChild(createDealCard(deal)));
