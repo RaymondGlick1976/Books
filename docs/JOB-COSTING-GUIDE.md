@@ -388,25 +388,21 @@ Open items:
 
 ## 16. Labor
 
-Labor cost $75.00 per hour. No markup for now, so the billed rate is also $75.00 per hour. Add a markup later if needed.
+Labor cost $50.00 per hour. Markup is applied per job (20%, 30%, 40% or 50% on cost; 100% when matching materials). Set at $50 on the latest instruction.
 
 | Item | Rate |
 |---|---|
-| Labor cost | $75.00 per hour |
-| Markup | none for now |
-| Billed labor rate | $75.00 per hour |
+| Labor cost | $50.00 per hour |
 
-### Painting labor per piece (at $75 per hour, no markup)
+### Painting labor per piece (at $50 per hour, cost)
 
-Paint and prime: 1 hour per door or drawer front. Prime only: 0.25 hour per door or drawer front. Topcoat: 0.25 hour per door.
+Paint and prime: 1 hour per door or drawer front. Prime only: 0.5 hour. Topcoat only: 0.5 hour (assumed).
 
-| Task | Hours per piece | Labor cost | Billed (no markup) |
-|---|---|---|---|
-| Door, paint and prime | 1.0 | $75.00 | $75.00 |
-| Drawer front, paint and prime | 1.0 | $75.00 | $75.00 |
-| Door, prime only | 0.25 | $18.75 | $18.75 |
-| Drawer front, prime only | 0.25 | $18.75 | $18.75 |
-| Door, topcoat | 0.25 | $18.75 | $18.75 |
+| Task | Hours per piece | Labor cost |
+|---|---|---|
+| Door or drawer front, paint and prime | 1.0 | $50.00 |
+| Door or drawer front, prime only | 0.5 | $25.00 |
+| Door or drawer front, topcoat only | 0.5 | $25.00 |
 
 ---
 

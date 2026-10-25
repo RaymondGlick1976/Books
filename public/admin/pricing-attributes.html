@@ -407,6 +407,12 @@
                   <button class="btn btn-ghost btn-sm" onclick="moveOption('${attr.id}', '${opt.id}', 1)" title="Move down" ${idx === attr.options.length - 1 ? 'disabled' : ''}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                   </button>
+                  <button class="btn btn-ghost btn-sm" onclick="copyOption('${attr.id}', '${opt.id}', false)" title="Copy">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                  </button>
+                  <button class="btn btn-ghost btn-sm" onclick="copyOption('${attr.id}', '${opt.id}', true)" title="Move (cut)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                  </button>
                   <button class="btn btn-ghost btn-sm" onclick="showOptionModal('${attr.id}', '${opt.id}')" title="Edit">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
@@ -443,6 +449,7 @@
             </div>
             <div class="options-list">
               ${optionsHtml}
+              ${clipboardOption ? `<button class="add-option-btn" onclick="pasteOption('${attr.id}')">Paste "${escapeHtml(clipboardOption.name)}"${clipboardOption.move ? ' (move)' : ''}</button>` : ''}
               <button class="add-option-btn" onclick="showOptionModal('${attr.id}')">+ Add Option</button>
             </div>
           </div>
@@ -451,6 +458,61 @@
     }
     
     let optionMoveBusy = false;
+    let clipboardOption = null; // { name, unit_price, pricing_type, cost, markup_percentage, move, sourceId }
+    let pasteBusy = false;
+
+    function copyOption(attributeId, optionId, move) {
+      const attr = attributes.find(a => a.id === attributeId);
+      const opt = attr?.options.find(o => o.id === optionId);
+      if (!opt) return;
+      clipboardOption = {
+        name: opt.name,
+        unit_price: opt.unit_price ?? 0,
+        pricing_type: opt.pricing_type || 'each',
+        cost: opt.cost ?? null,
+        markup_percentage: opt.markup_percentage ?? null,
+        move,
+        sourceId: opt.id
+      };
+      showToast(`${move ? 'Cut' : 'Copied'} "${opt.name}" — paste into any attribute`, 'success');
+      renderAttributes();
+    }
+
+    async function pasteOption(attributeId) {
+      if (!clipboardOption || pasteBusy) return;
+      const attr = attributes.find(a => a.id === attributeId);
+      if (!attr) return;
+      const item = clipboardOption;
+      pasteBusy = true;
+      try {
+        const supabase = await app.waitForSupabase();
+        const { error } = await supabase.from('pricing_attribute_options').insert({
+          attribute_id: attributeId,
+          name: item.name,
+          unit_price: item.unit_price,
+          pricing_type: item.pricing_type,
+          cost: item.cost,
+          markup_percentage: item.markup_percentage,
+          is_default: false,
+          sort_order: attr.options.length
+        });
+        if (error) throw error;
+
+        if (item.move) {
+          const { error: delErr } = await supabase.from('pricing_attribute_options').delete().eq('id', item.sourceId);
+          if (delErr) throw delErr;
+          clipboardOption = null;
+        }
+        showToast(`${item.move ? 'Moved' : 'Pasted'} "${item.name}" into ${attr.name}`, 'success');
+        await loadAttributes();
+      } catch (err) {
+        console.error('Error pasting option:', err);
+        showToast('Failed to paste option: ' + err.message, 'error');
+        await loadAttributes();
+      } finally {
+        pasteBusy = false;
+      }
+    }
 
     // Swap an option with its neighbour, then renumber sort_order 0..n-1 for the attribute
     async function moveOption(attributeId, optionId, direction) {
