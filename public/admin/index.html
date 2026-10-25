@@ -542,6 +542,7 @@
         .from('quotes')
         .select('*, customers(name)')
         .in('status', ['sent', 'viewed'])
+        .gte('expires_at', new Date().toISOString())
         .lt('expires_at', threeDaysFromNow)
         .limit(5);
       
