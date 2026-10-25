@@ -648,7 +648,7 @@
     }
     
     function updatePipelineSummary() {
-      const filteredDeals = getFilteredDeals();
+      const filteredDeals = getFilteredDeals().filter(d => !['completed', 'job-lost'].includes(d.stage));
       const totalDeals = filteredDeals.length;
       const totalValue = filteredDeals.reduce((s, d) => s + (parseFloat(d.estimated_value) || 0), 0);
       const filterActive = selectedStages.size < stages.length;
