@@ -8,6 +8,11 @@
   <meta name="apple-mobile-web-app-title" content="HCD Books">
   <title>Admin Dashboard | Homestead Cabinet Design</title>
   <link rel="stylesheet" href="/css/styles.css?v=41">
+  <style>
+    .stats-grid { grid-template-columns: repeat(5, 1fr); }
+    @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
   <script>
@@ -228,7 +233,7 @@
       
       <div class="app-content">
         <!-- Stats Grid -->
-        <div class="grid grid-cols-4 gap-lg mb-xl">
+        <div class="grid gap-lg mb-xl stats-grid">
           <div class="stat-card">
             <div class="stat-card-label">Active Deals</div>
             <div class="stat-card-value" id="stat-active-deals">-</div>
@@ -244,6 +249,10 @@
           <div class="stat-card">
             <div class="stat-card-label">Payments (30 days)</div>
             <div class="stat-card-value" id="stat-payments">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Payments (year to date)</div>
+            <div class="stat-card-value" id="stat-payments-ytd">-</div>
           </div>
         </div>
         
@@ -404,6 +413,17 @@
       
       const paymentTotal = payments?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
       $('#stat-payments').textContent = formatCurrency(paymentTotal);
+      
+      // Payments year to date (since Jan 1, local time)
+      const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString();
+      const { data: ytdPayments } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('status', 'succeeded')
+        .gte('payment_date', yearStart);
+      
+      const ytdTotal = ytdPayments?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
+      $('#stat-payments-ytd').textContent = formatCurrency(ytdTotal);
       
       // Load pipeline summary
       await loadPipelineSummary(supabase);
