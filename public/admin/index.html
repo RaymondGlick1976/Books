@@ -486,7 +486,7 @@
         .from('activity_log')
         .select('*, customers(name)')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
       
       clearElement(container);
       
