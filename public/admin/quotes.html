@@ -242,13 +242,13 @@
             ${quote.access_token ? `<a href="/portal/quote.html?token=${quote.access_token}&admin=1" target="_blank" class="btn btn-ghost btn-sm" title="View as customer">👁️</a>` : `<button class="btn btn-ghost btn-sm" onclick="generateToken('${quote.id}')" title="Generate customer link">🔗</button>`}
             <button class="btn btn-ghost btn-sm" onclick="textQuoteLink('${quote.id}')" title="Text or copy customer link">💬</button>
             <button class="btn btn-ghost btn-sm" onclick="duplicateQuote('${quote.id}')">Duplicate</button>
-            ${['draft', 'sent', 'viewed'].includes(quote.status) ? `<button class="btn btn-ghost btn-sm" onclick="markAccepted('${quote.id}')">✓ Accept</button>` : ''}
-            ${quote.status === 'accepted' ? `<button class="btn btn-ghost btn-sm" onclick="createInvoice('${quote.id}')">→ Invoice</button>` : ''}
+            ${hasPermission('can_accept_quotes') && ['draft', 'sent', 'viewed'].includes(quote.status) ? `<button class="btn btn-ghost btn-sm" onclick="markAccepted('${quote.id}')">✓ Accept</button>` : ''}
+            ${hasPermission('can_convert_quotes') && quote.status === 'accepted' ? `<button class="btn btn-ghost btn-sm" onclick="createInvoice('${quote.id}')">→ Invoice</button>` : ''}
             <button class="btn btn-ghost btn-sm" onclick="syncEstimateToQB('${quote.id}', this)" title="${quote.qb_synced_at ? 'Synced ' + new Date(quote.qb_synced_at).toLocaleDateString() : 'Sync to QuickBooks'}">${quote.qb_estimate_id ? '✅ QB' : '📤 QB'}</button>
             ${quote.status === 'archived' 
               ? `<button class="btn btn-ghost btn-sm" onclick="unarchiveQuote('${quote.id}')" title="Unarchive">📤</button>`
               : `<button class="btn btn-ghost btn-sm" onclick="archiveQuote('${quote.id}')" title="Archive">📥</button>`}
-            <button class="btn btn-ghost btn-sm text-danger" onclick="deleteQuote('${quote.id}')" title="Delete">🗑️</button>
+            ${hasPermission('can_delete') ? `<button class="btn btn-ghost btn-sm text-danger" onclick="deleteQuote('${quote.id}')" title="Delete">🗑️</button>` : ''}
           </td>
         `;
         tbody.appendChild(row);
@@ -362,6 +362,7 @@
     };
     
     window.markAccepted = async (quoteId) => {
+      if (!hasPermission('can_accept_quotes')) { showToast('You do not have permission to accept quotes', 'error'); return; }
       if (!confirm('Mark this quote as accepted?')) return;
       try {
         const supabase = await app.waitForSupabase();
@@ -421,6 +422,7 @@
     }
 
     window.createInvoice = async (quoteId) => {
+      if (!hasPermission('can_convert_quotes')) { showToast('You do not have permission to convert quotes', 'error'); return; }
       if (!confirm('Create an invoice from this quote?')) return;
 
       try {
@@ -581,6 +583,7 @@
     };
     
     window.approveQuote = async (id) => {
+      if (!hasPermission('can_accept_quotes')) { showToast('You do not have permission to accept quotes', 'error'); return; }
       if (!confirm('Manually approve this quote? This will mark it as accepted.')) return;
       
       try {
@@ -626,6 +629,7 @@
     };
     
     window.deleteQuote = async (id) => {
+      if (!hasPermission('can_delete')) { showToast('You do not have permission to delete quotes', 'error'); return; }
       const quote = quotes.find(q => q.id === id);
       if (!confirm(`Permanently delete quote ${quote?.quote_number || ''}? This cannot be undone.`)) return;
       

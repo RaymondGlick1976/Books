@@ -738,6 +738,14 @@ function canEditQuotes() {
   return hasPermission('can_edit_quotes');
 }
 
+function canAcceptQuotes() {
+  return hasPermission('can_accept_quotes');
+}
+
+function canConvertQuotes() {
+  return hasPermission('can_convert_quotes');
+}
+
 function canEditCustomers() {
   return hasPermission('can_edit_customers');
 }
@@ -1039,6 +1047,8 @@ window.applyBrandColor = applyBrandColor;
 window.getCurrentUser = getCurrentUser;
 window.isLoggedIn = isLoggedIn;
 window.hasPermission = hasPermission;
+window.canAcceptQuotes = canAcceptQuotes;
+window.canConvertQuotes = canConvertQuotes;
 window.canAccessSettings = canAccessSettings;
 window.canViewFinancials = canViewFinancials;
 window.canDelete = canDelete;

@@ -2639,11 +2639,13 @@
           if (pin) data.pin = pin;
           
           if (isEdit) {
-            await supabase.from('app_users').update(data).eq('id', user.id);
+            const { error } = await supabase.from('app_users').update(data).eq('id', user.id);
+            if (error) throw error;
             showToast('User updated', 'success');
           } else {
             data.pin = pin;
-            await supabase.from('app_users').insert(data);
+            const { error } = await supabase.from('app_users').insert(data);
+            if (error) throw error;
             showToast('User added', 'success');
           }
           
@@ -2716,6 +2718,8 @@
         { key: 'can_edit_customers', label: 'Edit Customers', desc: 'Can add and edit customer info', section: 'Customers' },
         { key: 'can_view_quotes', label: 'View Quotes', desc: 'Can see quotes and catalog pages', section: 'Quotes' },
         { key: 'can_edit_quotes', label: 'Edit Quotes', desc: 'Can create and edit quotes', section: 'Quotes' },
+        { key: 'can_accept_quotes', label: 'Accept Quotes', desc: 'Can mark a quote as accepted / approve it on the customer\'s behalf', section: 'Quotes' },
+        { key: 'can_convert_quotes', label: 'Convert Quotes', desc: 'Can convert an accepted quote to an invoice (and unconvert)', section: 'Quotes' },
         { key: 'can_view_invoices', label: 'View Invoices', desc: 'Can see the invoices page', section: 'Invoices' },
         { key: 'can_send_invoices', label: 'Send Invoices', desc: 'Can create and send invoices', section: 'Invoices' }
       ];
@@ -2795,6 +2799,8 @@
           can_edit_customers: $('#perm-can_edit_customers').checked,
           can_view_quotes: $('#perm-can_view_quotes').checked,
           can_edit_quotes: $('#perm-can_edit_quotes').checked,
+          can_accept_quotes: $('#perm-can_accept_quotes').checked,
+          can_convert_quotes: $('#perm-can_convert_quotes').checked,
           can_view_invoices: $('#perm-can_view_invoices').checked,
           can_send_invoices: $('#perm-can_send_invoices').checked
         };
@@ -2803,12 +2809,14 @@
           const supabase = await app.waitForSupabase();
           
           if (isEdit) {
-            await supabase.from('app_roles').update(data).eq('id', role.id);
+            const { error } = await supabase.from('app_roles').update(data).eq('id', role.id);
+            if (error) throw error;
             showToast('Role updated', 'success');
           } else {
             const maxOrder = Math.max(...appRoles.map(r => r.sort_order || 0), 0);
             data.sort_order = maxOrder + 1;
-            await supabase.from('app_roles').insert(data);
+            const { error } = await supabase.from('app_roles').insert(data);
+            if (error) throw error;
             showToast('Role added', 'success');
           }
           

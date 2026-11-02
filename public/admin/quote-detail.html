@@ -147,7 +147,7 @@
             <button id="unlock-quote-btn" class="btn btn-secondary" style="display:none;" onclick="unlockQuote()">🔓 Unlock to Edit</button>
             <button id="send-quote-btn" class="btn btn-secondary" onclick="showSendEmailModal()">📧 Send</button>
             <button id="text-link-btn" class="btn btn-secondary" onclick="textQuoteLink()" title="Text or copy the customer link">💬 Text Link</button>
-            <button id="convert-invoice-btn" class="btn btn-secondary" style="display:none;" onclick="convertToInvoice()">→ Invoice</button>
+            <button id="convert-invoice-btn" class="btn btn-secondary" style="display:none;" data-permission="can_convert_quotes" onclick="convertToInvoice()">→ Invoice</button>
             <a href="#" id="view-invoice-btn" class="btn btn-secondary" style="display:none;">View Invoice</a>
             <button id="qb-estimate-btn" class="btn btn-secondary" style="display:none;" onclick="syncEstimateToQB()">📤 QB Estimate</button>
             <button id="qb-invoice-btn" class="btn btn-secondary" style="display:none;" onclick="syncInvoiceToQB()">📤 QB Invoice</button>
@@ -168,9 +168,9 @@
               <div class="dropdown-menu" style="right: 0; left: auto;">
                 <a href="#" class="dropdown-item" onclick="event.preventDefault(); duplicateQuote()">📋 Duplicate Quote</a>
                 <a href="#" class="dropdown-item" id="archive-btn" onclick="event.preventDefault(); archiveQuote()">📥 Archive Quote</a>
-                <a href="#" class="dropdown-item" id="unconvert-btn" style="display:none; color: var(--color-danger);" onclick="event.preventDefault(); unconvertQuote()">↩️ Unconvert to Quote</a>
+                <a href="#" class="dropdown-item" id="unconvert-btn" style="display:none; color: var(--color-danger);" data-permission="can_convert_quotes" onclick="event.preventDefault(); unconvertQuote()">↩️ Unconvert to Quote</a>
                 <div style="border-top: 1px solid var(--color-border-light); margin: 4px 0;"></div>
-                <a href="#" class="dropdown-item" style="color: var(--color-danger);" onclick="event.preventDefault(); deleteQuote()">🗑️ Delete Quote</a>
+                <a href="#" class="dropdown-item" id="delete-quote-btn" style="color: var(--color-danger);" data-permission="can_delete" onclick="event.preventDefault(); deleteQuote()">🗑️ Delete Quote</a>
               </div>
             </div>
           </div>
@@ -523,12 +523,12 @@
       $('#edit-quote-btn').href = `/admin/quote-builder.html?id=${quote.id}`;
 
       // Show Convert to Invoice button for accepted quotes (not yet converted)
-      if (quote.status === 'accepted') {
+      if (quote.status === 'accepted' && hasPermission('can_convert_quotes')) {
         $('#convert-invoice-btn').style.display = '';
       }
 
       // Show unconvert button for converted quotes
-      if (quote.status === 'converted') {
+      if (quote.status === 'converted' && hasPermission('can_convert_quotes')) {
         $('#unconvert-btn').style.display = '';
       }
 
@@ -728,6 +728,7 @@
     }
 
     async function convertToInvoice() {
+      if (!hasPermission('can_convert_quotes')) { showToast('You do not have permission to convert quotes', 'error'); return; }
       if (!confirm('Create an invoice from this quote?')) return;
 
       try {
@@ -924,6 +925,7 @@
     }
 
     async function unconvertQuote() {
+      if (!hasPermission('can_convert_quotes')) { showToast('You do not have permission to convert quotes', 'error'); return; }
       if (!confirm('This will delete the invoice created from this quote and set the quote back to accepted. Continue?')) return;
 
       try {
@@ -1993,6 +1995,7 @@
     }
     
     async function deleteQuote() {
+      if (!hasPermission('can_delete')) { showToast('You do not have permission to delete quotes', 'error'); return; }
       closeDropdowns();
       if (!confirm(`Permanently delete quote ${quote.quote_number}? This cannot be undone.`)) return;
       
