@@ -4,3 +4,4 @@ node_modules/
 .netlify/
 .claude/worktrees/
 g2-construction-books/
+Claude outputs/
