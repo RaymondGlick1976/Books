@@ -11,7 +11,7 @@
   <style>
     .attributes-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(520px, 1fr));
       gap: var(--space-lg);
     }
     .attribute-card {
@@ -41,10 +41,11 @@
       border-bottom: 1px solid var(--color-border-light);
     }
     .option-item:last-child { border-bottom: none; }
-    .option-info { flex: 1; }
+    .option-info { flex: 1; min-width: 0; padding-right: var(--space-sm); }
     .option-name { font-weight: 500; }
     .option-name.is-default::after { content: ' ✓'; color: var(--color-success); font-size: 0.875rem; }
-    .option-actions { display: flex; gap: var(--space-xs); }
+    .option-actions { display: flex; gap: var(--space-xs); flex-shrink: 0; }
+    .attribute-actions { flex-shrink: 0; }
     .option-actions .btn:disabled { opacity: 0.3; cursor: default; }
     .add-option-btn {
       width: 100%;
