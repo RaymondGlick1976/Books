@@ -2616,7 +2616,8 @@
       
       // Find the catalog item if it exists
       const catalogItem = item.catalogItemId ? catalogItems.find(c => c.id === item.catalogItemId) : null;
-      let currentBasePrice = item.basePrice || catalogItem?.default_price || 0;
+      // Use ?? not || so a legitimately $0 base price isn't replaced by the catalog default
+      let currentBasePrice = item.basePrice ?? catalogItem?.default_price ?? 0;
       
       // Reconstruct attribute instances from saved selections
       let attributeInstances = [];
@@ -5659,7 +5660,7 @@
             <label class="form-label">${hasAttributes ? 'Base Price' : 'Price'}</label>
             <div class="input-group">
               <span class="input-group-prepend">$</span>
-              <input type="number" id="item-price" class="form-input" value="${item?.basePrice || item?.price || 0}" min="0" step="0.01">
+              <input type="number" id="item-price" class="form-input" value="${basePrice}" min="0" step="0.01">
             </div>
           </div>
         </div>
