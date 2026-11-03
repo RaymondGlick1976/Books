@@ -43,6 +43,7 @@
     .option-item:last-child { border-bottom: none; }
     .option-info { flex: 1; min-width: 0; padding-right: var(--space-sm); }
     .option-name { font-weight: 500; }
+    .option-description { display: block; font-size: 0.8125rem; color: var(--color-text-muted); margin-top: 2px; white-space: pre-line; }
     .option-name.is-default::after { content: ' ✓'; color: var(--color-success); font-size: 0.875rem; }
     .option-actions { display: flex; gap: var(--space-xs); flex-shrink: 0; }
     .attribute-actions { flex-shrink: 0; }
@@ -399,6 +400,7 @@
               <div class="option-item">
                 <div class="option-info">
                   <span class="option-name ${opt.is_default ? 'is-default' : ''}">${escapeHtml(opt.name)}</span>
+                  ${opt.description ? `<span class="option-description">${escapeHtml(opt.description)}</span>` : ''}
                   <span class="pricing-type-badge">${formatPrice(opt)}</span>
                 </div>
                 <div class="option-actions">
@@ -468,6 +470,7 @@
       if (!opt) return;
       clipboardOption = {
         name: opt.name,
+        description: opt.description ?? null,
         unit_price: opt.unit_price ?? 0,
         pricing_type: opt.pricing_type || 'each',
         cost: opt.cost ?? null,
@@ -490,6 +493,7 @@
         const { error } = await supabase.from('pricing_attribute_options').insert({
           attribute_id: attributeId,
           name: item.name,
+          description: item.description,
           unit_price: item.unit_price,
           pricing_type: item.pricing_type,
           cost: item.cost,
@@ -731,6 +735,7 @@
           const newOptions = attr.options.map((opt, index) => ({
             attribute_id: newAttr.id,
             name: opt.name,
+            description: opt.description ?? null,
             unit_price: opt.unit_price || 0,
             pricing_type: opt.pricing_type || 'each',
             is_default: opt.is_default || false,
@@ -774,6 +779,10 @@
           <div class="form-group">
             <label class="form-label">Option Name *</label>
             <input type="text" class="form-input" id="opt-name" value="${opt?.name || ''}" placeholder="e.g., Cherry, Maple, Oak" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-input" id="opt-description" rows="3" placeholder="Optional — what's included, notes for quotes, etc.">${escapeHtml(opt?.description || '')}</textarea>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -846,6 +855,7 @@
     
     async function saveOption(attributeId, optionId, modal) {
       const name = $('#opt-name').value.trim();
+      const description = $('#opt-description').value.trim() || null;
       const unitPrice = parseFloat($('#opt-price').value) || 0;
       const pricingType = $('#opt-pricing-type').value;
       const isDefault = $('#opt-default').checked;
@@ -866,7 +876,7 @@
         const markupVal = $('#opt-markup').value;
         const cost = costVal !== '' ? parseFloat(costVal) : null;
         const markupPct = markupVal !== '' ? parseFloat(markupVal) : null;
-        const data = { attribute_id: attributeId, name, unit_price: unitPrice, pricing_type: pricingType, is_default: isDefault, cost, markup_percentage: markupPct };
+        const data = { attribute_id: attributeId, name, description, unit_price: unitPrice, pricing_type: pricingType, is_default: isDefault, cost, markup_percentage: markupPct };
         
         let error;
         if (optionId) {
