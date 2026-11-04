@@ -941,6 +941,8 @@ a:hover {
   max-width: 500px;
   max-height: 90vh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   transform: scale(0.95);
   transition: transform var(--transition-base);
 }
@@ -955,6 +957,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .modal-title {
@@ -980,7 +983,8 @@ a:hover {
 .modal-body {
   padding: var(--space-lg);
   overflow-y: auto;
-  max-height: calc(90vh - 140px);
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .modal.modal-fullscreen .modal-body {
@@ -1000,6 +1004,7 @@ a:hover {
   display: flex;
   gap: var(--space-sm);
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 /* =============================================
