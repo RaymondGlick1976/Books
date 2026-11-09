@@ -65,7 +65,7 @@
     
     .line-item-row {
       display: grid;
-      grid-template-columns: 30px 60px 1fr 100px 100px 80px auto auto;
+      grid-template-columns: 30px 60px 1fr 100px 100px 80px auto auto auto;
       gap: var(--space-md);
       padding: var(--space-md);
       background: var(--color-bg-card);
@@ -3353,6 +3353,16 @@
         }));
         row.appendChild(editCell);
         
+        // Send to bundle (copy or move this item, with its attributes, into a bundle)
+        const bundleCell = createElement('div');
+        bundleCell.appendChild(createElement('button', {
+          className: 'btn btn-ghost btn-sm',
+          title: 'Copy or move to a bundle',
+          innerHTML: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>',
+          onClick: () => showSendToBundleModal(index)
+        }));
+        row.appendChild(bundleCell);
+        
         // Delete
         const deleteCell = createElement('div');
         deleteCell.appendChild(createElement('button', {
@@ -3371,6 +3381,102 @@
         row.appendChild(deleteCell);
         
         container.appendChild(row);
+      });
+    }
+    
+    // --- Send line item to bundle ---
+    // Converts a quote line item into a package item shape, preserving attributes.
+    function lineItemToPackageItem(item) {
+      const selections = item.attributeSelections
+        ? JSON.parse(JSON.stringify(item.attributeSelections))
+        : [];
+      const attrTotal = selections.reduce((sum, sel) => sum + (parseFloat(sel.line_total) || 0), 0);
+      const price = Math.round((parseFloat(item.unitPrice) || 0) * 100) / 100;
+      let basePrice = item.basePrice;
+      if (basePrice === null || basePrice === undefined) {
+        basePrice = selections.length > 0 ? price - attrTotal : price;
+      }
+      return {
+        name: item.description || 'Item',
+        description: item.details || '',
+        quantity: parseFloat(item.quantity) || 1,
+        price,
+        basePrice: Math.round(basePrice * 100) / 100,
+        attributeSelections: selections,
+        is_included: true,
+        show_price: true
+      };
+    }
+    
+    function showSendToBundleModal(index) {
+      const item = lineItems[index];
+      if (!item) return;
+      
+      if (!packages || packages.length === 0) {
+        showToast('Create a bundle first, then you can copy or move items into it', 'info');
+        return;
+      }
+      
+      const content = createElement('div');
+      content.innerHTML = `
+        <p class="text-sm" style="margin-bottom: var(--space-md); color: var(--color-text-muted);">
+          <strong>${escapeHtml(item.description || 'Item')}</strong>
+          ${item.attributeSelections && item.attributeSelections.length > 0
+            ? `<br>${item.attributeSelections.length} attribute${item.attributeSelections.length === 1 ? '' : 's'} will be carried over.`
+            : ''}
+        </p>
+        <div class="form-group">
+          <label class="form-label">Bundle</label>
+          <select id="send-bundle-select" class="form-select">
+            ${packages.map((pkg, i) => `<option value="${i}">${escapeHtml(pkg.name || 'Bundle ' + (i + 1))}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Action</label>
+          <label class="form-check">
+            <input type="radio" name="send-bundle-mode" class="form-check-input" value="copy" checked>
+            <span class="form-check-label">Copy — keep it in Additional Line Items too</span>
+          </label>
+          <label class="form-check">
+            <input type="radio" name="send-bundle-mode" class="form-check-input" value="move">
+            <span class="form-check-label">Move — remove it from Additional Line Items</span>
+          </label>
+        </div>
+      `;
+      
+      const footer = createElement('div', { className: 'btn-group' });
+      const cancelBtn = createElement('button', { type: 'button', className: 'btn btn-secondary', textContent: 'Cancel' });
+      const goBtn = createElement('button', { type: 'button', className: 'btn btn-primary', textContent: 'Send to Bundle' });
+      footer.appendChild(cancelBtn);
+      footer.appendChild(goBtn);
+      
+      const modal = createModal({
+        title: 'Send Item to Bundle',
+        content,
+        footer,
+        size: 'sm'
+      });
+      
+      cancelBtn.addEventListener('click', () => closeModal(modal));
+      goBtn.addEventListener('click', () => {
+        const pkgIndex = parseInt(content.querySelector('#send-bundle-select').value);
+        const mode = content.querySelector('input[name="send-bundle-mode"]:checked')?.value || 'copy';
+        const pkg = packages[pkgIndex];
+        if (!pkg) return;
+        
+        pkg.items = pkg.items || [];
+        pkg.items.push(lineItemToPackageItem(item));
+        
+        if (mode === 'move') {
+          lineItems.splice(index, 1);
+          renderLineItems();
+        }
+        
+        updatePackagesUI();
+        updateSummary();
+        markDirty();
+        closeModal(modal);
+        showToast(`${mode === 'move' ? 'Moved' : 'Copied'} to "${pkg.name}"`, 'success');
       });
     }
     
