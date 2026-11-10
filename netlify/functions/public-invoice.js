@@ -3,6 +3,7 @@
 // =============================================
 
 const { getSupabase, success, error, handleCors } = require('./utils');
+const { resolveInvoicePaymentSchedule } = require('./invoice-builder');
 
 exports.handler = async (event) => {
   const corsResponse = handleCors(event);
@@ -38,6 +39,9 @@ exports.handler = async (event) => {
     }
 
     console.log('Found invoice:', invoice.invoice_number);
+
+    // Show the agreed payment terms (falls back to the linked quote's schedule)
+    invoice.payment_schedule = await resolveInvoicePaymentSchedule(supabase, invoice);
 
     // Get line items
     const { data: lineItems } = await supabase

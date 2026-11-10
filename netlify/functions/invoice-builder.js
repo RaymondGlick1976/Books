@@ -131,6 +131,23 @@ function invoiceHeaderFromQuote(quote) {
   return header;
 }
 
+// Payment schedule to show on an invoice. Uses the schedule copied onto the invoice;
+// when that is missing, falls back to the agreed schedule on the linked quote.
+async function resolveInvoicePaymentSchedule(supabase, invoice) {
+  if (Array.isArray(invoice.payment_schedule) && invoice.payment_schedule.length > 0) {
+    return invoice.payment_schedule;
+  }
+  if (!invoice.quote_id) return null;
+  const { data: quote } = await supabase
+    .from('quotes')
+    .select('payment_schedule')
+    .eq('id', invoice.quote_id)
+    .single();
+  return Array.isArray(quote?.payment_schedule) && quote.payment_schedule.length > 0
+    ? quote.payment_schedule
+    : null;
+}
+
 // Insert line items for an invoice (no-op when empty)
 async function insertInvoiceLines(supabase, invoiceId, lineItems) {
   if (!lineItems || lineItems.length === 0) return;
@@ -147,5 +164,6 @@ module.exports = {
   pickSelectedPackage,
   buildInvoiceLines,
   invoiceHeaderFromQuote,
+  resolveInvoicePaymentSchedule,
   insertInvoiceLines,
 };

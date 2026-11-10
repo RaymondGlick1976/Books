@@ -875,6 +875,7 @@
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid #ddd;font-weight:700;font-size:1.1rem;color:${parseFloat(invoice.amount_due) > 0 ? '#ef4444' : '#10b981'};"><span>Balance Due</span><span>${formatCurrency(invoice.amount_due)}</span></div>
     </div>
   </div>
+  ${paymentScheduleBlock(invoice)}
   ${paymentsHtml}
 </body></html>`;
 

@@ -267,6 +267,14 @@
         ${rows}${warn}</div>`;
     }
 
+    // Invoices without a copied schedule show the agreed schedule from their linked quote
+    async function withQuoteSchedule(supabase, invoice) {
+      if (!invoice || (Array.isArray(invoice.payment_schedule) && invoice.payment_schedule.length > 0) || !invoice.quote_id) return invoice;
+      const { data: quote } = await supabase.from('quotes').select('payment_schedule').eq('id', invoice.quote_id).single();
+      if (Array.isArray(quote?.payment_schedule) && quote.payment_schedule.length > 0) invoice.payment_schedule = quote.payment_schedule;
+      return invoice;
+    }
+
     // Add accepted change orders to an existing invoice (one invoice line per change order item)
     async function addChangeOrdersToInvoice(invoiceId, cos) {
       const supabase = await app.waitForSupabase();
@@ -307,7 +315,7 @@
         .select('*, customers(name, email, phone, address, city, state, zip, company)')
         .eq('id', id)
         .single();
-      const invoice = freshInvoice || invoices.find(i => i.id === id);
+      const invoice = await withQuoteSchedule(supabase, freshInvoice || invoices.find(i => i.id === id));
       if (!invoice) return;
 
       // Update cached array so other actions reflect the fresh data
@@ -1187,12 +1195,13 @@
     window.printInvoiceById = async (id) => {
       try {
         const supabase = await app.waitForSupabase();
-        const { data: invoice } = await supabase
+        const { data: invoiceRow } = await supabase
           .from('invoices')
           .select('*, customers(name, email, phone, address, city, state, zip, company)')
           .eq('id', id)
           .single();
-        if (!invoice) return;
+        if (!invoiceRow) return;
+        const invoice = await withQuoteSchedule(supabase, invoiceRow);
         const { data: lineItems } = await supabase.from('invoice_line_items').select('*').eq('invoice_id', id).order('sort_order');
         const { data: payments } = await supabase.from('payments').select('*').eq('invoice_id', id).eq('status', 'succeeded').order('payment_date');
         const { data: companySetting } = await supabase.from('settings').select('value').eq('key', 'company').single();
