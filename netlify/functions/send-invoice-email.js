@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const { resolveInvoicePaymentSchedule, paymentScheduleEmailHtml } = require('./invoice-builder');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -28,6 +29,9 @@ exports.handler = async (event) => {
     if (invoiceError || !invoice) {
       return { statusCode: 404, body: JSON.stringify({ error: 'Invoice not found' }) };
     }
+
+    // Show the agreed payment terms (falls back to the linked quote's schedule)
+    invoice.payment_schedule = await resolveInvoicePaymentSchedule(supabase, invoice);
 
     const customer = invoice.customers;
     if (!customer || !customer.email) {
@@ -152,6 +156,8 @@ exports.handler = async (event) => {
             <p style="color: #475569; margin: 5px 0;"><strong>Amount Due:</strong> <span style="color: #ef4444; font-size: 18px; font-weight: bold;">${formatCurrency(invoice.amount_due)}</span></p>
             ${invoice.due_date ? `<p style="color: #94a3b8; margin: 5px 0; font-size: 14px;">Due: ${new Date(invoice.due_date).toLocaleDateString()}</p>` : ''}
           </div>
+
+          ${paymentScheduleEmailHtml(invoice, formatCurrency)}
 
           <div style="text-align: center; margin: 30px 0;">
             <a href="${portalLink}" style="background: #6366f1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">View Invoice & Pay</a>

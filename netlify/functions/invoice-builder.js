@@ -148,6 +148,45 @@ async function resolveInvoicePaymentSchedule(supabase, invoice) {
     : null;
 }
 
+// Each milestone of the payment schedule with its amount and status (paid / partial / due).
+// Fixed payments (e.g. a deposit) come off the total first; percentages apply to the rest.
+// Money received (invoice.amount_paid) is applied to milestones in schedule order.
+function buildPaymentScheduleRows(invoice) {
+  const sched = Array.isArray(invoice.payment_schedule) ? invoice.payment_schedule : [];
+  if (sched.length === 0) return [];
+  const total = parseFloat(invoice.total) || 0;
+  const fixedTotal = sched.filter(p => p.amount_type === 'fixed').reduce((s, p) => s + (parseFloat(p.amount_value) || 0), 0);
+  const base = Math.max(0, total - fixedTotal);
+  let unapplied = Math.max(0, parseFloat(invoice.amount_paid) || 0);
+  return sched.map(p => {
+    const v = parseFloat(p.amount_value) || 0;
+    const amount = p.amount_type === 'percentage' ? base * (v / 100) : v;
+    const applied = Math.min(amount, unapplied);
+    unapplied -= applied;
+    const status = applied >= amount - 0.005 ? 'paid' : applied > 0.005 ? 'partial' : 'due';
+    return { name: p.name || '', due_description: p.due_description || '', amount, status };
+  });
+}
+
+// Payment schedule block for the invoice email (empty string when there is no schedule)
+function paymentScheduleEmailHtml(invoice, formatCurrency) {
+  const rows = buildPaymentScheduleRows(invoice);
+  if (rows.length === 0) return '';
+  const labels = { paid: ['Paid', '#10b981'], partial: ['Partially paid', '#f59e0b'], due: ['Due', '#ef4444'] };
+  const items = rows.map(r => {
+    const [label, color] = labels[r.status];
+    return `<tr>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 14px;"><strong>${r.name}</strong>${r.due_description ? `<br><span style="color: #64748b; font-size: 12px;">${r.due_description}</span>` : ''}</td>
+              <td style="padding: 8px 8px; border-bottom: 1px solid #e2e8f0; text-align: right; white-space: nowrap; color: #334155; font-size: 14px;">${formatCurrency(r.amount)}</td>
+              <td style="padding: 8px 0; border-bottom: 1px solid #e2e8f0; text-align: right; white-space: nowrap;"><span style="color: ${color}; font-weight: bold; font-size: 13px;">${label}</span></td>
+            </tr>`;
+  }).join('');
+  return `<div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <h3 style="color: #6366f1; margin-top: 0;">Payment Schedule</h3>
+            <table style="width: 100%; border-collapse: collapse;">${items}</table>
+          </div>`;
+}
+
 // Insert line items for an invoice (no-op when empty)
 async function insertInvoiceLines(supabase, invoiceId, lineItems) {
   if (!lineItems || lineItems.length === 0) return;
@@ -165,5 +204,7 @@ module.exports = {
   buildInvoiceLines,
   invoiceHeaderFromQuote,
   resolveInvoicePaymentSchedule,
+  buildPaymentScheduleRows,
+  paymentScheduleEmailHtml,
   insertInvoiceLines,
 };

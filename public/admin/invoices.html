@@ -267,6 +267,35 @@
         ${rows}${warn}</div>`;
     }
 
+    // Payment schedule with each milestone's status (paid / partially paid / due).
+    // Money received (amount_paid) is applied to milestones in schedule order.
+    function paymentScheduleStatusHtml(invoice) {
+      const sched = Array.isArray(invoice.payment_schedule) ? invoice.payment_schedule : [];
+      if (sched.length === 0) return '';
+      const total = parseFloat(invoice.total) || 0;
+      const fixedTotal = sched.filter(p => p.amount_type === 'fixed').reduce((s, p) => s + (parseFloat(p.amount_value) || 0), 0);
+      const base = Math.max(0, total - fixedTotal);
+      let unapplied = Math.max(0, parseFloat(invoice.amount_paid) || 0);
+      const labels = { paid: ['Paid', '#10b981'], partial: ['Partially paid', '#f59e0b'], due: ['Due', '#ef4444'] };
+      const rows = sched.map(p => {
+        const v = parseFloat(p.amount_value) || 0;
+        const amt = p.amount_type === 'percentage' ? base * (v / 100) : v;
+        const applied = Math.min(amt, unapplied);
+        unapplied -= applied;
+        const status = applied >= amt - 0.005 ? 'paid' : applied > 0.005 ? 'partial' : 'due';
+        const [label, color] = labels[status];
+        return `<tr>
+          <td style="padding: 6px 0; border-bottom: 1px solid #e2e8f0; color: #334155; font-size: 12px;"><strong>${p.name || ''}</strong>${p.due_description ? `<br><span style="color: #64748b; font-size: 11px;">${p.due_description}</span>` : ''}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: right; white-space: nowrap; color: #334155; font-size: 12px;">${formatCurrency(amt)}</td>
+          <td style="padding: 6px 0; border-bottom: 1px solid #e2e8f0; text-align: right; white-space: nowrap;"><span style="color: ${color}; font-weight: bold; font-size: 11px;">${label}</span></td>
+        </tr>`;
+      }).join('');
+      return `<div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin: 10px 0;">
+                  <h4 style="color: var(--color-primary); margin: 0 0 5px; font-size: 14px;">Payment Schedule</h4>
+                  <table style="width: 100%; border-collapse: collapse;">${rows}</table>
+                </div>`;
+    }
+
     // Invoices without a copied schedule show the agreed schedule from their linked quote
     async function withQuoteSchedule(supabase, invoice) {
       if (!invoice || (Array.isArray(invoice.payment_schedule) && invoice.payment_schedule.length > 0) || !invoice.quote_id) return invoice;
@@ -615,6 +644,7 @@
     window.sendInvoice = async (id) => {
       const invoice = invoices.find(i => i.id === id);
       if (!invoice) return;
+      await withQuoteSchedule(await app.waitForSupabase(), invoice);
       const customer = invoice.customers;
       if (!customer || !customer.email) {
         showToast('Customer email not found', 'error');
@@ -716,6 +746,8 @@
                   <p style="color: #475569; margin: 3px 0; font-size: 12px;"><strong>Amount Due:</strong> <span style="color: #ef4444; font-weight: bold;">${formatCurrency(invoice.amount_due)}</span></p>
                   ${invoice.due_date ? `<p style="color: #94a3b8; margin: 3px 0; font-size: 11px;">Due: ${new Date(invoice.due_date).toLocaleDateString()}</p>` : ''}
                 </div>
+
+                ${paymentScheduleStatusHtml(invoice)}
 
                 <div style="text-align: center; margin: 15px 0;">
                   <span style="background: var(--color-primary); color: white; padding: 8px 20px; border-radius: 6px; font-size: 12px; font-weight: 600;">View Invoice & Pay</span>
