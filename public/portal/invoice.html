@@ -314,7 +314,7 @@
                 <span id="amount-paid"></span>
               </div>
               <div class="totals-row balance" id="balance-row">
-                <span>Balance Due</span>
+                <span>Balance</span>
                 <span id="amount-due"></span>
               </div>
             </div>
@@ -353,7 +353,7 @@
       </div>
       <div class="modal-body">
         <div class="mb-lg">
-          <div class="text-muted text-sm">Balance Due</div>
+          <div class="text-muted text-sm">Balance</div>
           <div class="text-xl font-bold" id="modal-balance">$0.00</div>
         </div>
 
@@ -365,7 +365,6 @@
           </div>
           <div class="flex gap-sm mt-sm">
             <button class="btn btn-sm btn-secondary" id="pay-full">Pay Full Balance</button>
-            <button class="btn btn-sm btn-secondary" id="pay-half">Pay 50%</button>
           </div>
         </div>
 
@@ -710,7 +709,9 @@
     function openPaymentModal() {
       const balance = parseFloat(invoice.amount_due);
       document.getElementById('modal-balance').textContent = formatCurrency(balance);
-      document.getElementById('payment-amount').value = balance.toFixed(2);
+      // Default to the next payment on the schedule; the full balance when there is none
+      const nextDue = invoice.next_payment_due;
+      document.getElementById('payment-amount').value = (nextDue ? nextDue.amount : balance).toFixed(2);
       document.getElementById('payment-amount').max = balance;
 
       paymentModal.classList.add('active');
@@ -730,10 +731,6 @@
 
     document.getElementById('pay-full').addEventListener('click', () => {
       document.getElementById('payment-amount').value = parseFloat(invoice.amount_due).toFixed(2);
-    });
-
-    document.getElementById('pay-half').addEventListener('click', () => {
-      document.getElementById('payment-amount').value = (parseFloat(invoice.amount_due) / 2).toFixed(2);
     });
 
     document.getElementById('pay-now-btn').addEventListener('click', openPaymentModal);
@@ -890,7 +887,7 @@
       ${invoice.tax_amount > 0 ? `<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>Tax</span><span>${formatCurrency(invoice.tax_amount)}</span></div>` : ''}
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #333;font-weight:700;font-size:1.1rem;"><span>Total</span><span>${formatCurrency(invoice.total)}</span></div>
       <div style="display:flex;justify-content:space-between;padding:4px 0;color:#10b981;"><span>Paid</span><span>${formatCurrency(invoice.amount_paid)}</span></div>
-      <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid #ddd;font-weight:700;font-size:1.1rem;color:${parseFloat(invoice.amount_due) > 0 ? '#ef4444' : '#10b981'};"><span>Balance Due</span><span>${formatCurrency(invoice.amount_due)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid #ddd;font-weight:700;font-size:1.1rem;color:${parseFloat(invoice.amount_due) > 0 ? '#ef4444' : '#10b981'};"><span>Balance</span><span>${formatCurrency(invoice.amount_due)}</span></div>
     </div>
   </div>
   ${paymentScheduleBlock(invoice)}
