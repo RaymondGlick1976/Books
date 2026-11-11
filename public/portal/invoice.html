@@ -457,9 +457,27 @@
 
     const schedMoney = n => '$' + (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     // Payment schedule block for an invoice (copied from the quote). Empty string when none.
+    // Schedule with each milestone marked Paid / Partially paid / Due, and the next payment called out
+    function paymentScheduleStatusBlock(invoice) {
+      const labels = { paid: ['Paid', '#15803d', '#dcfce7'], partial: ['Partially paid', '#b45309', '#fef3c7'], due: ['Due', '#b91c1c', '#fee2e2'] };
+      const next = invoice.next_payment_due;
+      const items = invoice.schedule_rows.map(r => {
+        const [label, color, bg] = labels[r.status] || labels.due;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #eee;">
+          <div><div style="font-weight:500;">${r.name}</div>${r.due_description ? `<div style="font-size:12px;color:#666;">${r.due_description}</div>` : ''}</div>
+          <div style="text-align:right;white-space:nowrap;"><div style="font-weight:500;">${schedMoney(r.amount)}</div><span style="display:inline-block;margin-top:2px;font-size:11px;font-weight:600;color:${color};background:${bg};border-radius:10px;padding:2px 8px;">${label}</span></div></div>`;
+      }).join('');
+      const nextLine = next
+        ? `<div style="margin-bottom:10px;padding:10px 12px;background:#fef3c7;border-radius:6px;font-size:14px;">Next payment due: <strong>${schedMoney(next.amount)}</strong> (${next.name})</div>` : '';
+      return `<div style="margin-top:20px;">
+        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#666;border-bottom:1px solid #ddd;padding-bottom:6px;margin-bottom:6px;">Payment Schedule</div>
+        ${nextLine}${items}</div>`;
+    }
+
     function paymentScheduleBlock(invoice) {
       const sched = Array.isArray(invoice.payment_schedule) ? invoice.payment_schedule : [];
       if (sched.length === 0) return '';
+      if (Array.isArray(invoice.schedule_rows) && invoice.schedule_rows.length > 0) return paymentScheduleStatusBlock(invoice);
       const total = parseFloat(invoice.total) || 0;
       // Fixed payments (e.g. the deposit) come off the total first; percentages apply to the remainder
       const fixedTotal = sched.filter(p => p.amount_type === 'fixed').reduce((s, p) => s + (parseFloat(p.amount_value) || 0), 0);
