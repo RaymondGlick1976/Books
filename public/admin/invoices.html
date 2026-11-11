@@ -296,6 +296,25 @@
                 </div>`;
     }
 
+    // Amount due now: the first milestone not yet fully paid, with what is still owed on it.
+    // Null when there is no schedule or nothing is left on it (the full balance is used then).
+    function nextPaymentDue(invoice) {
+      const sched = Array.isArray(invoice.payment_schedule) ? invoice.payment_schedule : [];
+      if (sched.length === 0) return null;
+      const total = parseFloat(invoice.total) || 0;
+      const fixedTotal = sched.filter(p => p.amount_type === 'fixed').reduce((s, p) => s + (parseFloat(p.amount_value) || 0), 0);
+      const base = Math.max(0, total - fixedTotal);
+      let unapplied = Math.max(0, parseFloat(invoice.amount_paid) || 0);
+      for (const p of sched) {
+        const v = parseFloat(p.amount_value) || 0;
+        const amt = p.amount_type === 'percentage' ? base * (v / 100) : v;
+        const applied = Math.min(amt, unapplied);
+        unapplied -= applied;
+        if (applied < amt - 0.005) return { name: p.name || '', amount: amt - applied };
+      }
+      return null;
+    }
+
     // Invoices without a copied schedule show the agreed schedule from their linked quote
     async function withQuoteSchedule(supabase, invoice) {
       if (!invoice || (Array.isArray(invoice.payment_schedule) && invoice.payment_schedule.length > 0) || !invoice.quote_id) return invoice;
@@ -675,7 +694,7 @@
             .replace(/\{\{invoice_number\}\}/g, invoice.invoice_number || '')
             .replace(/\{\{invoice_title\}\}/g, invoice.title || '')
             .replace(/\{\{total\}\}/g, formatCurrency(invoice.total))
-            .replace(/\{\{amount_due\}\}/g, formatCurrency(invoice.amount_due))
+            .replace(/\{\{amount_due\}\}/g, formatCurrency(nextPaymentDue(invoice)?.amount ?? invoice.amount_due))
             .replace(/\{\{due_date\}\}/g, invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '');
 
           templateSubject = replaceVars(template.subject);
@@ -743,7 +762,7 @@
                   <h4 style="color: var(--color-primary); margin: 0 0 5px; font-size: 14px;">${invoice.title}</h4>
                   <p style="color: #475569; margin: 3px 0; font-size: 12px;"><strong>Invoice #:</strong> ${invoice.invoice_number}</p>
                   <p style="color: #475569; margin: 3px 0; font-size: 12px;"><strong>Total:</strong> ${formatCurrency(invoice.total)}</p>
-                  <p style="color: #475569; margin: 3px 0; font-size: 12px;"><strong>Amount Due:</strong> <span style="color: #ef4444; font-weight: bold;">${formatCurrency(invoice.amount_due)}</span></p>
+                  <p style="color: #475569; margin: 3px 0; font-size: 12px;"><strong>Amount Due:</strong> <span style="color: #ef4444; font-weight: bold;">${formatCurrency(nextPaymentDue(invoice)?.amount ?? invoice.amount_due)}</span>${nextPaymentDue(invoice) ? ` <span style="color: #64748b; font-size: 11px;">(${nextPaymentDue(invoice).name})</span>` : ''}</p>
                   ${invoice.due_date ? `<p style="color: #94a3b8; margin: 3px 0; font-size: 11px;">Due: ${new Date(invoice.due_date).toLocaleDateString()}</p>` : ''}
                 </div>
 

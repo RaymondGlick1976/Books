@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
-const { resolveInvoicePaymentSchedule, paymentScheduleEmailHtml } = require('./invoice-builder');
+const { resolveInvoicePaymentSchedule, paymentScheduleEmailHtml, nextPaymentDue } = require('./invoice-builder');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -32,6 +32,10 @@ exports.handler = async (event) => {
 
     // Show the agreed payment terms (falls back to the linked quote's schedule)
     invoice.payment_schedule = await resolveInvoicePaymentSchedule(supabase, invoice);
+
+    // Amount due now is the next unpaid payment on the schedule (full balance when there is none)
+    const nextDue = nextPaymentDue(invoice);
+    const amountDueNow = nextDue ? nextDue.amount : invoice.amount_due;
 
     const customer = invoice.customers;
     if (!customer || !customer.email) {
@@ -114,7 +118,7 @@ exports.handler = async (event) => {
         .replace(/\{\{invoice_number\}\}/g, invoice.invoice_number || '')
         .replace(/\{\{invoice_title\}\}/g, invoice.title || '')
         .replace(/\{\{total\}\}/g, formatCurrency(invoice.total))
-        .replace(/\{\{amount_due\}\}/g, formatCurrency(invoice.amount_due))
+        .replace(/\{\{amount_due\}\}/g, formatCurrency(amountDueNow))
         .replace(/\{\{due_date\}\}/g, invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '');
     };
 
@@ -153,7 +157,7 @@ exports.handler = async (event) => {
             <h3 style="color: #6366f1; margin-top: 0;">${invoice.title}</h3>
             <p style="color: #475569; margin: 5px 0;"><strong>Invoice #:</strong> ${invoice.invoice_number}</p>
             <p style="color: #475569; margin: 5px 0;"><strong>Total:</strong> ${formatCurrency(invoice.total)}</p>
-            <p style="color: #475569; margin: 5px 0;"><strong>Amount Due:</strong> <span style="color: #ef4444; font-size: 18px; font-weight: bold;">${formatCurrency(invoice.amount_due)}</span></p>
+            <p style="color: #475569; margin: 5px 0;"><strong>Amount Due:</strong> <span style="color: #ef4444; font-size: 18px; font-weight: bold;">${formatCurrency(amountDueNow)}</span>${nextDue ? ` <span style="color: #64748b; font-size: 13px;">(${nextDue.name})</span>` : ''}</p>
             ${invoice.due_date ? `<p style="color: #94a3b8; margin: 5px 0; font-size: 14px;">Due: ${new Date(invoice.due_date).toLocaleDateString()}</p>` : ''}
           </div>
 

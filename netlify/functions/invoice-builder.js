@@ -164,8 +164,15 @@ function buildPaymentScheduleRows(invoice) {
     const applied = Math.min(amount, unapplied);
     unapplied -= applied;
     const status = applied >= amount - 0.005 ? 'paid' : applied > 0.005 ? 'partial' : 'due';
-    return { name: p.name || '', due_description: p.due_description || '', amount, status };
+    return { name: p.name || '', due_description: p.due_description || '', amount, remaining: amount - applied, status };
   });
+}
+
+// The payment due now: the first milestone not yet fully paid, with the amount still owed on it.
+// Falls back to null (use the full balance) when there is no schedule or nothing is left on it.
+function nextPaymentDue(invoice) {
+  const next = buildPaymentScheduleRows(invoice).find(r => r.status !== 'paid');
+  return next ? { name: next.name, amount: next.remaining } : null;
 }
 
 // Payment schedule block for the invoice email (empty string when there is no schedule)
@@ -205,6 +212,7 @@ module.exports = {
   invoiceHeaderFromQuote,
   resolveInvoicePaymentSchedule,
   buildPaymentScheduleRows,
+  nextPaymentDue,
   paymentScheduleEmailHtml,
   insertInvoiceLines,
 };
