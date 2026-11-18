@@ -456,12 +456,14 @@
 
       const result = await response.json();
 
-      // Redirect to scheduling page with signed token
-      const scheduleUrl = new URL('/schedule', apiBase);
-      if (result.token) {
-        scheduleUrl.searchParams.set('token', result.token);
+      // Scheduling is turned off: send the visitor to the marketing thank-you page
+      // so Google Analytics can count the booking. No customer data goes in the URL.
+      const thankYouUrl = 'https://www.homesteadcabinetdesign.com/thank-you/';
+      if (window.top !== window.self) {
+        window.top.location.href = thankYouUrl;
+      } else {
+        window.location.href = thankYouUrl;
       }
-      window.top.location.href = scheduleUrl.toString();
 
     } catch (err) {
       console.error('HCD Form Error:', err);
