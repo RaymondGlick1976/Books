@@ -308,7 +308,10 @@
             can_accept_quotes: data.app_roles?.can_accept_quotes || false,
             can_convert_quotes: data.app_roles?.can_convert_quotes || false,
             can_edit_customers: data.app_roles?.can_edit_customers || false,
-            can_edit_pipeline: data.app_roles?.can_edit_pipeline || false
+            can_edit_pipeline: data.app_roles?.can_edit_pipeline || false,
+            // Default ON: only an explicit false on the role turns these off
+            can_view_print_sheets: data.app_roles?.can_view_print_sheets !== false,
+            can_view_catalog: data.app_roles?.can_view_catalog !== false
           }
         }));
         

@@ -90,6 +90,13 @@
   <script>
     let todos = [];
     let jobs = [];
+    // Each user sees their own to-dos. Unassigned ones (added by automations, or from before
+    // to-dos were per-user) show only for users who can manage users.
+    function todoOwnerFilter() {
+      const me = getCurrentUser();
+      if (!me?.id) return 'user_id.is.null';
+      return hasPermission('can_manage_users') ? `user_id.eq.${me.id},user_id.is.null` : `user_id.eq.${me.id}`;
+    }
     const BUCKETS = ['today', 'week', 'later'];
 
     function esc(s) {
@@ -108,6 +115,7 @@
         const [t, j] = await Promise.all([
           supabase.from('todos')
             .select('*, jobs(name, customers(name))')
+            .or(todoOwnerFilter())
             .order('created_at', { ascending: true })
             .limit(500),
           supabase.from('jobs')
@@ -184,6 +192,7 @@
         job_id: document.getElementById('new-job').value || null,
         owner: document.getElementById('new-owner').value.trim() || null,
         due_date: document.getElementById('new-due').value || null,
+        user_id: getCurrentUser()?.id || null,
         source: 'manual',
       };
       try {

@@ -258,6 +258,16 @@
         </div>
         
         <!-- Pipeline Overview -->
+        <!-- (the Today to-do preview card sits above the pipeline card) -->
+        <div class="card mb-xl" id="today-card" data-permission="can_view_pipeline">
+          <div class="card-header flex items-center justify-between">
+            <h3 class="card-title">Today <span id="today-count" class="text-muted"></span></h3>
+            <a href="/admin/today.html" class="btn btn-secondary btn-sm">View All</a>
+          </div>
+          <div class="card-body" id="today-preview">
+            <div class="text-muted">Loading to-dos...</div>
+          </div>
+        </div>
         <div class="card mb-xl">
           <div class="card-header flex items-center justify-between">
             <h3 class="card-title">Deals Pipeline</h3>
@@ -637,6 +647,69 @@
     
     // Initialize
     loadDashboard();
+    loadTodayPreview();
+
+    // ---- Today to-do preview ----
+    // Each user sees their own to-dos. Unassigned ones (added by automations, or from before
+    // to-dos were per-user) show only for users who can manage users.
+    function todoOwnerFilter() {
+      const me = getCurrentUser();
+      if (!me?.id) return 'user_id.is.null';
+      return hasPermission('can_manage_users') ? `user_id.eq.${me.id},user_id.is.null` : `user_id.eq.${me.id}`;
+    }
+
+    async function loadTodayPreview() {
+      const container = $('#today-preview');
+      if (!container) return;
+      try {
+        const supabase = await app.waitForSupabase();
+        const { data, error } = await supabase.from('todos')
+          .select('id, title, due_date, jobs(name, customers(name))')
+          .or(todoOwnerFilter())
+          .eq('bucket', 'today')
+          .eq('is_done', false)
+          .order('created_at', { ascending: true })
+          .limit(50);
+        if (error) throw error;
+        const open = data || [];
+        $('#today-count').textContent = open.length ? `(${open.length})` : '';
+        if (!open.length) {
+          container.innerHTML = '<p class="text-muted mb-0">Nothing on your list for today.</p>';
+          return;
+        }
+        const MAX_SHOWN = 6;
+        container.innerHTML = open.slice(0, MAX_SHOWN).map(t => {
+          const jobName = t.jobs ? [t.jobs.name, t.jobs.customers?.name].filter(Boolean).join(' · ') : '';
+          const meta = [jobName, t.due_date ? 'Due ' + formatDate(t.due_date + 'T12:00:00', { year: undefined }) : ''].filter(Boolean).join(' · ');
+          return `
+            <div style="display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--color-border-light);">
+              <input type="checkbox" onchange="completeTodayTodo('${t.id}')" title="Mark done" style="width: 18px; height: 18px; margin-top: 3px; cursor: pointer;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="white-space: pre-wrap;">${escapeHtml(t.title)}</div>
+                ${meta ? `<div class="text-sm text-muted">${escapeHtml(meta)}</div>` : ''}
+              </div>
+            </div>`;
+        }).join('') + (open.length > MAX_SHOWN
+          ? `<a href="/admin/today.html" class="text-sm" style="display: inline-block; margin-top: 8px; color: var(--color-primary); text-decoration: none;">+ ${open.length - MAX_SHOWN} more</a>`
+          : '');
+      } catch (err) {
+        console.error('Today preview error:', err);
+        container.innerHTML = '<p class="text-muted mb-0">Could not load to-dos.</p>';
+      }
+    }
+
+    async function completeTodayTodo(id) {
+      try {
+        const supabase = await app.waitForSupabase();
+        const now = new Date().toISOString();
+        const { error } = await supabase.from('todos').update({ is_done: true, done_at: now, updated_at: now }).eq('id', id);
+        if (error) throw error;
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to update to-do', 'error');
+      }
+      loadTodayPreview();
+    }
   </script>
 </body>
 </html>

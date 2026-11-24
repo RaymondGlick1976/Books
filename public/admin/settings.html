@@ -2535,7 +2535,9 @@
         can_view_quotes: 'View Quotes',
         can_edit_quotes: 'Edit Quotes',
         can_view_invoices: 'View Invoices',
-        can_send_invoices: 'Send Invoices'
+        can_send_invoices: 'Send Invoices',
+        can_view_print_sheets: 'Print Sheets',
+        can_view_catalog: 'Custom Library'
       };
       
       container.innerHTML = `
@@ -2717,12 +2719,14 @@
         { key: 'can_edit_pipeline', label: 'Edit Pipeline', desc: 'Can manage deals and job status', section: 'Pipeline' },
         { key: 'can_view_customers', label: 'View Customers', desc: 'Can see the customers page', section: 'Customers' },
         { key: 'can_edit_customers', label: 'Edit Customers', desc: 'Can add and edit customer info', section: 'Customers' },
-        { key: 'can_view_quotes', label: 'View Quotes', desc: 'Can see quotes and catalog pages', section: 'Quotes' },
+        { key: 'can_view_quotes', label: 'View Quotes', desc: 'Can see the quotes pages', section: 'Quotes' },
         { key: 'can_edit_quotes', label: 'Edit Quotes', desc: 'Can create and edit quotes', section: 'Quotes' },
         { key: 'can_accept_quotes', label: 'Accept Quotes', desc: 'Can mark a quote as accepted / approve it on the customer\'s behalf', section: 'Quotes' },
         { key: 'can_convert_quotes', label: 'Convert Quotes', desc: 'Can convert an accepted quote to an invoice (and unconvert)', section: 'Quotes' },
         { key: 'can_view_invoices', label: 'View Invoices', desc: 'Can see the invoices page', section: 'Invoices' },
-        { key: 'can_send_invoices', label: 'Send Invoices', desc: 'Can create and send invoices', section: 'Invoices' }
+        { key: 'can_send_invoices', label: 'Send Invoices', desc: 'Can create and send invoices', section: 'Invoices' },
+        { key: 'can_view_print_sheets', label: 'Print Sheets', desc: 'Can open the Print Sheets page', section: 'Pages', defaultOn: true },
+        { key: 'can_view_catalog', label: 'Custom Library', desc: 'Can open the Custom Library page', section: 'Pages', defaultOn: true }
       ];
       
       // Group permissions by section
@@ -2751,7 +2755,7 @@
               <div style="display: flex; flex-direction: column; gap: var(--space-xs);">
                 ${perms.map(p => `
                   <label style="display: flex; align-items: flex-start; gap: var(--space-sm); padding: var(--space-sm); background: var(--color-bg-soft); border-radius: var(--radius-sm); cursor: pointer;">
-                    <input type="checkbox" id="perm-${p.key}" ${role?.[p.key] ? 'checked' : ''} style="margin-top: 3px;">
+                    <input type="checkbox" id="perm-${p.key}" ${(role?.[p.key] ?? !!p.defaultOn) ? 'checked' : ''} style="margin-top: 3px;">
                     <div>
                       <div style="font-weight: 500;">${p.label}</div>
                       <div style="font-size: 0.75rem; color: var(--color-text-muted);">${p.desc}</div>
@@ -2803,7 +2807,9 @@
           can_accept_quotes: $('#perm-can_accept_quotes').checked,
           can_convert_quotes: $('#perm-can_convert_quotes').checked,
           can_view_invoices: $('#perm-can_view_invoices').checked,
-          can_send_invoices: $('#perm-can_send_invoices').checked
+          can_send_invoices: $('#perm-can_send_invoices').checked,
+          can_view_print_sheets: $('#perm-can_view_print_sheets').checked,
+          can_view_catalog: $('#perm-can_view_catalog').checked
         };
         
         try {

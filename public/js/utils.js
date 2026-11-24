@@ -699,7 +699,14 @@ function getCurrentUser() {
   const userJson = localStorage.getItem('app_user');
   if (!userJson) return null;
   try {
-    return JSON.parse(userJson);
+    const user = JSON.parse(userJson);
+    // Permissions that default to ON: a session saved before they existed still gets access
+    if (user && user.permissions) {
+      ['can_view_print_sheets', 'can_view_catalog'].forEach(key => {
+        if (user.permissions[key] === undefined) user.permissions[key] = true;
+      });
+    }
+    return user;
   } catch {
     return null;
   }
@@ -808,7 +815,8 @@ function applyRoleRestrictions() {
     '/admin/invoices.html': 'can_view_invoices',
     '/admin/customers.html': 'can_view_customers',
     '/admin/pipeline.html': 'can_view_pipeline',
-    '/admin/catalog.html': 'can_view_quotes',
+    '/admin/catalog.html': 'can_view_catalog',
+    '/admin/spec-sheets.html': 'can_view_print_sheets',
     '/admin/booking-forms.html': 'can_access_settings'
   };
   
@@ -838,7 +846,8 @@ function applyRoleRestrictions() {
     'invoices.html': 'can_view_invoices',
     'customers.html': 'can_view_customers',
     'pipeline.html': 'can_view_pipeline',
-    'catalog.html': 'can_view_quotes',
+    'catalog.html': 'can_view_catalog',
+    'spec-sheets.html': 'can_view_print_sheets',
     'booking-forms.html': 'can_access_settings'
   };
   
@@ -1163,6 +1172,7 @@ window.initMobileMenu = initMobileMenu;
 (function () {
   function injectPrintSheetsNavItem() {
     if (!window.location.pathname.includes('/admin/')) return;
+    if (!hasPermission('can_view_print_sheets')) return;
     if (document.querySelector('a[href="/admin/spec-sheets.html"]')) return;
 
     const li = document.createElement('li');
