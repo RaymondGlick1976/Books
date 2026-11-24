@@ -638,9 +638,10 @@
         dealItemTypes = (dealItemTypesSetting?.value && Array.isArray(dealItemTypesSetting.value)) ? dealItemTypesSetting.value : [];
         finishTypes = (finishTypesSetting?.value && Array.isArray(finishTypesSetting.value)) ? finishTypesSetting.value : [];
         
-        // Initialize selected stages to all stages if empty
+        // Initialize selected stages: restore the last filter used in this browser, otherwise show all
         if (selectedStages.size === 0) {
-          stages.forEach(s => selectedStages.add(s.stage_id));
+          const hiddenStages = loadHiddenStages();
+          stages.forEach(s => { if (!hiddenStages.has(s.stage_id)) selectedStages.add(s.stage_id); });
         }
         
         updatePipelineSummary();
@@ -682,12 +683,31 @@
       }
     }
     
+    // The stage filter is remembered per browser. Hidden stages are stored (not visible ones)
+    // so a stage added later shows up by default.
+    const STAGE_FILTER_KEY = 'pipeline_hidden_stages';
+
+    function loadHiddenStages() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STAGE_FILTER_KEY) || '[]');
+        return new Set(Array.isArray(saved) ? saved : []);
+      } catch (e) { return new Set(); }
+    }
+
+    function saveStageFilter() {
+      try {
+        const hidden = stages.filter(s => !selectedStages.has(s.stage_id)).map(s => s.stage_id);
+        localStorage.setItem(STAGE_FILTER_KEY, JSON.stringify(hidden));
+      } catch (e) { /* storage unavailable - filter just won't be remembered */ }
+    }
+
     function toggleStageFilter(stageId) {
       if (selectedStages.has(stageId)) {
         selectedStages.delete(stageId);
       } else {
         selectedStages.add(stageId);
       }
+      saveStageFilter();
       renderStageFilter();
       updatePipelineSummary();
       renderCurrentView();
@@ -695,6 +715,7 @@
     
     function selectAllStages() {
       stages.forEach(s => selectedStages.add(s.stage_id));
+      saveStageFilter();
       renderStageFilter();
       updatePipelineSummary();
       renderCurrentView();
@@ -702,6 +723,7 @@
     
     function clearAllStages() {
       selectedStages.clear();
+      saveStageFilter();
       renderStageFilter();
       updatePipelineSummary();
       renderCurrentView();
