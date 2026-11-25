@@ -73,6 +73,7 @@ CREATE TABLE public.appointments (
   deal_id uuid,
   title character varying NOT NULL,
   appointment_date date NOT NULL,
+  appointment_end_date date,
   appointment_time time without time zone,
   duration_minutes integer DEFAULT 60,
   location text,

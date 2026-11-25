@@ -69,8 +69,19 @@ exports.handler = async (event) => {
         const customerName = appt.customers?.name || '';
         const description = customerName ? `Customer: ${customerName}\nEmail: ${appt.customers?.email || 'N/A'}\nPhone: ${appt.customers?.phone || 'N/A'}${appt.notes ? '\nNotes: ' + appt.notes : ''}` : (appt.notes || '');
 
+        const isMultiDay = !!appt.appointment_end_date && appt.appointment_end_date > appt.appointment_date;
         let eventBody;
-        if (appt.appointment_time) {
+        if (isMultiDay) {
+          // Multi-day range: all-day event. Google's end date is exclusive (day after the last day).
+          const [ey, em, ed] = appt.appointment_end_date.split('-').map(Number);
+          const endExclusive = new Date(Date.UTC(ey, em - 1, ed + 1)).toISOString().split('T')[0];
+          eventBody = {
+            summary: `${typeName}${customerName ? ' - ' + customerName : ''}`,
+            start: { date: appt.appointment_date },
+            end: { date: endExclusive },
+            description
+          };
+        } else if (appt.appointment_time) {
           const slotDuration = scheduling.slot_duration || 60;
           const timePart = appt.appointment_time.substring(0, 5); // Normalize HH:MM:SS to HH:MM
           const startMinutes = parseInt(timePart.split(':')[0]) * 60 + parseInt(timePart.split(':')[1]);

@@ -74,6 +74,11 @@
     .calendar-events { display: flex; flex-direction: column; gap: 2px; }
     .calendar-event { padding: 2px 5px; border-radius: 3px; font-size: 0.65rem; font-weight: 500; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .calendar-event:hover { transform: scale(1.02); }
+    /* Multi-day events draw as one connected bar across the day cells */
+    .calendar-event.range-start, .calendar-event.range-mid { margin-right: calc(-1 * var(--space-xs) - 1px); border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .calendar-event.range-mid, .calendar-event.range-end { margin-left: calc(-1 * var(--space-xs)); border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none !important; }
+    .calendar-event.range-start:hover, .calendar-event.range-mid:hover, .calendar-event.range-end:hover { transform: none; filter: brightness(0.95); }
+    .calendar-event-spacer { visibility: hidden; pointer-events: none; }
     .calendar-more { font-size: 0.65rem; color: var(--color-text-muted); padding: 2px 5px; cursor: pointer; }
     
     /* View toggle */
@@ -488,7 +493,8 @@
           <div class="form-group"><label class="form-label">Appointment Type</label><select id="appt-type" class="form-input"></select></div>
           <div class="form-group"><label class="form-label">Title *</label><input type="text" id="appt-title" class="form-input" required placeholder="e.g., Measure for Smith Kitchen"></div>
           <div class="grid grid-cols-2 gap-lg">
-            <div class="form-group"><label class="form-label">Date *</label><input type="date" id="appt-date" class="form-input" required></div>
+            <div class="form-group"><label class="form-label">Start Date *</label><input type="date" id="appt-date" class="form-input" required onchange="syncApptEndDateMin()"></div>
+            <div class="form-group"><label class="form-label">End Date <span class="text-muted" style="font-weight:400;">(multi-day only)</span></label><input type="date" id="appt-end-date" class="form-input"></div>
             <div class="form-group"><label class="form-label">Time</label><input type="time" id="appt-time" class="form-input"></div>
           </div>
           <div class="form-group"><label class="form-label">Customer (optional)</label><select id="appt-customer" class="form-input"><option value="">No customer selected</option></select></div>
@@ -2240,6 +2246,7 @@
         $('#appt-type').value = appt.appointment_type_id || '';
         $('#appt-title').value = appt.title || '';
         $('#appt-date').value = appt.appointment_date || '';
+        $('#appt-end-date').value = appt.appointment_end_date || '';
         $('#appt-time').value = appt.appointment_time || '';
         $('#appt-customer').value = appt.customer_id || '';
         $('#appt-deal').value = appt.deal_id || '';
@@ -2282,7 +2289,19 @@
         $('#appt-sync-gcal').checked = true;
         $('#appt-new-options').style.display = '';
       }
+      syncApptEndDateMin();
       $('#appt-modal').classList.add('active');
+    }
+
+    // The end date can never be earlier than the start date
+    function syncApptEndDateMin() { $('#appt-end-date').min = $('#appt-date').value || ''; }
+
+    // "Jan 4, 2027" or "Jan 4, 2027 – Jan 8, 2027". Noon keeps the day from shifting with the timezone.
+    function formatApptDateRange(appt) {
+      if (!appt.appointment_date) return '—';
+      const start = formatDate(appt.appointment_date + 'T12:00:00');
+      const end = appt.appointment_end_date;
+      return end && end > appt.appointment_date ? `${start} – ${formatDate(end + 'T12:00:00')}` : start;
     }
     
     function closeApptModal() { $('#appt-modal').classList.remove('active'); }
@@ -2307,7 +2326,7 @@
       if (type) {
         infoHtml += `<div class="deal-view-field"><label>Type</label><p>${type.icon || ''} ${type.name}</p></div>`;
       }
-      infoHtml += `<div class="deal-view-field"><label>Date</label><p>${appt.appointment_date ? formatDate(appt.appointment_date) : '—'}</p></div>`;
+      infoHtml += `<div class="deal-view-field"><label>${appt.appointment_end_date ? 'Dates' : 'Date'}</label><p>${formatApptDateRange(appt)}</p></div>`;
       if (appt.appointment_time) {
         const [h, m] = appt.appointment_time.split(':');
         const hr = parseInt(h), ampm = hr >= 12 ? 'PM' : 'AM', hr12 = hr % 12 || 12;
@@ -2354,19 +2373,24 @@
 
     async function saveAppt() {
       const id = $('#appt-id').value;
-      const data = { appointment_type_id: $('#appt-type').value || null, title: $('#appt-title').value, appointment_date: $('#appt-date').value, appointment_time: $('#appt-time').value || null, customer_id: $('#appt-customer').value || null, deal_id: $('#appt-deal').value || null, location: $('#appt-location').value, notes: $('#appt-notes').value, updated_at: new Date().toISOString() };
+      const data = { appointment_type_id: $('#appt-type').value || null, title: $('#appt-title').value, appointment_date: $('#appt-date').value, appointment_end_date: $('#appt-end-date').value || null, appointment_time: $('#appt-time').value || null, customer_id: $('#appt-customer').value || null, deal_id: $('#appt-deal').value || null, location: $('#appt-location').value, notes: $('#appt-notes').value, updated_at: new Date().toISOString() };
       if (!data.title || !data.appointment_date) { showToast('Title and date are required', 'error'); return; }
+      if (data.appointment_end_date && data.appointment_end_date < data.appointment_date) { showToast('End date cannot be before the start date', 'error'); return; }
+      // Same start and end is just a single day
+      if (data.appointment_end_date === data.appointment_date) data.appointment_end_date = null;
       try {
         const supabase = await app.waitForSupabase();
         if (id) {
           // Check if this appointment has a GCal event to update
           const { data: existing } = await supabase.from('appointments').select('gcal_event_id').eq('id', id).single();
-          await supabase.from('appointments').update(data).eq('id', id);
-          if (existing && existing.gcal_event_id && data.appointment_date && data.appointment_time) {
-            try { await fetch(`/.netlify/functions/gcal-update-event?event_id=${encodeURIComponent(existing.gcal_event_id)}&date=${data.appointment_date}&time=${data.appointment_time}&title=${encodeURIComponent(data.title || '')}`, { method: 'POST' }); } catch (e) { console.error('GCal update failed:', e); }
+          const { error: updateError } = await supabase.from('appointments').update(data).eq('id', id);
+          if (updateError) throw updateError;
+          if (existing && existing.gcal_event_id && data.appointment_date) {
+            try { await fetch(`/.netlify/functions/gcal-update-event?event_id=${encodeURIComponent(existing.gcal_event_id)}&date=${data.appointment_date}&end_date=${data.appointment_end_date || ''}&time=${data.appointment_time || ''}&title=${encodeURIComponent(data.title || '')}`, { method: 'POST' }); } catch (e) { console.error('GCal update failed:', e); }
           }
         } else {
-          const { data: newAppt } = await supabase.from('appointments').insert([data]).select().single();
+          const { data: newAppt, error: insertError } = await supabase.from('appointments').insert([data]).select().single();
+          if (insertError) throw insertError;
           // Send confirmation email + GCal sync for new appointments
           if (newAppt) {
             const sendEmail = $('#appt-send-email').checked && data.customer_id;
@@ -2483,7 +2507,9 @@
 
     function rescheduleAppt() {
       $('#appt-date').value = '';
+      $('#appt-end-date').value = '';
       $('#appt-time').value = '';
+      syncApptEndDateMin();
       $('#appt-date').focus();
       showToast('Pick a new date and time, then Save', 'info');
     }
@@ -2677,14 +2703,41 @@
         else if (dayCount > daysInMonth) { dayNum = nextMonthDay++; isOtherMonth = true; const nm = month === 11 ? 0 : month + 1, ny = month === 11 ? year + 1 : year; dateStr = `${ny}-${String(nm + 1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`; }
         else { dayNum = dayCount++; dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`; }
         const isToday = isCurrentMonth && !isOtherMonth && dayNum === today.getDate(), dayEvents = events[dateStr] || [];
-        html += `<div class="calendar-day ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}"><span class="calendar-day-number">${dayNum}</span><div class="calendar-events">${renderDayEvents(dayEvents)}</div></div>`;
+        html += `<div class="calendar-day ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}"><span class="calendar-day-number">${dayNum}</span><div class="calendar-events">${renderDayEvents(dayEvents, i === 0)}</div></div>`;
       }
       $('#calendar-grid').innerHTML = html;
     }
     
+    // Every date string from start to end inclusive. Works on plain YYYY-MM-DD so nothing shifts with the timezone.
+    function eachDateInRange(startDate, endDate) {
+      const dates = [];
+      const [y, m, d] = startDate.split('-').map(Number);
+      const cur = new Date(Date.UTC(y, m - 1, d));
+      const last = endDate && endDate > startDate ? endDate : startDate;
+      while (dates.length < 366) {
+        const dateStr = cur.toISOString().split('T')[0];
+        dates.push(dateStr);
+        if (dateStr >= last) break;
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
+      return dates;
+    }
+
     function buildEventsLookup() {
       const events = {};
-      appointments.forEach(appt => { const dateStr = appt.appointment_date, type = appt.appointment_types || appointmentTypes.find(t => t.id === appt.appointment_type_id); if (!events[dateStr]) events[dateStr] = []; const isCancelled = appt.status === 'cancelled'; events[dateStr].push({ type: 'appointment', data: appt, color: isCancelled ? '#999' : (type?.color || '#38571a'), icon: type?.icon || '📅', label: appt.title, cancelled: isCancelled }); });
+      const add = (dateStr, item) => { if (!events[dateStr]) events[dateStr] = []; events[dateStr].push(item); };
+      const ranges = [];
+
+      appointments.forEach(appt => {
+        if (!appt.appointment_date) return;
+        const type = appt.appointment_types || appointmentTypes.find(t => t.id === appt.appointment_type_id);
+        const isCancelled = appt.status === 'cancelled';
+        const base = { type: 'appointment', data: appt, color: isCancelled ? '#999' : (type?.color || '#38571a'), icon: type?.icon || '📅', label: appt.title, cancelled: isCancelled };
+        const startDate = appt.appointment_date;
+        const endDate = appt.appointment_end_date && appt.appointment_end_date > startDate ? appt.appointment_end_date : startDate;
+        if (startDate === endDate) { add(startDate, base); return; }
+        ranges.push({ base, startDate, endDate, key: 'a' + appt.id, tip: `${appt.title}: ${formatApptDateRange(appt)}` });
+      });
       
       // Deal events - support date ranges and show customer last name + event type
       // Filter by selected stages
@@ -2709,44 +2762,52 @@
         
         // Get start and end dates
         const startDate = event.event_date;
-        const endDate = event.event_end_date || startDate;
-        
-        // Add event to each day in the range
-        let currentDate = new Date(startDate);
-        const lastDate = new Date(endDate);
-        
-        while (currentDate <= lastDate) {
-          const dateStr = currentDate.toISOString().split('T')[0];
-          if (!events[dateStr]) events[dateStr] = [];
-          events[dateStr].push({ 
-            type: 'deal_event', 
-            data: { event, deal }, 
-            color: eventColor, 
-            icon: type?.icon || '📅', 
-            label: label,
-            isRange: startDate !== endDate,
-            isStart: dateStr === startDate,
-            isEnd: dateStr === endDate
-          });
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
+        if (!startDate) return;
+        const endDate = event.event_end_date && event.event_end_date > startDate ? event.event_end_date : startDate;
+        const base = { type: 'deal_event', data: { event, deal }, color: eventColor, icon: type?.icon || '📅', label: label };
+        if (startDate === endDate) { add(startDate, base); return; }
+        ranges.push({ base, startDate, endDate, key: 'd' + event.id, tip: label });
+      });
+
+      // Give each multi-day event a row ("lane") it keeps on every day it covers,
+      // so overlapping projects stack as straight bars instead of jumping around.
+      ranges.sort((a, b) => a.startDate.localeCompare(b.startDate) || b.endDate.localeCompare(a.endDate) || a.key.localeCompare(b.key));
+      const laneEnds = [];
+      ranges.forEach(r => {
+        let lane = laneEnds.findIndex(end => end < r.startDate);
+        if (lane === -1) lane = laneEnds.length;
+        laneEnds[lane] = r.endDate;
+        eachDateInRange(r.startDate, r.endDate).forEach(dateStr => {
+          add(dateStr, { ...r.base, isRange: true, lane, tip: r.tip, isStart: dateStr === r.startDate, isEnd: dateStr === r.endDate, isWeekStart: new Date(dateStr + 'T12:00:00').getDay() === 0 });
+        });
       });
       return events;
     }
     
-    function renderDayEvents(dayEvents) {
+    function renderDayEvents(dayEvents, isFirstCell = false) {
       if (!dayEvents.length) return '';
       const maxVisible = 3;
-      let html = dayEvents.slice(0, maxVisible).map(e => {
+      // Multi-day bars go first, each in its own lane (blank rows hold the place of lanes not in use today)
+      const rows = [];
+      dayEvents.filter(e => e.isRange).forEach(e => { rows[e.lane] = e; });
+      for (let i = 0; i < rows.length; i++) if (!rows[i]) rows[i] = null;
+      dayEvents.filter(e => !e.isRange).forEach(e => rows.push(e));
+
+      let html = rows.slice(0, maxVisible).map(e => {
+        if (!e) return '<div class="calendar-event calendar-event-spacer">&nbsp;</div>';
         const bgColor = hexToRgba(e.color, 0.2);
         const onclick = e.type === 'appointment' ? `openApptView(appointments.find(a => a.id === '${e.data.id}'))` : `openDealView(deals.find(d => d.id === '${e.data.deal.id}'))`;
-        // For range events, show icon on start, just label on middle/end
-        const showIcon = !e.isRange || e.isStart;
-        const displayLabel = showIcon ? `${e.icon} ${e.label}` : e.label;
         const cancelledStyle = e.cancelled ? 'text-decoration:line-through;opacity:0.6;' : '';
-        return `<div class="calendar-event" style="background:${bgColor};color:${e.color};border-left:3px solid ${e.color};${cancelledStyle}" onclick="${onclick}">${displayLabel}</div>`;
+        if (!e.isRange) return `<div class="calendar-event" style="background:${bgColor};color:${e.color};border-left:3px solid ${e.color};${cancelledStyle}" onclick="${onclick}">${e.icon} ${e.label}</div>`;
+        // The name shows where the bar begins: on its first day, and again at the start of each week row
+        const showLabel = e.isStart || e.isWeekStart || isFirstCell;
+        const displayLabel = showLabel ? (e.isStart ? `${e.icon} ${e.label}` : e.label) : '&nbsp;';
+        const rangeClass = e.isStart ? 'range-start' : (e.isEnd ? 'range-end' : 'range-mid');
+        const rangeCancelledStyle = e.cancelled ? (showLabel ? cancelledStyle : 'opacity:0.6;') : '';
+        return `<div class="calendar-event ${rangeClass}" title="${String(e.tip || e.label).replace(/"/g, '&quot;')}" style="background:${bgColor};color:${e.color};border-left:3px solid ${e.color};${rangeCancelledStyle}" onclick="${onclick}">${displayLabel}</div>`;
       }).join('');
-      if (dayEvents.length > maxVisible) html += `<div class="calendar-more">+${dayEvents.length - maxVisible} more</div>`;
+      const hidden = rows.slice(maxVisible).filter(Boolean).length;
+      if (hidden > 0) html += `<div class="calendar-more">+${hidden} more</div>`;
       return html;
     }
     

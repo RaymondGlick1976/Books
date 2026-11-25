@@ -14,9 +14,9 @@ exports.handler = async (event) => {
     return { statusCode: 405, headers: corsHeaders(), body: 'Method not allowed' };
   }
 
-  const { event_id: eventId, date, time, title } = event.queryStringParameters || {};
-  if (!eventId || !date || !time) {
-    return { statusCode: 400, headers: corsHeaders(), body: JSON.stringify({ error: 'Missing event_id, date, or time' }) };
+  const { event_id: eventId, date, end_date: endDate, time, title } = event.queryStringParameters || {};
+  if (!eventId || !date) {
+    return { statusCode: 400, headers: corsHeaders(), body: JSON.stringify({ error: 'Missing event_id or date' }) };
   }
 
   try {
@@ -26,18 +26,30 @@ exports.handler = async (event) => {
     const company = companySetting?.value || {};
     const timeZone = company.timezone || 'America/New_York';
 
-    // Default to 60 min duration
-    const timePart = time.substring(0, 5); // Normalize HH:MM:SS to HH:MM
-    const startMinutes = parseInt(timePart.split(':')[0]) * 60 + parseInt(timePart.split(':')[1]);
-    const endMinutes = startMinutes + 60;
-    const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
-    const endMin = String(endMinutes % 60).padStart(2, '0');
-    const endTime = `${endHour}:${endMin}`;
+    const isMultiDay = !!endDate && endDate > date;
+    let patch;
+    if (isMultiDay || !time) {
+      // All-day event (single day with no time, or a multi-day range).
+      // Google's all-day end date is exclusive, so it is the day after the last day.
+      // dateTime/timeZone are nulled so a previously timed event converts cleanly.
+      patch = {
+        start: { date, dateTime: null, timeZone: null },
+        end: { date: addDays(isMultiDay ? endDate : date, 1), dateTime: null, timeZone: null }
+      };
+    } else {
+      // Default to 60 min duration
+      const timePart = time.substring(0, 5); // Normalize HH:MM:SS to HH:MM
+      const startMinutes = parseInt(timePart.split(':')[0]) * 60 + parseInt(timePart.split(':')[1]);
+      const endMinutes = startMinutes + 60;
+      const endHour = String(Math.floor(endMinutes / 60)).padStart(2, '0');
+      const endMin = String(endMinutes % 60).padStart(2, '0');
+      const endTime = `${endHour}:${endMin}`;
 
-    const patch = {
-      start: { dateTime: `${date}T${timePart}:00`, timeZone },
-      end: { dateTime: `${date}T${endTime}:00`, timeZone }
-    };
+      patch = {
+        start: { dateTime: `${date}T${timePart}:00`, timeZone, date: null },
+        end: { dateTime: `${date}T${endTime}:00`, timeZone, date: null }
+      };
+    }
     if (title) patch.summary = title;
 
     await gcalRequest('PATCH', `/calendars/primary/events/${eventId}`, patch);
@@ -56,6 +68,14 @@ exports.handler = async (event) => {
     };
   }
 };
+
+// Add days to a YYYY-MM-DD string without timezone drift
+function addDays(dateStr, days) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().split('T')[0];
+}
 
 function corsHeaders() {
   return {
